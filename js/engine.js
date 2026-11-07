@@ -1,0 +1,281 @@
+// Marbl — pure game engine (no DOM). Shared by the app, the generator and the tests.
+// A level is a rectangular board with walls, coloured holes, marbles and stones.
+// Tilting the board slides every piece in one direction until it hits something.
+// A marble that rolls over a hole of its own colour drops in. Stones never drop.
+
+export const DIRS = {
+  up: { dx: 0, dy: -1, arrow: '⬆️', key: 'U' },
+  down: { dx: 0, dy: 1, arrow: '⬇️', key: 'D' },
+  left: { dx: -1, dy: 0, arrow: '⬅️', key: 'L' },
+  right: { dx: 1, dy: 0, arrow: '➡️', key: 'R' },
+};
+export const DIR_NAMES = ['up', 'right', 'down', 'left'];
+export const COLORS = ['coral', 'teal', 'gold', 'violet'];
+
+/* ---------- deterministic RNG ---------- */
+export function hashString(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  h = Math.imul(h ^ (h >>> 16), 2246822507);
+  h = Math.imul(h ^ (h >>> 13), 3266489909);
+  return (h ^= h >>> 16) >>> 0;
+}
+
+export function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function rng() {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const randInt = (rng, n) => Math.floor(rng() * n);
+
+/* ---------- level helpers ---------- */
+// Level shape: { w, h, walls: Uint8Array(w*h), holes: Int8Array(w*h) (-1 or colour index),
+//               pieces: [{ kind: 'marble'|'stone', color: number }] , start: number[] (cell index per piece) }
+
+export function initialState(level) {
+  return level.start.slice();
+}
+
+export function isSolved(level, state) {
+  for (let i = 0; i < level.pieces.length; i++) {
+    if (level.pieces[i].kind === 'marble' && state[i] !== -1) return false;
+  }
+  return true;
+}
+
+/**
+ * Apply a tilt. Returns { state, moves } where moves[i] = { from, to, sunk, dist } for each
+ * piece that was on the board, or null for pieces already sunk. state is a new array.
+ */
+export function tilt(level, state, dirName) {
+  const { dx, dy } = DIRS[dirName];
+  const { w, h, walls, holes, pieces } = level;
+  const next = state.slice();
+  const moves = new Array(pieces.length).fill(null);
+
+  // Process pieces front-to-back along the tilt direction so that leading pieces settle first.
+  const order = [];
+  for (let i = 0; i < pieces.length; i++) if (state[i] >= 0) order.push(i);
+  const proj = (i) => {
+    const c = state[i];
+    return (c % w) * dx + Math.floor(c / w) * dy;
+  };
+  order.sort((a, b) => proj(b) - proj(a) || a - b);
+
+  const occupied = new Int16Array(w * h).fill(-1);
+  for (const i of order) occupied[state[i]] = i;
+
+  for (const i of order) {
+    const from = state[i];
+    occupied[from] = -1;
+    let x = from % w;
+    let y = Math.floor(from / w);
+    let dist = 0;
+    let sunk = false;
+    for (;;) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) break;
+      const nc = ny * w + nx;
+      if (walls[nc] || occupied[nc] !== -1) break;
+      x = nx;
+      y = ny;
+      dist++;
+      if (pieces[i].kind === 'marble' && holes[nc] === pieces[i].color) {
+        sunk = true;
+        break;
+      }
+    }
+    const to = y * w + x;
+    if (sunk) {
+      next[i] = -1;
+    } else {
+      next[i] = to;
+      occupied[to] = i;
+    }
+    moves[i] = { from, to, sunk, dist };
+  }
+  return { state: next, moves };
+}
+
+export function stateKey(state) {
+  return state.join(',');
+}
+
+/**
+ * Breadth-first search for the shortest solution.
+ * Returns { par, path: dirName[] } or null if unsolvable within limits.
+ */
+export function solve(level, startState = level.start, { maxDepth = 24, maxStates = 250000 } = {}) {
+  const start = startState.slice();
+  if (isSolved(level, start)) return { par: 0, path: [] };
+  const seen = new Map();
+  seen.set(stateKey(start), null);
+  let frontier = [start];
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    const nextFrontier = [];
+    for (const s of frontier) {
+      const sk = stateKey(s);
+      for (const d of DIR_NAMES) {
+        const { state: ns } = tilt(level, s, d);
+        const k = stateKey(ns);
+        if (seen.has(k)) continue;
+        seen.set(k, { prev: sk, dir: d });
+        if (isSolved(level, ns)) {
+          const path = [];
+          let cur = k;
+          while (seen.get(cur)) {
+            const e = seen.get(cur);
+            path.push(e.dir);
+            cur = e.prev;
+          }
+          path.reverse();
+          return { par: path.length, path };
+        }
+        nextFrontier.push(ns);
+        if (seen.size > maxStates) return null;
+      }
+    }
+    if (!nextFrontier.length) return null;
+    frontier = nextFrontier;
+  }
+  return null;
+}
+
+/* ---------- generator ---------- */
+export const DIFFICULTIES = {
+  easy: { size: 6, marbles: 2, stones: 0, walls: [4, 7], par: [3, 5] },
+  medium: { size: 6, marbles: 2, stones: 1, walls: [5, 8], par: [6, 8] },
+  hard: { size: 7, marbles: 3, stones: 1, walls: [6, 10], par: [9, 12] },
+};
+
+function shuffle(rng, arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = randInt(rng, i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function buildCandidate(rng, p) {
+  const w = p.size;
+  const h = p.size;
+  const n = w * h;
+  const walls = new Uint8Array(n);
+  const holes = new Int8Array(n).fill(-1);
+  const wallCount = p.walls[0] + randInt(rng, p.walls[1] - p.walls[0] + 1);
+  const cells = shuffle(rng, Array.from({ length: n }, (_, i) => i));
+  let k = 0;
+  for (let i = 0; i < wallCount; i++) walls[cells[k++]] = 1;
+
+  const colors = shuffle(rng, COLORS.map((_, i) => i)).slice(0, p.marbles);
+  const pieces = [];
+  const start = [];
+  for (const c of colors) holes[cells[k++]] = c;
+  for (const c of colors) {
+    pieces.push({ kind: 'marble', color: c });
+    start.push(cells[k++]);
+  }
+  for (let i = 0; i < p.stones; i++) {
+    pieces.push({ kind: 'stone', color: -1 });
+    start.push(cells[k++]);
+  }
+  return { w, h, walls, holes, pieces, start };
+}
+
+// Rough "interest" score: favour solutions that use many distinct directions and change direction often.
+function interest(path) {
+  const distinct = new Set(path).size;
+  let turns = 0;
+  for (let i = 1; i < path.length; i++) if (path[i] !== path[i - 1]) turns++;
+  return distinct * 10 + turns;
+}
+
+/**
+ * Generate a solvable level deterministically from a seed string.
+ * params: a DIFFICULTIES entry (or a custom one).
+ */
+export function generate(seedStr, params, { attempts = 400, candidates = 6 } = {}) {
+  const rng = mulberry32(hashString(seedStr));
+  let best = null;
+  let fallback = null;
+  let found = 0;
+  for (let a = 0; a < attempts && found < candidates; a++) {
+    const lvl = buildCandidate(rng, params);
+    const sol = solve(lvl, lvl.start, { maxDepth: params.par[1], maxStates: 120000 });
+    if (!sol || sol.par === 0) continue;
+    if (!fallback || sol.par > fallback.solution.par) fallback = { level: lvl, solution: sol };
+    if (sol.par < params.par[0]) continue;
+    // Every tilt in the first move must do something interesting: avoid levels solved by one direction spam.
+    if (new Set(sol.path).size < Math.min(3, sol.par)) continue;
+    found++;
+    const score = sol.par * 100 + interest(sol.path);
+    if (!best || score > best.score) best = { level: lvl, solution: sol, score };
+  }
+  const pick = best || fallback;
+  if (!pick) throw new Error('Could not generate a level for seed ' + seedStr);
+  pick.level.par = pick.solution.par;
+  pick.level.solution = pick.solution.path;
+  pick.level.seed = seedStr;
+  return pick.level;
+}
+
+/** Parameters for endless mode level n (1-based): gently ramps difficulty. */
+export function endlessParams(n) {
+  if (n <= 3) return { size: 5, marbles: 1, stones: 0, walls: [3, 5], par: [2, 2 + n] };
+  if (n <= 8) return { size: 6, marbles: 2, stones: 0, walls: [4, 7], par: [3, 5] };
+  if (n <= 15) return { size: 6, marbles: 2, stones: 1, walls: [5, 8], par: [6, 8] };
+  if (n <= 25) return { size: 7, marbles: 2, stones: 1, walls: [6, 9], par: [7, 10] };
+  if (n <= 40) return { size: 7, marbles: 3, stones: 1, walls: [6, 10], par: [8, 12] };
+  return { size: 7, marbles: 3, stones: 2, walls: [6, 10], par: [10, 14] };
+}
+
+/** Star rating given moves taken and par. */
+export function starsFor(moves, par) {
+  if (moves <= par) return 3;
+  if (moves <= par + Math.max(2, Math.ceil(par * 0.3))) return 2;
+  return 1;
+}
+
+/**
+ * Build a level from ASCII rows. Legend: '.' floor, '#' wall, 'a'-'d' hole of colour 0-3,
+ * 'A'-'D' marble of colour 0-3, 'S' stone.
+ */
+export function parseLevel(rows) {
+  const h = rows.length;
+  const w = rows[0].length;
+  const walls = new Uint8Array(w * h);
+  const holes = new Int8Array(w * h).fill(-1);
+  const pieces = [];
+  const start = [];
+  rows.forEach((row, y) => {
+    if (row.length !== w) throw new Error('Ragged level row ' + y);
+    [...row].forEach((ch, x) => {
+      const c = y * w + x;
+      if (ch === '#') walls[c] = 1;
+      else if (ch >= 'a' && ch <= 'd') holes[c] = ch.charCodeAt(0) - 97;
+      else if (ch >= 'A' && ch <= 'D') {
+        pieces.push({ kind: 'marble', color: ch.charCodeAt(0) - 65 });
+        start.push(c);
+      } else if (ch === 'S') {
+        pieces.push({ kind: 'stone', color: -1 });
+        start.push(c);
+      } else if (ch !== '.') throw new Error('Unknown tile ' + ch);
+    });
+  });
+  const level = { w, h, walls, holes, pieces, start };
+  const sol = solve(level);
+  if (!sol) throw new Error('Unsolvable hand-made level');
+  level.par = sol.par;
+  level.solution = sol.path;
+  return level;
+}

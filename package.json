@@ -1,0 +1,12 @@
+{
+  "name": "marbl",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Marbl — the daily tilt puzzle. Zero-dependency static PWA.",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "license": "MIT"
+}

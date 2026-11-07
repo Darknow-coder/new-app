@@ -1,0 +1,104 @@
+import { DAILY_ORDER, dayDiff, addDays } from './daily.js';
+
+const KEY = 'marbl:v1';
+
+const defaults = () => ({
+  tutorialDone: false,
+  settings: { sound: true, haptics: true },
+  daily: {}, // { 'YYYY-MM-DD': { easy: { moves, stars, done, path:[...]} , ... } }
+  endless: { level: 1, best: {} }, // best: { [level]: stars }
+});
+
+let data = load();
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return defaults();
+    const parsed = JSON.parse(raw);
+    const d = defaults();
+    return {
+      ...d,
+      ...parsed,
+      settings: { ...d.settings, ...(parsed.settings || {}) },
+      endless: { ...d.endless, ...(parsed.endless || {}) },
+    };
+  } catch {
+    return defaults();
+  }
+}
+
+export function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(data));
+  } catch {
+    /* private mode / quota: the game still works for this session */
+  }
+}
+
+export const store = {
+  get data() {
+    return data;
+  },
+  dailyEntry(key, diff) {
+    return data.daily[key]?.[diff] || null;
+  },
+  setDailyEntry(key, diff, entry) {
+    data.daily[key] = data.daily[key] || {};
+    data.daily[key][diff] = entry;
+    save();
+  },
+  dayComplete(key) {
+    const day = data.daily[key];
+    return !!day && DAILY_ORDER.every((d) => day[d]?.done);
+  },
+  setting(name, value) {
+    if (value === undefined) return data.settings[name];
+    data.settings[name] = value;
+    save();
+  },
+  reset() {
+    data = defaults();
+    save();
+  },
+};
+
+/** Stats derived from history (never stored, so they can't drift out of sync). */
+export function computeStats(today) {
+  const keys = Object.keys(data.daily).sort();
+  const complete = keys.filter((k) => store.dayComplete(k));
+  let best = 0;
+  let run = 0;
+  let prev = null;
+  for (const k of complete) {
+    run = prev && dayDiff(prev, k) === 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+    prev = k;
+  }
+  // Current streak: alive if today or yesterday is complete.
+  let current = 0;
+  let cursor = store.dayComplete(today) ? today : addDays(today, -1);
+  while (store.dayComplete(cursor)) {
+    current++;
+    cursor = addDays(cursor, -1);
+  }
+  let stars = 0;
+  let perfectDays = 0;
+  for (const k of keys) {
+    const day = data.daily[k];
+    let dayStars = 0;
+    for (const d of DAILY_ORDER) if (day[d]?.done) dayStars += day[d].stars;
+    stars += dayStars;
+    if (dayStars === 9) perfectDays++;
+  }
+  const endlessStars = Object.values(data.endless.best).reduce((a, b) => a + b, 0);
+  return {
+    played: complete.length,
+    current,
+    best,
+    stars,
+    perfectDays,
+    endlessLevel: data.endless.level,
+    endlessStars,
+  };
+}
