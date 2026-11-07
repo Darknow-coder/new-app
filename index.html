@@ -79,6 +79,15 @@
           </div>
           <p class="countdown" id="countdown"></p>
 
+          <button class="endless-card collection-card" id="btn-collection">
+            <span class="collection-balls" id="collection-balls"></span>
+            <span class="endless-text">
+              <strong data-i18n="collection"></strong>
+              <small id="collection-desc"></small>
+            </span>
+            <span class="endless-go"><svg><use href="#i-play"/></svg></span>
+          </button>
+
           <button class="endless-card" id="btn-adventure">
             <span class="endless-icon"><svg><use href="#i-flag"/></svg></span>
             <span class="endless-text">
@@ -201,6 +210,27 @@
       </div>
     </dialog>
 
+    <dialog class="modal" id="modal-collection">
+      <div class="modal-card">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <h2 data-i18n="collection"></h2>
+        <p class="shop-sub" data-i18n="collectionSub"></p>
+        <div class="skin-grid" id="skin-grid"></div>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="modal-chest-preview">
+      <div class="modal-card preview-card">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <div class="preview-chest" id="preview-chest"></div>
+        <h2 id="preview-title"></h2>
+        <div class="preview-progress"><i id="preview-bar"></i><span id="preview-count"></span></div>
+        <h3 class="mini-title" data-i18n="chestContents"></h3>
+        <ul class="preview-list" id="preview-list"></ul>
+        <div class="modal-actions"><button class="btn btn-primary btn-full" id="preview-action"></button></div>
+      </div>
+    </dialog>
+
     <dialog class="modal" id="modal-settings">
       <div class="modal-card">
         <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
@@ -218,7 +248,9 @@
         <div class="chest-top"><span class="coin-pill chest-coins"><svg><use href="#i-coin"/></svg><b id="chest-balance">0</b></span></div>
         <p class="chest-title" id="chest-title"></p>
         <div class="chest-wrap" id="chest-wrap"></div>
+        <div class="chest-upgrade" id="chest-upgrade" data-i18n="upgraded"></div>
         <p class="chest-tap" data-i18n="tapToOpen"></p>
+        <div class="chest-taps" id="chest-taps"></div>
         <div class="chest-rewards" id="chest-rewards"></div>
         <button class="btn btn-primary chest-collect" id="chest-collect" hidden data-i18n="collect"></button>
         <div class="chest-flash" id="chest-flash" aria-hidden="true"></div>

@@ -17,7 +17,8 @@ import {
   DAILY_GIFT,
 } from './levels.js';
 import { buildScenery, iris, countTo, flyIcons, floatText, replay, burst, reducedMotion } from './fx.js';
-import { openChest, chestSVG, WORLD_CHESTS, chestId, isOpened } from './chests.js';
+import { openChest, chestSVG, WORLD_CHESTS, chestId, isOpened, ODDS } from './chests.js';
+import { SKINS, hasSkin, equipped, equip, marbleHTML } from './skins.js';
 
 const $ = (sel) => document.querySelector(sel);
 const DIFF_EMOJI = { easy: '🟢', medium: '🟡', hard: '🔴' };
@@ -225,6 +226,12 @@ function renderHome() {
   const advChests = $('#adv-chests');
   advChests.hidden = !ready;
   advChests.textContent = t('chestsReady', { n: ready });
+  const ownedSkins = SKINS.filter((sk) => hasSkin(sk.id));
+  $('#collection-desc').textContent = t('collectionDesc', { n: ownedSkins.length, t: SKINS.length });
+  $('#collection-balls').innerHTML = ownedSkins
+    .slice(-3)
+    .map((sk, i) => marbleHTML(sk.id, [1, 2, 0][i]))
+    .join('');
   const giftChip = $('#gift-chip');
   giftChip.hidden = store.data.giftDay === today;
   $('#gift-text').textContent = t('giftClaim', { n: DAILY_GIFT });
@@ -351,6 +358,8 @@ function setPos(el, c) {
 
 function buildBoard() {
   const { level } = game;
+  els.board.className = els.board.className.replace(/\bskin-\S+/g, '').trim();
+  els.board.classList.add(`skin-${equipped()}`);
   els.board.style.setProperty('--w', level.w);
   els.board.style.setProperty('--h', level.h);
   els.layer.innerHTML = '';
@@ -953,19 +962,12 @@ function playUnlock(u) {
 els.mapEl.addEventListener('click', (e) => {
   const chest = e.target.closest('.chest-node');
   if (chest) {
-    if (chest.classList.contains('is-ready')) {
-      openChest({ id: chest.dataset.chest, tier: chest.dataset.tier }).then(() => {
-        const sc = $('#map-scroll');
-        const top = sc.scrollTop;
-        shownCoins = null;
-        renderMap();
-        sc.scrollTop = top;
-      });
-    } else if (chest.classList.contains('is-locked')) {
+    if (chest.classList.contains('is-opened')) {
       replay(chest, 'deny');
-      sfx.thud();
-      toast(t('chestNeed', { n: chest.dataset.need }));
+      return;
     }
+    sfx.tap();
+    showChestPreview(chest.dataset.chest, chest.dataset.tier, Number(chest.dataset.need));
     return;
   }
   const node = e.target.closest('.node');
@@ -979,6 +981,85 @@ els.mapEl.addEventListener('click', (e) => {
   }
   sfx.tap();
   iris(() => startLevel(n), worldHue(n));
+});
+
+/* ==========================================================================
+   Chest preview & collection
+   ========================================================================== */
+function openMapChest(id, tier) {
+  return openChest({ id, tier }).then(() => {
+    const sc = $('#map-scroll');
+    const top = sc.scrollTop;
+    shownCoins = null;
+    renderMap();
+    sc.scrollTop = top;
+  });
+}
+
+function showChestPreview(id, tier, need) {
+  const w = Number(id.slice(1, id.indexOf('-')));
+  const have = worldStars(w);
+  const ready = have >= need && !isOpened(id);
+  const o = ODDS[tier];
+  $('#preview-chest').innerHTML = chestSVG(tier);
+  $('#preview-chest').dataset.tier = tier;
+  $('#preview-title').textContent = t(`chest_${tier}`);
+  $('#preview-bar').style.width = `${Math.min(100, (have / need) * 100)}%`;
+  $('#preview-count').innerHTML = `${Math.min(have, need)}/${need} <svg><use href="#i-star"/></svg>`;
+  const rar = o.rarities.map((r) => t(`rarity_${r}`).toLowerCase()).join(' / ');
+  const lines = [
+    ['i-coin', t('oddsCoins', { a: o.coins[0], b: o.coins[1] })],
+    ['i-hint', t('oddsBoosters', { n: o.boosters })],
+    ['i-star', t('oddsSkin', { p: Math.round(o.skin * 100), r: rar })],
+  ];
+  if (tier !== 'gold') lines.push(['i-flame', t('oddsUpgrade')]);
+  $('#preview-list').innerHTML = lines.map(([ic, txt]) => `<li><svg><use href="#${ic}"/></svg><span>${txt}</span></li>`).join('');
+  const btn = $('#preview-action');
+  btn.textContent = ready ? t('openChest') : t('needStars', { n: need - have });
+  btn.classList.toggle('btn-primary', ready);
+  btn.classList.toggle('btn-ghost', !ready);
+  btn.onclick = () => {
+    closeModal('modal-chest-preview');
+    if (ready) openMapChest(id, tier);
+  };
+  openModal('modal-chest-preview');
+}
+
+function renderCollection() {
+  const eq = equipped();
+  $('#skin-grid').innerHTML = SKINS.map((sk, i) => {
+    const own = hasSkin(sk.id);
+    return `
+      <button class="skin-tile r-${sk.rarity} ${own ? '' : 'is-locked'} ${sk.id === eq ? 'is-equipped' : ''}" data-skin="${sk.id}" style="--i:${i}">
+        ${marbleHTML(own ? sk.id : 'classic', i % 4, own ? '' : 'silhouette')}
+        <strong>${own ? t(`skin_${sk.id}`) : '???'}</strong>
+        <small>${own ? (sk.id === eq ? `✓ ${t('equipped')}` : t('equip')) : t('lockedSkin')}</small>
+        <em>${t(`rarity_${sk.rarity}`)}</em>
+      </button>`;
+  }).join('');
+}
+
+$('#skin-grid').addEventListener('click', (e) => {
+  const tile = e.target.closest('.skin-tile');
+  if (!tile) return;
+  if (tile.classList.contains('is-locked')) {
+    replay(tile, 'deny');
+    sfx.thud();
+    return;
+  }
+  if (equip(tile.dataset.skin)) {
+    sfx.pop(2);
+    buzz(15);
+    renderCollection();
+    replay($(`.skin-tile[data-skin="${tile.dataset.skin}"]`), 'got');
+    renderHome();
+  }
+});
+
+$('#btn-collection').addEventListener('click', () => {
+  sfx.tap();
+  renderCollection();
+  openModal('modal-collection');
 });
 
 /* ==========================================================================
@@ -1310,4 +1391,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:' && !/localhost
 }
 
 // Debug hook for automated tests (harmless in production).
-window.__marbl = { get game() { return game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap, openShop, renderHome, setPendingUnlock: (n) => (pendingUnlock = n) };
+window.__marbl = { get game() { return game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap, openShop, renderHome, openChest, setPendingUnlock: (n) => (pendingUnlock = n) };

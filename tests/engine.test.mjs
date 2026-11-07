@@ -112,8 +112,8 @@ test('star rating', () => {
 
 import { adventureLevel, tierFor, levelReward, isBoss, LEVELS_PER_WORLD } from '../js/levels.js';
 
-test('first 100 adventure levels are solvable and replay correctly', () => {
-  for (let n = 1; n <= 100; n++) {
+test('all 160 adventure levels (8 worlds) are solvable and replay correctly', () => {
+  for (let n = 1; n <= 160; n++) {
     const l = adventureLevel(n);
     let s = l.start;
     for (const d of l.solution) s = tilt(l, s, d).state;
@@ -133,4 +133,17 @@ test('coins are only paid for new stars', () => {
   assert.equal(levelReward(1, 3), 20);
   assert.equal(levelReward(3, 3), 0);
   assert.equal(levelReward(3, 1), 0);
+});
+
+import { rollChest } from '../js/chests.js';
+
+test('chest rewards respect their tier', () => {
+  for (let i = 0; i < 200; i++) {
+    const w = rollChest('wood');
+    assert.ok(w.coins >= 40 && w.coins <= 60 && w.hint + w.rewind === 1);
+    const g = rollChest('gold');
+    assert.ok(g.coins >= 180 && g.hint === 2 && g.rewind === 2);
+    assert.ok(g.skin || g.dupe, 'gold always gives a skin (or coins once the collection is complete)');
+    if (g.skin) assert.notEqual(g.skin.rarity, 'common');
+  }
 });

@@ -23,7 +23,12 @@ Marbl #7 🔥4
 - **Coins & shop** — coins for every *new* star, daily puzzles, a day-complete bonus and a daily gift;
   spend them on **Hints** (best next move) and **Rewinds** (undo + refund the move). Daily puzzles stay booster-free.
 - **Chests** — wooden, silver and golden chests on the map (unlocked by stars per world) and a daily
-  chest for finishing the trio, with a full opening ceremony (drop, shake, burst, rewards).
+  chest for finishing the trio. Three-tap opening with light leaking through the cracks, a chance to
+  upgrade mid-shake, a coin shower and flip-over reward cards by rarity. Tap a chest on the map to preview its odds.
+- **Collection** — 9 marble skins (common / rare / epic) found only in chests. Skins change the pattern,
+  never the gameplay colour.
+- **Content** — 160 hand-tuned-curve levels across 8 named worlds (all verified solvable by the test suite);
+  the generator keeps producing max-difficulty levels beyond that.
 - **Living scenery** — each world has its own animated background (bubbles, embers, snow, leaves, neon…),
   iris transitions between screens, level intro/outro, and a marble that rolls to the next level on the map.
 - **Interactive tutorial** — four 1–2 move lessons, one idea each; playing within 10 seconds.
@@ -58,6 +63,7 @@ so link previews show the image on every platform, and bump `VERSION` in `sw.js`
 | `js/storage.js` | localStorage persistence; stats derived from history so they never drift. |
 | `js/main.js` | UI controller: rendering, input, animation, game flow, sharing. |
 | `js/fx.js` | Scenery, iris transitions, flying coins, tweens and particle bursts. |
+| `js/skins.js` | Collectible marble skins and ownership. |
 | `js/chests.js` | Chest tiers, reward rolls and the opening ceremony. |
 | `js/audio.js` | Procedural sound effects (no audio assets) and haptics. |
 | `js/i18n.js` | EN/FR strings, auto-detected from the browser language. |

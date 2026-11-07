@@ -120,6 +120,23 @@ export const sfx = {
     tone({ freq: 1320, dur: 0.3, type: 'triangle', gain: 0.12, delay: 0.08 });
     noise({ dur: 0.2, freq: 4000, q: 2, gain: 0.06, delay: 0.05 });
   },
+  upgrade() {
+    [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((f, i) =>
+      tone({ freq: f, dur: 0.18, type: 'square', gain: 0.045, delay: i * 0.05 }),
+    );
+    noise({ dur: 0.5, freq: 5000, q: 1, gain: 0.07, type: 'highpass', delay: 0.1 });
+  },
+  flip(i = 0) {
+    noise({ dur: 0.08, freq: 1800 + i * 200, q: 1.5, gain: 0.1 });
+    tone({ freq: 700 + i * 120, to: 1000 + i * 150, dur: 0.1, type: 'triangle', gain: 0.08 });
+  },
+  epic() {
+    [659.25, 830.61, 987.77, 1318.5].forEach((f, i) => tone({ freq: f, dur: 0.7, type: 'triangle', gain: 0.1, delay: i * 0.08 }));
+    tone({ freq: 1975.5, dur: 0.9, type: 'sine', gain: 0.06, delay: 0.35 });
+  },
+  coinRain() {
+    for (let i = 0; i < 10; i++) tone({ freq: 1800 + Math.random() * 900, dur: 0.05, type: 'square', gain: 0.025, delay: i * 0.06 + Math.random() * 0.03 });
+  },
   tap() {
     tone({ freq: 660, to: 520, dur: 0.06, type: 'sine', gain: 0.08 });
   },
