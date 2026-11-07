@@ -1,10 +1,22 @@
-import { tilt, isSolved, solve, generate, endlessParams, starsFor, stateKey, DIRS } from './engine.js';
+import { tilt, isSolved, solve, starsFor, stateKey, DIRS } from './engine.js';
 import { dateKey, puzzleNumber, msUntilTomorrow, dailyLevel, DAILY_ORDER, addDays } from './daily.js';
 import { store, computeStats, save } from './storage.js';
 import { sfx, haptic, setSoundEnabled, unlockAudio } from './audio.js';
 import { t, LANG } from './i18n.js';
 import { TUTORIAL } from './tutorial.js';
 import { burstConfetti } from './confetti.js';
+import {
+  adventureLevel,
+  worldOf,
+  isBoss,
+  LEVELS_PER_WORLD,
+  WORLD_HUES,
+  levelReward,
+  dailyReward,
+  dayCompleteBonus,
+  SHOP,
+  DAILY_GIFT,
+} from './levels.js';
 
 const $ = (sel) => document.querySelector(sel);
 const DIFF_EMOJI = { easy: '🟢', medium: '🟡', hard: '🔴' };
@@ -13,6 +25,9 @@ const DIFF_TONE = { easy: 'c1', medium: 'c2', hard: 'c0' };
 const els = {
   home: $('#view-home'),
   game: $('#view-game'),
+  map: $('#view-map'),
+  mapEl: $('#map'),
+  rewind: $('#btn-rewind'),
   board: $('#board'),
   floor: $('#board-floor'),
   layer: $('#board-layer'),
@@ -68,10 +83,10 @@ function announce(msg) {
 }
 
 function showView(name) {
-  els.home.classList.toggle('is-active', name === 'home');
-  els.game.classList.toggle('is-active', name === 'game');
-  els.home.inert = name !== 'home';
-  els.game.inert = name !== 'game';
+  for (const v of ['home', 'game', 'map']) {
+    els[v].classList.toggle('is-active', name === v);
+    els[v].inert = name !== v;
+  }
   if (name === 'game') requestAnimationFrame(() => els.board.focus({ preventScroll: true }));
 }
 
@@ -93,6 +108,18 @@ function fmtCountdown(ms) {
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
   return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+function updateCoins(bump = false) {
+  document.querySelectorAll('[data-coins]').forEach((b) => {
+    b.textContent = store.data.coins;
+    if (bump) {
+      const pill = b.parentElement;
+      pill.classList.remove('bump');
+      void pill.offsetWidth;
+      pill.classList.add('bump');
+    }
+  });
 }
 
 /* ==========================================================================
@@ -145,8 +172,14 @@ function renderHome() {
   $('#streak-text').textContent = stats.current > 0 ? t(stats.current === 1 ? 'streakOne' : 'streak', { n: stats.current }) : t('noStreak');
 
   $('#share-row').hidden = !store.dayComplete(today);
-  const lvl = store.data.endless.level;
-  $('#endless-desc').textContent = t('endlessDesc', { n: lvl, s: stats.endlessStars });
+  const lvl = store.data.levels.unlocked;
+  $('#adventure-desc').textContent = `${t('world', { n: worldOf(lvl) + 1 })} · ${t('adventureDesc', { n: lvl, s: stats.levelStars })}`;
+  $('#adventure-bar').style.width = `${(((lvl - 1) % LEVELS_PER_WORLD) / LEVELS_PER_WORLD) * 100}%`;
+  $('#btn-adventure').style.setProperty('--hue', WORLD_HUES[worldOf(lvl) % WORLD_HUES.length]);
+  const giftChip = $('#gift-chip');
+  giftChip.hidden = store.data.giftDay === today;
+  $('#gift-text').textContent = t('giftClaim', { n: DAILY_GIFT });
+  updateCoins();
   updateCountdown();
 }
 
@@ -182,11 +215,18 @@ function startDaily(diff) {
   });
 }
 
-function startEndless(n = store.data.endless.level) {
+function startLevel(n) {
   sfx.tap();
-  const level = generate(`marbl:endless:${n}`, endlessParams(n));
-  const best = store.data.endless.best[n] || 0;
-  startGame({ mode: 'endless', n, level, title: t('level', { n }), sub: best ? starsText(best) : t('endless') });
+  const level = adventureLevel(n);
+  const best = store.levelStars(n);
+  const world = t(`world${worldOf(n) % WORLD_HUES.length}`);
+  startGame({
+    mode: 'level',
+    n,
+    level,
+    title: t('level', { n }),
+    sub: isBoss(n) ? `${t('boss')} · ${world}` : best ? `${world} · ${starsText(best)}` : world,
+  });
 }
 
 function startTutorial(i = 0) {
@@ -231,7 +271,8 @@ function startGame(opts) {
   } else {
     els.tip.hidden = true;
   }
-  els.hint.hidden = opts.mode !== 'endless';
+  els.hint.hidden = opts.mode !== 'level';
+  els.rewind.hidden = opts.mode !== 'level';
   els.restart.hidden = opts.mode === 'tutorial' && opts.tut === 0;
   animating = false;
   queued = null;
@@ -343,6 +384,13 @@ function updateHud(bump = true) {
   els.undo.disabled = game.done || game.history.length === 0;
   els.restart.disabled = game.done || game.history.length === 0;
   els.hint.disabled = game.done;
+  els.rewind.disabled = game.done || game.history.length === 0;
+  for (const b of ['hint', 'rewind']) {
+    const n = store.booster(b);
+    const badge = $(`#${b}-count`);
+    badge.textContent = n > 0 ? n : '+';
+    badge.classList.toggle('is-empty', n === 0);
+  }
 }
 
 /* ==========================================================================
@@ -472,18 +520,42 @@ function restart() {
   persistProgress();
 }
 
+/** Spend one booster, or send the player to the shop if they have none. */
+function useBooster(id) {
+  if (store.booster(id) > 0) {
+    store.booster(id, -1);
+    return true;
+  }
+  toast(t('outOf', { b: t(`${id}Name`).toLowerCase() }));
+  openShop();
+  return false;
+}
+
 function hint() {
-  if (!game || game.done || animating || game.mode !== 'endless') return;
+  if (!game || game.done || animating || game.mode !== 'level') return;
+  const key = stateKey(game.state);
+  if (game.hintKey === key && !els.hintArrow.hidden) return; // already showing for this position
   const sol = solve(game.level, game.state, { maxDepth: 30, maxStates: 400000 });
   if (!sol || !sol.path.length) return;
-  if (!game.hintUsed) {
-    game.hintUsed = true;
-    toast(t('hintUsed'));
-  }
+  if (!useBooster('hint')) return;
+  game.hintKey = key;
+  updateHud(false);
   const rot = { up: 0, right: 90, down: 180, left: 270 }[sol.path[0]];
   els.hintArrow.style.setProperty('--rot', `${rot}deg`);
   els.hintArrow.hidden = false;
   sfx.tap();
+}
+
+function rewind() {
+  if (!game || game.done || animating || game.mode !== 'level' || !game.history.length) return;
+  if (!useBooster('rewind')) return;
+  sfx.undo();
+  game.state = game.history.pop();
+  game.path.pop();
+  game.moves = Math.max(0, game.moves - 1);
+  els.hintArrow.hidden = true;
+  syncPieces(180);
+  updateHud(true);
 }
 
 function persistProgress() {
@@ -497,9 +569,10 @@ function persistProgress() {
 function onSolved() {
   game.done = true;
   updateHud(false);
-  let stars = starsFor(game.moves, game.level.par);
-  if (game.hintUsed) stars = Math.min(stars, 2);
+  const stars = starsFor(game.moves, game.level.par);
   game.stars = stars;
+  game.reward = 0;
+  game.bonus = 0;
   buzz([20, 40, 20, 40, 60]);
 
   if (game.mode === 'daily' && !game.review) {
@@ -510,11 +583,18 @@ function onSolved() {
       par: game.level.par,
       path: game.path.slice(),
     });
-  } else if (game.mode === 'endless') {
-    const e = store.data.endless;
-    e.best[game.n] = Math.max(e.best[game.n] || 0, stars);
-    if (game.n >= e.level) e.level = game.n + 1;
-    save();
+    game.reward = dailyReward(stars);
+    if (store.dayComplete(game.day) && !store.data.rewardedDays[game.day]) {
+      store.data.rewardedDays[game.day] = true;
+      game.bonus = dayCompleteBonus(computeStats(today).current);
+    }
+    store.addCoins(game.reward + game.bonus);
+  } else if (game.mode === 'level') {
+    const prev = store.recordLevel(game.n, stars);
+    game.reward = levelReward(prev, stars);
+    if (game.reward) store.addCoins(game.reward);
+    // Warm the cache so "Next level" opens instantly.
+    setTimeout(() => adventureLevel(game.n + 1), 600);
   }
 
   setTimeout(() => {
@@ -560,15 +640,32 @@ function showResult() {
       actions.push({ label: t('home'), onClick: goHome });
       actions.push({ label: t('share'), primary: true, icon: 'i-share', onClick: shareDay, keepOpen: true });
     }
-  } else if (game.mode === 'endless') {
-    if (stars < 3) actions.push({ label: t('retry'), onClick: () => startEndless(game.n) });
-    else actions.push({ label: t('home'), onClick: goHome });
-    actions.push({ label: t('nextLevel'), primary: true, onClick: () => startEndless(game.n + 1) });
+    if (game.bonus) sub = `${t('dayBonus', { n: game.bonus })} ${sub}`.trim();
+  } else if (game.mode === 'level') {
+    const n = game.n;
+    actions.push({ label: t('map'), onClick: openMap });
+    if (stars < 3) actions.push({ label: t('retry'), onClick: () => startLevel(n) });
+    actions.push({ label: t('nextLevel'), primary: true, onClick: () => startLevel(n + 1), wide: true });
   }
-  showResultCard({ stars, title, line, sub, actions });
+  showResultCard({ stars, title, line, sub, actions, reward: (game.reward || 0) + (game.bonus || 0) });
 }
 
-function showResultCard({ stars, title, line, sub, actions }) {
+function showResultCard({ stars, title, line, sub, actions, reward = 0 }) {
+  const rewardEl = $('#result-reward');
+  rewardEl.hidden = !reward;
+  if (reward) {
+    const span = rewardEl.querySelector('span');
+    const start = performance.now();
+    const tick = (now) => {
+      const p = Math.max(0, Math.min(1, (now - start - 250) / 700));
+      span.textContent = t('reward', { n: Math.max(0, Math.round(reward * p)) });
+      if (p < 1) requestAnimationFrame(tick);
+      else updateCoins(true);
+    };
+    span.textContent = t('reward', { n: 0 });
+    requestAnimationFrame(tick);
+    setTimeout(() => sfx.coin(), 950);
+  }
   const starsEl = $('#result-stars');
   starsEl.innerHTML = '';
   for (let i = 0; i < 3; i++) {
@@ -588,7 +685,7 @@ function showResultCard({ stars, title, line, sub, actions }) {
   box.innerHTML = '';
   for (const a of actions) {
     const b = document.createElement('button');
-    b.className = `btn ${a.primary ? 'btn-primary' : 'btn-ghost'}`;
+    b.className = `btn ${a.primary ? 'btn-primary' : 'btn-ghost'} ${a.wide ? 'btn-full' : ''}`;
     b.innerHTML = (a.icon ? `<svg><use href="#${a.icon}"/></svg>` : '') + `<span>${a.label}</span>`;
     b.addEventListener('click', () => {
       if (!a.keepOpen) closeModal('modal-result');
@@ -607,6 +704,153 @@ function goHome() {
   renderHome();
   showView('home');
 }
+
+/** Leave the current puzzle to wherever it came from. */
+function exitGame() {
+  if (game?.mode === 'level') openMap();
+  else goHome();
+}
+
+/* ==========================================================================
+   Adventure map
+   ========================================================================== */
+const ROW = 92;
+
+function nodeX(n) {
+  return 50 + 30 * Math.sin(n * 0.8);
+}
+
+function renderMap() {
+  const unlocked = store.data.levels.unlocked;
+  const lastWorld = worldOf(unlocked) + 1; // show the next world as a locked preview
+  const map = els.mapEl;
+  map.innerHTML = '';
+  let total = 0;
+  for (let w = 0; w <= lastWorld; w++) {
+    const hue = WORLD_HUES[w % WORLD_HUES.length];
+    const first = w * LEVELS_PER_WORLD + 1;
+    let worldStars = 0;
+    for (let n = first; n < first + LEVELS_PER_WORLD; n++) worldStars += store.levelStars(n);
+    total += worldStars;
+
+    const sec = document.createElement('section');
+    sec.className = `world ${first > unlocked ? 'is-locked' : ''}`;
+    sec.style.setProperty('--hue', hue);
+    const height = LEVELS_PER_WORLD * ROW + 30;
+    const pts = [];
+    let nodes = '';
+    for (let i = 0; i < LEVELS_PER_WORLD; i++) {
+      const n = first + i;
+      const x = nodeX(n);
+      const y = i * ROW + 50;
+      pts.push(`${x},${y}`);
+      const stars = store.levelStars(n);
+      const state = n < unlocked || stars ? 'done' : n === unlocked ? 'current' : 'locked';
+      const inner =
+        state === 'locked' ? '<svg><use href="#i-lock"/></svg>' : `<span>${n}</span>`;
+      const starRow = state === 'done' ? `<span class="node-stars">${starsHTML(stars)}</span>` : '';
+      nodes += `<button class="node is-${state} ${isBoss(n) ? 'is-boss' : ''}" data-n="${n}" style="left:${x}%;top:${y}px" aria-label="${t('level', { n })}${stars ? `, ${stars}/3` : ''}">${inner}${starRow}${isBoss(n) ? '<em>BOSS</em>' : ''}</button>`;
+    }
+    sec.innerHTML = `
+      <header class="world-head">
+        <small>${t('world', { n: w + 1 })}</small>
+        <strong>${t(`world${w % WORLD_HUES.length}`)}</strong>
+        <span class="world-stars"><svg><use href="#i-star"/></svg>${worldStars}/${LEVELS_PER_WORLD * 3}</span>
+      </header>
+      <div class="world-path" style="height:${height}px">
+        <svg class="path-svg" viewBox="0 0 100 ${height}" preserveAspectRatio="none" aria-hidden="true">
+          <polyline points="${pts.join(' ')}" vector-effect="non-scaling-stroke"/>
+        </svg>
+        ${nodes}
+      </div>`;
+    map.appendChild(sec);
+  }
+  $('#map-sub').textContent = `${total}★ · ${t('level', { n: unlocked })}`;
+  updateCoins();
+}
+
+function openMap() {
+  closeModal('modal-result');
+  game = null;
+  renderMap();
+  showView('map');
+  requestAnimationFrame(() => {
+    const cur = els.mapEl.querySelector('.node.is-current');
+    const sc = $('#map-scroll');
+    if (cur) {
+      const delta = cur.getBoundingClientRect().top - sc.getBoundingClientRect().top;
+      sc.scrollTop += delta - sc.clientHeight / 2 + 35;
+    }
+  });
+}
+
+els.mapEl.addEventListener('click', (e) => {
+  const node = e.target.closest('.node');
+  if (!node) return;
+  const n = Number(node.dataset.n);
+  if (n > store.data.levels.unlocked) {
+    sfx.thud();
+    toast(t('lockedLevel', { n: store.data.levels.unlocked }));
+    return;
+  }
+  startLevel(n);
+});
+
+/* ==========================================================================
+   Shop & gift
+   ========================================================================== */
+function renderShop() {
+  updateCoins();
+  $('#shop-list').innerHTML = SHOP.map((item) => {
+    const can = store.data.coins >= item.price;
+    return `
+      <div class="shop-item">
+        <span class="shop-icon ${item.booster}"><svg><use href="#i-${item.booster === 'hint' ? 'hint' : 'rewind'}"/></svg>${item.qty > 1 ? `<b>×${item.qty}</b>` : ''}</span>
+        <span class="shop-text">
+          <strong>${t(`${item.booster}Name`)}${item.qty > 1 ? ` ×${item.qty}` : ''}</strong>
+          <small>${t(`${item.booster}Desc`)}</small>
+          <small class="owned">${t('owned', { n: store.booster(item.booster) })}</small>
+        </span>
+        <button class="price ${can ? '' : 'is-short'}" data-buy="${item.id}"><svg><use href="#i-coin"/></svg>${item.price}</button>
+      </div>`;
+  }).join('');
+}
+
+function openShop() {
+  renderShop();
+  openModal('modal-shop');
+}
+
+$('#shop-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-buy]');
+  if (!btn) return;
+  const item = SHOP.find((i) => i.id === btn.dataset.buy);
+  if (!store.spendCoins(item.price)) {
+    sfx.thud();
+    toast(t('notEnough'));
+    return;
+  }
+  store.booster(item.booster, item.qty);
+  sfx.coin();
+  buzz(20);
+  toast(t('bought', { q: item.qty, b: t(`${item.booster}Name`).toLowerCase() }));
+  renderShop();
+  updateCoins(true);
+  if (game) updateHud(false);
+});
+
+document.querySelectorAll('[data-shop]').forEach((b) => b.addEventListener('click', openShop));
+
+$('#gift-chip').addEventListener('click', () => {
+  if (store.data.giftDay === today) return;
+  store.data.giftDay = today;
+  store.addCoins(DAILY_GIFT);
+  sfx.coin();
+  buzz([20, 30, 20]);
+  toast(t('giftToast', { n: DAILY_GIFT }));
+  $('#gift-chip').hidden = true;
+  updateCoins(true);
+});
 
 /* ==========================================================================
    Sharing
@@ -665,7 +909,7 @@ function renderStats() {
     [s.best, 'statBest'],
     [s.perfectDays, 'statPerfect'],
     [s.stars, 'statStars'],
-    [s.endlessLevel, 'statEndless'],
+    [s.levelReached, 'statLevel'],
   ];
   $('#stats-grid').innerHTML = items
     .map(([v, k]) => `<div class="stat"><b>${v}</b><small>${t(k)}</small></div>`)
@@ -728,18 +972,26 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === 'r' || e.key === 'R') {
     restart();
   } else if (e.key === 'Escape') {
-    goHome();
+    exitGame();
   }
 });
 
 els.undo.addEventListener('click', undo);
 els.restart.addEventListener('click', restart);
 els.hint.addEventListener('click', hint);
+els.rewind.addEventListener('click', rewind);
 $('#btn-back').addEventListener('click', () => {
+  sfx.tap();
+  exitGame();
+});
+$('#btn-map-back').addEventListener('click', () => {
   sfx.tap();
   goHome();
 });
-$('#btn-endless').addEventListener('click', () => startEndless());
+$('#btn-adventure').addEventListener('click', () => {
+  sfx.tap();
+  openMap();
+});
 $('#btn-share-day').addEventListener('click', shareDay);
 $('#btn-help').addEventListener('click', () => openModal('modal-help'));
 $('#btn-stats').addEventListener('click', () => {
@@ -765,8 +1017,7 @@ document.querySelectorAll('dialog').forEach((d) => {
 // Escape on the result dialog behaves like "Home" so the player never ends up on a dead board.
 $('#modal-result').addEventListener('cancel', (e) => {
   e.preventDefault();
-  goHome();
-
+  exitGame();
 });
 
 const soundBox = $('#set-sound');
@@ -822,4 +1073,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:' && !/localhost
 }
 
 // Debug hook for automated tests (harmless in production).
-window.__marbl = { get game() { return game; }, move, undo, restart, shareText, store };
+window.__marbl = { get game() { return game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap };

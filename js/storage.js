@@ -6,7 +6,12 @@ const defaults = () => ({
   tutorialDone: false,
   settings: { sound: true, haptics: true },
   daily: {}, // { 'YYYY-MM-DD': { easy: { moves, stars, done, path:[...]} , ... } }
-  endless: { level: 1, best: {} }, // best: { [level]: stars }
+  endless: { level: 1, best: {} }, // legacy (pre-adventure); migrated into `levels`
+  levels: { unlocked: 1, best: {} }, // best: { [level]: stars }
+  coins: 100,
+  boosters: { hint: 3, rewind: 3 },
+  giftDay: null,
+  rewardedDays: {}, // days whose completion bonus was paid
 });
 
 let data = load();
@@ -17,12 +22,17 @@ function load() {
     if (!raw) return defaults();
     const parsed = JSON.parse(raw);
     const d = defaults();
-    return {
+    const merged = {
       ...d,
       ...parsed,
       settings: { ...d.settings, ...(parsed.settings || {}) },
       endless: { ...d.endless, ...(parsed.endless || {}) },
+      levels: { ...d.levels, ...(parsed.levels || {}) },
+      boosters: { ...d.boosters, ...(parsed.boosters || {}) },
     };
+    // Migration: players of the old Endless mode keep the level they reached.
+    if (!parsed.levels && merged.endless.level > 1) merged.levels.unlocked = merged.endless.level;
+    return merged;
   } catch {
     return defaults();
   }
@@ -56,6 +66,35 @@ export const store = {
     if (value === undefined) return data.settings[name];
     data.settings[name] = value;
     save();
+  },
+  addCoins(n) {
+    data.coins = Math.max(0, data.coins + n);
+    save();
+    return data.coins;
+  },
+  spendCoins(n) {
+    if (data.coins < n) return false;
+    data.coins -= n;
+    save();
+    return true;
+  },
+  booster(id, delta = 0) {
+    if (delta) {
+      data.boosters[id] = Math.max(0, (data.boosters[id] || 0) + delta);
+      save();
+    }
+    return data.boosters[id] || 0;
+  },
+  levelStars(n) {
+    return data.levels.best[n] || 0;
+  },
+  /** Record a level result; returns the previous best star count. */
+  recordLevel(n, stars) {
+    const prev = data.levels.best[n] || 0;
+    data.levels.best[n] = Math.max(prev, stars);
+    if (n >= data.levels.unlocked) data.levels.unlocked = n + 1;
+    save();
+    return prev;
   },
   reset() {
     data = defaults();
@@ -91,14 +130,14 @@ export function computeStats(today) {
     stars += dayStars;
     if (dayStars === 9) perfectDays++;
   }
-  const endlessStars = Object.values(data.endless.best).reduce((a, b) => a + b, 0);
+  const levelStars = Object.values(data.levels.best).reduce((a, b) => a + b, 0);
   return {
     played: complete.length,
     current,
     best,
     stars,
     perfectDays,
-    endlessLevel: data.endless.level,
-    endlessStars,
+    levelReached: data.levels.unlocked,
+    levelStars,
   };
 }

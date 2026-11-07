@@ -18,7 +18,10 @@ Marbl #7 🔥4
 - **Provably fair par** — a breadth-first solver computes the true optimum of every puzzle.
 - **Spoiler-free sharing** — emoji grid via the native share sheet or clipboard.
 - **Streaks & stats** — current/best streak, perfect days, 7-day history.
-- **Endless mode** — infinite fresh levels with a gentle difficulty ramp and hints (hint caps at 2★).
+- **Adventure map** — unlimited numbered levels on a winding path, in worlds of 20 with a sawtooth
+  difficulty curve and a boss level at the end of each world.
+- **Coins & shop** — coins for every *new* star, daily puzzles, a day-complete bonus and a daily gift;
+  spend them on **Hints** (best next move) and **Rewinds** (undo + refund the move). Daily puzzles stay booster-free.
 - **Interactive tutorial** — four 1–2 move lessons, one idea each; playing within 10 seconds.
 - **Juice** — tilting 3D board, squash on impact, sparks, procedural WebAudio sound, haptics, confetti.
 - **PWA** — installable, works fully offline, light & dark themes, English & French.
@@ -46,6 +49,7 @@ so link previews show the image on every platform, and bump `VERSION` in `sw.js`
 | File | Role |
 | --- | --- |
 | `js/engine.js` | Pure game logic: tilt physics, BFS solver, seeded generator, star rating. No DOM. |
+| `js/levels.js` | Adventure difficulty curve, worlds, coin rewards and shop prices. |
 | `js/daily.js` | Date → puzzle number / seed. `GENERATOR_VERSION` must not change for live players. |
 | `js/storage.js` | localStorage persistence; stats derived from history so they never drift. |
 | `js/main.js` | UI controller: rendering, input, animation, game flow, sharing. |

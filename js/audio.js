@@ -91,6 +91,10 @@ export const sfx = {
   star(i) {
     tone({ freq: 880 * Math.pow(1.26, i), dur: 0.25, type: 'sine', gain: 0.14 });
   },
+  coin() {
+    tone({ freq: 1318.5, dur: 0.08, type: 'square', gain: 0.05 });
+    tone({ freq: 1975.5, dur: 0.25, type: 'square', gain: 0.05, delay: 0.07 });
+  },
   tap() {
     tone({ freq: 660, to: 520, dur: 0.06, type: 'sine', gain: 0.08 });
   },

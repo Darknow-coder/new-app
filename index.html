@@ -35,6 +35,11 @@
         <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z" fill="currentColor"/></symbol>
         <symbol id="i-infinity" viewBox="0 0 24 24"><path d="M7 8.5c-2 0-3.5 1.6-3.5 3.5S5 15.5 7 15.5c3.5 0 6.5-7 10-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-6.5-7-10-7z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
         <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+        <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#ffc23d"/><circle cx="12" cy="12" r="10" fill="none" stroke="#d48a0c" stroke-width="1.6"/><circle cx="12" cy="12" r="6.2" fill="none" stroke="#e39b12" stroke-width="1.6"/><path d="M8.2 7.6a5.4 5.4 0 013.8-1.6" fill="none" stroke="#fff3cf" stroke-width="1.6" stroke-linecap="round"/></symbol>
+        <symbol id="i-rewind" viewBox="0 0 24 24"><path d="M11 6L4.5 12 11 18zM19.5 6L13 12l6.5 6z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+        <symbol id="i-gift" viewBox="0 0 24 24"><path d="M4 10h16v3H4zM5.5 13h13v7.5h-13zM12 10v10.5M12 10c-1.5-3.5-6-4.5-6-1.8C6 10 9.5 10 12 10zm0 0c1.5-3.5 6-4.5 6-1.8 0 1.8-3.5 1.8-6 1.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="currentColor"/><path d="M8 10.5V8a4 4 0 018 0v2.5" fill="none" stroke="currentColor" stroke-width="2.2"/></symbol>
+        <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4.5c4-2 7 2 12 0v8c-5 2-8-2-12 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></symbol>
       </defs>
     </svg>
@@ -48,6 +53,7 @@
             <h1 id="home-title" class="wordmark">marbl</h1>
           </div>
           <div class="topbar-actions">
+            <button class="coin-pill" data-shop data-i18n-label="shop"><svg><use href="#i-coin"/></svg><b data-coins>0</b></button>
             <button class="icon-btn" id="btn-help" data-i18n-label="howTo"><svg><use href="#i-help"/></svg></button>
             <button class="icon-btn" id="btn-stats" data-i18n-label="stats"><svg><use href="#i-stats"/></svg></button>
             <button class="icon-btn" id="btn-settings" data-i18n-label="settings"><svg><use href="#i-settings"/></svg></button>
@@ -58,7 +64,10 @@
           <div class="hero">
             <p class="eyebrow" id="home-date"></p>
             <h2 class="hero-title"><span data-i18n="todayTitle"></span> <span class="hero-num" id="home-num"></span></h2>
-            <button class="streak-chip" id="streak-chip" type="button"><svg><use href="#i-flame"/></svg><span id="streak-text"></span></button>
+            <div class="chip-row">
+              <button class="streak-chip" id="streak-chip" type="button"><svg><use href="#i-flame"/></svg><span id="streak-text"></span></button>
+              <button class="gift-chip" id="gift-chip" type="button" hidden><svg><use href="#i-gift"/></svg><span id="gift-text"></span></button>
+            </div>
           </div>
 
           <ol class="daily-list" id="daily-list"></ol>
@@ -68,16 +77,27 @@
           </div>
           <p class="countdown" id="countdown"></p>
 
-          <button class="endless-card" id="btn-endless">
-            <span class="endless-icon"><svg><use href="#i-infinity"/></svg></span>
+          <button class="endless-card" id="btn-adventure">
+            <span class="endless-icon"><svg><use href="#i-flag"/></svg></span>
             <span class="endless-text">
-              <strong data-i18n="endless"></strong>
-              <small id="endless-desc"></small>
+              <strong data-i18n="adventure"></strong>
+              <small id="adventure-desc"></small>
+              <span class="adv-progress"><i id="adventure-bar"></i></span>
             </span>
             <span class="endless-go"><svg><use href="#i-play"/></svg></span>
           </button>
           <p class="footer-note" data-i18n="footer"></p>
         </main>
+      </section>
+
+      <!-- ADVENTURE MAP -->
+      <section class="view view-map" id="view-map" aria-labelledby="map-title">
+        <header class="topbar">
+          <button class="icon-btn" id="btn-map-back" data-i18n-label="back"><svg><use href="#i-back"/></svg></button>
+          <div class="game-title"><strong id="map-title" data-i18n="adventure"></strong><small id="map-sub"></small></div>
+          <button class="coin-pill" data-shop data-i18n-label="shop"><svg><use href="#i-coin"/></svg><b data-coins>0</b></button>
+        </header>
+        <div class="map-scroll" id="map-scroll"><div class="map" id="map"></div></div>
       </section>
 
       <!-- GAME -->
@@ -109,7 +129,8 @@
         <footer class="controls">
           <button class="ctrl" id="btn-undo"><svg><use href="#i-undo"/></svg><span data-i18n="undo"></span></button>
           <button class="ctrl" id="btn-restart"><svg><use href="#i-restart"/></svg><span data-i18n="restart"></span></button>
-          <button class="ctrl" id="btn-hint" hidden><svg><use href="#i-hint"/></svg><span data-i18n="hint"></span></button>
+          <button class="ctrl ctrl-boost" id="btn-rewind" hidden><svg><use href="#i-rewind"/></svg><span data-i18n="rewindName"></span><b class="badge" id="rewind-count"></b></button>
+          <button class="ctrl ctrl-boost" id="btn-hint" hidden><svg><use href="#i-hint"/></svg><span data-i18n="hint"></span><b class="badge" id="hint-count"></b></button>
         </footer>
       </section>
     </div>
@@ -121,6 +142,7 @@
         <div class="result-stars" id="result-stars"></div>
         <h2 id="result-title"></h2>
         <p class="result-line" id="result-line"></p>
+        <p class="result-reward" id="result-reward" hidden><svg><use href="#i-coin"/></svg><span></span></p>
         <p class="result-sub" id="result-sub"></p>
         <div class="modal-actions" id="result-actions"></div>
       </div>
@@ -142,6 +164,7 @@
           <li data-i18n="help4"></li>
           <li data-i18n="help5"></li>
           <li data-i18n="help6"></li>
+          <li data-i18n="help7"></li>
         </ul>
         <div class="modal-actions">
           <button class="btn btn-ghost" id="btn-replay-tutorial" data-i18n="replayTutorial"></button>
@@ -157,6 +180,16 @@
         <div class="stats-grid" id="stats-grid"></div>
         <h3 class="mini-title" data-i18n="last7"></h3>
         <div class="week" id="stats-week"></div>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="modal-shop">
+      <div class="modal-card">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <h2 data-i18n="shop"></h2>
+        <div class="shop-balance"><svg><use href="#i-coin"/></svg><b data-coins>0</b></div>
+        <p class="shop-sub" data-i18n="shopSub"></p>
+        <div class="shop-list" id="shop-list"></div>
       </div>
     </dialog>
 

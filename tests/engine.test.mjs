@@ -109,3 +109,28 @@ test('star rating', () => {
   assert.equal(starsFor(15, 11), 2);
   assert.equal(starsFor(16, 11), 1);
 });
+
+import { adventureLevel, tierFor, levelReward, isBoss, LEVELS_PER_WORLD } from '../js/levels.js';
+
+test('first 100 adventure levels are solvable and replay correctly', () => {
+  for (let n = 1; n <= 100; n++) {
+    const l = adventureLevel(n);
+    let s = l.start;
+    for (const d of l.solution) s = tilt(l, s, d).state;
+    assert.ok(isSolved(l, s), `level ${n}`);
+  }
+});
+
+test('difficulty follows a sawtooth and bosses are harder', () => {
+  assert.equal(tierFor(1), 0);
+  assert.ok(tierFor(20) > tierFor(19));
+  assert.ok(tierFor(21) < tierFor(20)); // new world starts easier than the boss
+  assert.ok(isBoss(LEVELS_PER_WORLD) && !isBoss(LEVELS_PER_WORLD + 1));
+});
+
+test('coins are only paid for new stars', () => {
+  assert.equal(levelReward(0, 3), 35);
+  assert.equal(levelReward(1, 3), 20);
+  assert.equal(levelReward(3, 3), 0);
+  assert.equal(levelReward(3, 1), 0);
+});
