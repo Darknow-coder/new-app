@@ -69,9 +69,10 @@ export function dayCompleteBonus(streak) {
 }
 
 export const SHOP = [
-  { id: 'hint1', booster: 'hint', qty: 1, price: 40 },
-  { id: 'hint5', booster: 'hint', qty: 5, price: 150 },
-  { id: 'rewind1', booster: 'rewind', qty: 1, price: 25 },
-  { id: 'rewind5', booster: 'rewind', qty: 5, price: 100 },
+  { id: 'pack', items: { hint: 3, rewind: 3 }, price: 150, tag: '-23%' },
+  { id: 'hint1', items: { hint: 1 }, price: 40 },
+  { id: 'hint5', items: { hint: 5 }, price: 150, tag: '-25%' },
+  { id: 'rewind1', items: { rewind: 1 }, price: 25 },
+  { id: 'rewind5', items: { rewind: 5 }, price: 100, tag: '-20%' },
 ];
 export const DAILY_GIFT = 25;

@@ -13,10 +13,11 @@ import {
   WORLD_HUES,
   levelReward,
   dailyReward,
-  dayCompleteBonus,
   SHOP,
   DAILY_GIFT,
 } from './levels.js';
+import { buildScenery, iris, countTo, flyIcons, floatText, replay, burst, reducedMotion } from './fx.js';
+import { openChest, chestSVG, WORLD_CHESTS, chestId, isOpened } from './chests.js';
 
 const $ = (sel) => document.querySelector(sel);
 const DIFF_EMOJI = { easy: '🟢', medium: '🟡', hard: '🔴' };
@@ -47,6 +48,7 @@ const els = {
 let today = dateKey();
 const buzz = (p) => store.setting('haptics') && haptic(p);
 let game = null;
+let pendingUnlock = 0;
 let animating = false;
 let queued = null;
 
@@ -110,15 +112,54 @@ function fmtCountdown(ms) {
   return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
+let shownCoins = null;
 function updateCoins(bump = false) {
+  const target = store.data.coins;
+  const from = shownCoins ?? target;
+  shownCoins = target;
   document.querySelectorAll('[data-coins]').forEach((b) => {
-    b.textContent = store.data.coins;
-    if (bump) {
-      const pill = b.parentElement;
-      pill.classList.remove('bump');
-      void pill.offsetWidth;
-      pill.classList.add('bump');
-    }
+    countTo(b, from, target, 650);
+    if (bump) replay(b.parentElement, 'bump');
+  });
+}
+
+const worldHue = (n) => WORLD_HUES[worldOf(n) % WORLD_HUES.length];
+
+function worldStars(w) {
+  let total = 0;
+  const first = w * LEVELS_PER_WORLD + 1;
+  for (let n = first; n < first + LEVELS_PER_WORLD; n++) total += store.levelStars(n);
+  return total;
+}
+
+/** World chests that can be opened right now. */
+function readyChests() {
+  const out = [];
+  const lastWorld = worldOf(store.data.levels.unlocked);
+  for (let w = 0; w <= lastWorld; w++) {
+    const stars = worldStars(w);
+    for (const c of WORLD_CHESTS) if (stars >= c.stars && !isOpened(chestId(w, c.k))) out.push({ w, ...c });
+  }
+  return out;
+}
+
+function dailyChestTier(day) {
+  const order = ['wood', 'silver', 'gold'];
+  let stars = 0;
+  for (const d of DAILY_ORDER) stars += store.dailyEntry(day, d)?.stars || 0;
+  let i = stars === 9 ? 1 : 0;
+  if (computeStats(today).current >= 7) i++;
+  return order[Math.min(i, 2)];
+}
+
+function dailyChestReady(day = today) {
+  return store.dayComplete(day) && !isOpened(`d-${day}`);
+}
+
+function openDailyChest(day = today) {
+  return openChest({ id: `d-${day}`, tier: dailyChestTier(day), title: t('dailyChest') }).then(() => {
+    shownCoins = null;
+    renderHome();
   });
 }
 
@@ -150,7 +191,7 @@ function renderHome() {
           ${done ? starsHTML(entry.stars) : `<span class="dc-play">${t(inProgress ? 'continue' : 'play')}</span>`}
         </span>
       </button>`;
-    li.querySelector('button').addEventListener('click', () => startDaily(diff));
+    li.querySelector('button').addEventListener('click', () => iris(() => startDaily(diff)));
     list.appendChild(li);
   }
   // Generating the three levels takes a few dozen ms: do it after first paint.
@@ -176,6 +217,14 @@ function renderHome() {
   $('#adventure-desc').textContent = `${t('world', { n: worldOf(lvl) + 1 })} · ${t('adventureDesc', { n: lvl, s: stats.levelStars })}`;
   $('#adventure-bar').style.width = `${(((lvl - 1) % LEVELS_PER_WORLD) / LEVELS_PER_WORLD) * 100}%`;
   $('#btn-adventure').style.setProperty('--hue', WORLD_HUES[worldOf(lvl) % WORLD_HUES.length]);
+  buildScenery($('#scenery-home'), 'home');
+  const dChip = $('#daily-chest-chip');
+  dChip.hidden = !dailyChestReady();
+  if (!dChip.hidden) $('#daily-chest-mini').innerHTML = chestSVG(dailyChestTier(today));
+  const ready = readyChests().length;
+  const advChests = $('#adv-chests');
+  advChests.hidden = !ready;
+  advChests.textContent = t('chestsReady', { n: ready });
   const giftChip = $('#gift-chip');
   giftChip.hidden = store.data.giftDay === today;
   $('#gift-text').textContent = t('giftClaim', { n: DAILY_GIFT });
@@ -276,9 +325,15 @@ function startGame(opts) {
   els.restart.hidden = opts.mode === 'tutorial' && opts.tut === 0;
   animating = false;
   queued = null;
+  if (opts.mode === 'level') buildScenery($('#scenery-game'), worldOf(opts.n) % WORLD_HUES.length, worldHue(opts.n));
+  else buildScenery($('#scenery-game'), 'daily');
   buildBoard();
   updateHud(false);
   showView('game');
+  const banner = $('#level-banner');
+  banner.querySelector('strong').textContent = opts.title;
+  banner.querySelector('small').textContent = t('par', { n: opts.level.par });
+  if (opts.mode !== 'tutorial') replay(banner, 'show');
 }
 
 /* ==========================================================================
@@ -326,8 +381,17 @@ function buildBoard() {
     game.pieceEls[i] = el;
   });
   els.layer.appendChild(frag);
+  els.layer.querySelectorAll('.cell').forEach((el) => {
+    const x = Number(el.style.getPropertyValue('--x')) || 0;
+    const y = Number(el.style.getPropertyValue('--y')) || 0;
+    el.style.setProperty('--d', `${120 + (x + y) * 32}ms`);
+  });
   syncPieces(0);
   sizeBoard();
+  els.board.classList.remove('won');
+  replay(els.board, 'intro');
+  clearTimeout(buildBoard.timer);
+  buildBoard.timer = setTimeout(() => els.board.classList.remove('intro'), 1100);
 }
 
 /** Snap (or quickly animate) every piece to the current state. */
@@ -573,6 +637,8 @@ function onSolved() {
   game.stars = stars;
   game.reward = 0;
   game.bonus = 0;
+  els.board.classList.remove('intro');
+  replay(els.board, 'won');
   buzz([20, 40, 20, 40, 60]);
 
   if (game.mode === 'daily' && !game.review) {
@@ -584,13 +650,12 @@ function onSolved() {
       path: game.path.slice(),
     });
     game.reward = dailyReward(stars);
-    if (store.dayComplete(game.day) && !store.data.rewardedDays[game.day]) {
-      store.data.rewardedDays[game.day] = true;
-      game.bonus = dayCompleteBonus(computeStats(today).current);
-    }
-    store.addCoins(game.reward + game.bonus);
+    game.dayDone = dailyChestReady(game.day);
+    store.addCoins(game.reward);
   } else if (game.mode === 'level') {
     const prev = store.recordLevel(game.n, stars);
+    game.newBest = prev > 0 && stars > prev;
+    if (prev === 0 && store.data.levels.unlocked === game.n + 1) pendingUnlock = game.n + 1;
     game.reward = levelReward(prev, stars);
     if (game.reward) store.addCoins(game.reward);
     // Warm the cache so "Next level" opens instantly.
@@ -632,7 +697,7 @@ function showResult() {
     const nextDiff = DAILY_ORDER.find((d) => !store.dailyEntry(game.day, d)?.done);
     if (nextDiff && game.day === today) {
       actions.push({ label: t('home'), onClick: goHome });
-      actions.push({ label: t('nextPuzzle'), primary: true, onClick: () => startDaily(nextDiff) });
+      actions.push({ label: t('nextPuzzle'), primary: true, onClick: () => iris(() => startDaily(nextDiff)) });
     } else {
       if (store.dayComplete(game.day)) {
         sub = `${t('allDone')} ${t('allDoneSub')}`;
@@ -640,17 +705,24 @@ function showResult() {
       actions.push({ label: t('home'), onClick: goHome });
       actions.push({ label: t('share'), primary: true, icon: 'i-share', onClick: shareDay, keepOpen: true });
     }
-    if (game.bonus) sub = `${t('dayBonus', { n: game.bonus })} ${sub}`.trim();
+    if (game.dayDone) {
+      sub = t('dayBonus');
+      const day = game.day;
+      actions.push({ label: t('openChest'), primary: true, wide: true, icon: 'i-gift', onClick: () => openDailyChest(day).then(goHome) });
+      actions.find((a) => a.icon === 'i-share').primary = false;
+    }
   } else if (game.mode === 'level') {
     const n = game.n;
-    actions.push({ label: t('map'), onClick: openMap });
-    if (stars < 3) actions.push({ label: t('retry'), onClick: () => startLevel(n) });
-    actions.push({ label: t('nextLevel'), primary: true, onClick: () => startLevel(n + 1), wide: true });
+    actions.push({ label: t('map'), onClick: () => iris(openMap, worldHue(n)) });
+    if (stars < 3) actions.push({ label: t('retry'), onClick: () => iris(() => startLevel(n), worldHue(n)) });
+    actions.push({ label: t('nextLevel'), primary: true, onClick: () => iris(() => startLevel(n + 1), worldHue(n + 1)), wide: true });
   }
   showResultCard({ stars, title, line, sub, actions, reward: (game.reward || 0) + (game.bonus || 0) });
 }
 
 function showResultCard({ stars, title, line, sub, actions, reward = 0 }) {
+  $('#result-rays').classList.toggle('on', stars === 3);
+  $('#new-best').hidden = !game?.newBest;
   const rewardEl = $('#result-reward');
   rewardEl.hidden = !reward;
   if (reward) {
@@ -720,7 +792,7 @@ function nodeX(n) {
   return 50 + 30 * Math.sin(n * 0.8);
 }
 
-function renderMap() {
+function renderMap({ hideUnlock = 0 } = {}) {
   const unlocked = store.data.levels.unlocked;
   const lastWorld = worldOf(unlocked) + 1; // show the next world as a locked preview
   const map = els.mapEl;
@@ -729,14 +801,14 @@ function renderMap() {
   for (let w = 0; w <= lastWorld; w++) {
     const hue = WORLD_HUES[w % WORLD_HUES.length];
     const first = w * LEVELS_PER_WORLD + 1;
-    let worldStars = 0;
-    for (let n = first; n < first + LEVELS_PER_WORLD; n++) worldStars += store.levelStars(n);
-    total += worldStars;
+    const ws = worldStars(w);
+    total += ws;
 
     const sec = document.createElement('section');
     sec.className = `world ${first > unlocked ? 'is-locked' : ''}`;
+    sec.dataset.world = w;
     sec.style.setProperty('--hue', hue);
-    const height = LEVELS_PER_WORLD * ROW + 30;
+    const height = LEVELS_PER_WORLD * ROW + 30 + 90;
     const pts = [];
     let nodes = '';
     for (let i = 0; i < LEVELS_PER_WORLD; i++) {
@@ -745,17 +817,41 @@ function renderMap() {
       const y = i * ROW + 50;
       pts.push(`${x},${y}`);
       const stars = store.levelStars(n);
-      const state = n < unlocked || stars ? 'done' : n === unlocked ? 'current' : 'locked';
-      const inner =
-        state === 'locked' ? '<svg><use href="#i-lock"/></svg>' : `<span>${n}</span>`;
+      let state = n < unlocked || stars ? 'done' : n === unlocked ? 'current' : 'locked';
+      if (n === hideUnlock) state = 'locked';
+      const inner = state === 'locked' ? '<svg><use href="#i-lock"/></svg>' : `<span>${n}</span>`;
       const starRow = state === 'done' ? `<span class="node-stars">${starsHTML(stars)}</span>` : '';
-      nodes += `<button class="node is-${state} ${isBoss(n) ? 'is-boss' : ''}" data-n="${n}" style="left:${x}%;top:${y}px" aria-label="${t('level', { n })}${stars ? `, ${stars}/3` : ''}">${inner}${starRow}${isBoss(n) ? '<em>BOSS</em>' : ''}</button>`;
+      nodes += `<button class="node is-${state} ${isBoss(n) ? 'is-boss' : ''}" data-n="${n}" style="left:${x}%;top:${y}px;--i:${i}" aria-label="${t('level', { n })}${stars ? `, ${stars}/3` : ''}">${inner}${starRow}${isBoss(n) ? '<em>BOSS</em>' : ''}</button>`;
+    }
+    // Star chests along the path.
+    for (const c of WORLD_CHESTS) {
+      const id = chestId(w, c.k);
+      const opened = isOpened(id);
+      const ready = !opened && ws >= c.stars;
+      let x;
+      let y;
+      if (c.after >= LEVELS_PER_WORLD) {
+        x = 50;
+        y = LEVELS_PER_WORLD * ROW + 40;
+        pts.push(`${x},${y}`);
+      } else {
+        const mid = (nodeX(first + c.after - 1) + nodeX(first + c.after)) / 2;
+        x = mid > 50 ? 20 : 80;
+        y = (c.after - 1) * ROW + 50 + ROW / 2;
+      }
+      const state = opened ? 'opened' : ready ? 'ready' : 'locked';
+      const label = ready
+        ? `<b class="chest-label">${t('chestReady')}</b>`
+        : opened
+          ? ''
+          : `<b class="chest-label">${Math.min(ws, c.stars)}/${c.stars}<svg><use href="#i-star"/></svg></b>`;
+      nodes += `<button class="chest-node is-${state}" data-chest="${id}" data-tier="${c.tier}" data-need="${c.stars}" style="left:${x}%;top:${y}px" aria-label="${t(`chest_${c.tier}`)}">${chestSVG(c.tier, opened ? 'is-open' : '')}${label}</button>`;
     }
     sec.innerHTML = `
       <header class="world-head">
         <small>${t('world', { n: w + 1 })}</small>
         <strong>${t(`world${w % WORLD_HUES.length}`)}</strong>
-        <span class="world-stars"><svg><use href="#i-star"/></svg>${worldStars}/${LEVELS_PER_WORLD * 3}</span>
+        <span class="world-stars"><svg><use href="#i-star"/></svg>${ws}/${LEVELS_PER_WORLD * 3}</span>
       </header>
       <div class="world-path" style="height:${height}px">
         <svg class="path-svg" viewBox="0 0 100 ${height}" preserveAspectRatio="none" aria-hidden="true">
@@ -767,53 +863,164 @@ function renderMap() {
   }
   $('#map-sub').textContent = `${total}★ · ${t('level', { n: unlocked })}`;
   updateCoins();
+  updateMapScenery();
+}
+
+/** The animated background follows the world you are scrolling through. */
+function updateMapScenery() {
+  const sc = $('#map-scroll');
+  const mid = sc.getBoundingClientRect().top + sc.clientHeight * 0.4;
+  let w = worldOf(store.data.levels.unlocked);
+  for (const sec of els.mapEl.querySelectorAll('.world')) {
+    if (sec.getBoundingClientRect().top <= mid) w = Number(sec.dataset.world);
+  }
+  buildScenery($('#scenery-map'), w % WORLD_HUES.length, WORLD_HUES[w % WORLD_HUES.length]);
+}
+let mapScrollRaf = 0;
+$('#map-scroll').addEventListener('scroll', () => {
+  cancelAnimationFrame(mapScrollRaf);
+  mapScrollRaf = requestAnimationFrame(updateMapScenery);
+});
+
+function scrollMapTo(node, smooth = false) {
+  const sc = $('#map-scroll');
+  if (!node) return;
+  const delta = node.getBoundingClientRect().top - sc.getBoundingClientRect().top;
+  sc.scrollTo({ top: sc.scrollTop + delta - sc.clientHeight / 2 + 35, behavior: smooth ? 'smooth' : 'auto' });
 }
 
 function openMap() {
   closeModal('modal-result');
   game = null;
-  renderMap();
+  const u = store.data.levels.unlocked;
+  const animate = pendingUnlock === u && !reducedMotion();
+  pendingUnlock = 0;
+  renderMap({ hideUnlock: animate ? u : 0 });
   showView('map');
   requestAnimationFrame(() => {
-    const cur = els.mapEl.querySelector('.node.is-current');
-    const sc = $('#map-scroll');
-    if (cur) {
-      const delta = cur.getBoundingClientRect().top - sc.getBoundingClientRect().top;
-      sc.scrollTop += delta - sc.clientHeight / 2 + 35;
-    }
+    const target = els.mapEl.querySelector(animate ? `.node[data-n="${u}"]` : '.node.is-current');
+    scrollMapTo(target);
+    if (animate) setTimeout(() => playUnlock(u), 450);
   });
 }
 
+/** A marble rolls from the finished level to the next one and breaks its lock. */
+function playUnlock(u) {
+  const node = els.mapEl.querySelector(`.node[data-n="${u}"]`);
+  const prev = els.mapEl.querySelector(`.node[data-n="${u - 1}"]`);
+  if (!node) return;
+  prev?.querySelector('.node-stars')?.classList.add('pop');
+  const finish = () => {
+    replay(node, 'unlocking');
+    sfx.chestShake(1);
+    setTimeout(() => {
+      node.className = `node is-current ${isBoss(u) ? 'is-boss' : ''} just-unlocked`;
+      node.innerHTML = `<span>${u}</span>${isBoss(u) ? '<em>BOSS</em>' : ''}`;
+      const path = node.parentElement;
+      burst(path, parseFloat(node.style.left), (parseFloat(node.style.top) / path.clientHeight) * 100, {
+        count: 18,
+        colors: ['var(--accent)', '#fff', worldHue(u)],
+        dist: 70,
+      });
+      sfx.unlock();
+      buzz([15, 30, 25]);
+      toast(t('levelUp', { n: u }));
+    }, 380);
+  };
+  if (!prev || prev.parentElement !== node.parentElement) {
+    finish();
+    return;
+  }
+  const token = document.createElement('i');
+  token.className = 'map-token';
+  token.style.left = prev.style.left;
+  token.style.top = prev.style.top;
+  node.parentElement.appendChild(token);
+  sfx.roll(0.7);
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      token.style.left = node.style.left;
+      token.style.top = node.style.top;
+    }),
+  );
+  setTimeout(() => {
+    token.classList.add('land');
+    setTimeout(() => token.remove(), 300);
+    finish();
+  }, 760);
+}
+
 els.mapEl.addEventListener('click', (e) => {
+  const chest = e.target.closest('.chest-node');
+  if (chest) {
+    if (chest.classList.contains('is-ready')) {
+      openChest({ id: chest.dataset.chest, tier: chest.dataset.tier }).then(() => {
+        const sc = $('#map-scroll');
+        const top = sc.scrollTop;
+        shownCoins = null;
+        renderMap();
+        sc.scrollTop = top;
+      });
+    } else if (chest.classList.contains('is-locked')) {
+      replay(chest, 'deny');
+      sfx.thud();
+      toast(t('chestNeed', { n: chest.dataset.need }));
+    }
+    return;
+  }
   const node = e.target.closest('.node');
   if (!node) return;
   const n = Number(node.dataset.n);
   if (n > store.data.levels.unlocked) {
+    replay(node, 'deny');
     sfx.thud();
     toast(t('lockedLevel', { n: store.data.levels.unlocked }));
     return;
   }
-  startLevel(n);
+  sfx.tap();
+  iris(() => startLevel(n), worldHue(n));
 });
 
 /* ==========================================================================
    Shop & gift
    ========================================================================== */
+function shopItemName(item) {
+  if (item.id === 'pack') return t('packName');
+  const [b, q] = Object.entries(item.items)[0];
+  return `${t(`${b}Name`)}${q > 1 ? ` ×${q}` : ''}`;
+}
+
 function renderShop() {
   updateCoins();
-  $('#shop-list').innerHTML = SHOP.map((item) => {
+  $('#shop-list').innerHTML = SHOP.map((item, i) => {
     const can = store.data.coins >= item.price;
+    const kind = item.id === 'pack' ? 'pack' : Object.keys(item.items)[0];
+    const icon = kind === 'pack' ? 'i-gift' : `i-${kind}`;
+    const qty = kind === 'pack' ? 0 : item.items[kind];
+    const desc = kind === 'pack' ? t('packDesc') : t(`${kind}Desc`);
+    const owned = kind === 'pack' ? '' : `<small class="owned" data-owned="${kind}">${t('owned', { n: store.booster(kind) })}</small>`;
     return `
-      <div class="shop-item">
-        <span class="shop-icon ${item.booster}"><svg><use href="#i-${item.booster === 'hint' ? 'hint' : 'rewind'}"/></svg>${item.qty > 1 ? `<b>×${item.qty}</b>` : ''}</span>
+      <div class="shop-item ${kind === 'pack' ? 'is-featured' : ''}" style="--i:${i}">
+        ${item.tag ? `<span class="shop-tag">${item.tag}</span>` : ''}
+        <span class="shop-icon ${kind}" data-icon="${item.id}"><svg><use href="#${icon}"/></svg>${qty > 1 ? `<b>×${qty}</b>` : ''}</span>
         <span class="shop-text">
-          <strong>${t(`${item.booster}Name`)}${item.qty > 1 ? ` ×${item.qty}` : ''}</strong>
-          <small>${t(`${item.booster}Desc`)}</small>
-          <small class="owned">${t('owned', { n: store.booster(item.booster) })}</small>
+          <strong>${shopItemName(item)}</strong>
+          <small>${desc}</small>
+          ${owned}
         </span>
-        <button class="price ${can ? '' : 'is-short'}" data-buy="${item.id}"><svg><use href="#i-coin"/></svg>${item.price}</button>
+        <button class="price ${can ? '' : 'is-short'}" data-buy="${item.id}" data-price="${item.price}"><svg><use href="#i-coin"/></svg>${item.price}</button>
       </div>`;
   }).join('');
+}
+
+/** Refresh owned counts and affordability without re-running the entrance animation. */
+function refreshShop() {
+  document.querySelectorAll('#shop-list [data-owned]').forEach((el) => {
+    el.textContent = t('owned', { n: store.booster(el.dataset.owned) });
+  });
+  document.querySelectorAll('#shop-list [data-buy]').forEach((b) => {
+    b.classList.toggle('is-short', store.data.coins < Number(b.dataset.price));
+  });
 }
 
 function openShop() {
@@ -826,16 +1033,33 @@ $('#shop-list').addEventListener('click', (e) => {
   if (!btn) return;
   const item = SHOP.find((i) => i.id === btn.dataset.buy);
   if (!store.spendCoins(item.price)) {
+    replay(btn, 'deny');
     sfx.thud();
+    buzz([30, 40, 30]);
     toast(t('notEnough'));
     return;
   }
-  store.booster(item.booster, item.qty);
+  for (const [b, q] of Object.entries(item.items)) store.booster(b, q);
+  replay(btn, 'pressed');
+  updateCoins();
   sfx.coin();
   buzz(20);
-  toast(t('bought', { q: item.qty, b: t(`${item.booster}Name`).toLowerCase() }));
-  renderShop();
-  updateCoins(true);
+  const dlg = $('#modal-shop');
+  const icon = dlg.querySelector(`[data-icon="${item.id}"]`);
+  flyIcons(dlg.querySelector('.shop-balance svg'), icon, {
+    count: 6,
+    layer: dlg,
+    onArrive: (i) => {
+      sfx.tick();
+      if (i === 5 || reducedMotion()) {
+        replay(icon, 'got');
+        const total = Object.values(item.items).reduce((a, b) => a + b, 0);
+        floatText(icon, `+${total}`, dlg);
+        burst(icon, 50, 50, { count: 10, colors: ['var(--accent)', '#fff'], dist: 40 });
+        refreshShop();
+      }
+    },
+  });
   if (game) updateHud(false);
 });
 
@@ -845,12 +1069,25 @@ $('#gift-chip').addEventListener('click', () => {
   if (store.data.giftDay === today) return;
   store.data.giftDay = today;
   store.addCoins(DAILY_GIFT);
+  const chip = $('#gift-chip');
   sfx.coin();
   buzz([20, 30, 20]);
   toast(t('giftToast', { n: DAILY_GIFT }));
-  $('#gift-chip').hidden = true;
-  updateCoins(true);
+  flyIcons(chip, $('#view-home .coin-pill'), {
+    count: 8,
+    onArrive: (i) => {
+      sfx.tick();
+      if (i === 0) updateCoins(true);
+    },
+  });
+  chip.classList.add('claimed');
+  setTimeout(() => {
+    chip.hidden = true;
+    chip.classList.remove('claimed');
+  }, 450);
 });
+
+$('#daily-chest-chip').addEventListener('click', () => openDailyChest());
 
 /* ==========================================================================
    Sharing
@@ -990,7 +1227,7 @@ $('#btn-map-back').addEventListener('click', () => {
 });
 $('#btn-adventure').addEventListener('click', () => {
   sfx.tap();
-  openMap();
+  iris(openMap, worldHue(store.data.levels.unlocked));
 });
 $('#btn-share-day').addEventListener('click', shareDay);
 $('#btn-help').addEventListener('click', () => openModal('modal-help'));
@@ -1073,4 +1310,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:' && !/localhost
 }
 
 // Debug hook for automated tests (harmless in production).
-window.__marbl = { get game() { return game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap };
+window.__marbl = { get game() { return game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap, openShop, renderHome, setPendingUnlock: (n) => (pendingUnlock = n) };

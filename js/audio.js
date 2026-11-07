@@ -95,6 +95,31 @@ export const sfx = {
     tone({ freq: 1318.5, dur: 0.08, type: 'square', gain: 0.05 });
     tone({ freq: 1975.5, dur: 0.25, type: 'square', gain: 0.05, delay: 0.07 });
   },
+  whoosh() {
+    noise({ dur: 0.45, freq: 900, q: 0.6, gain: 0.12, type: 'bandpass' });
+    tone({ freq: 220, to: 110, dur: 0.4, type: 'sine', gain: 0.12, delay: 0.25 });
+  },
+  chestShake(i = 0) {
+    tone({ freq: 160 + i * 40, to: 120 + i * 30, dur: 0.12, type: 'triangle', gain: 0.18 });
+    noise({ dur: 0.1, freq: 2400, q: 3, gain: 0.08 + i * 0.03 });
+  },
+  chestOpen() {
+    noise({ dur: 0.6, freq: 3000, q: 0.5, gain: 0.12, type: 'highpass' });
+    [392, 523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) =>
+      tone({ freq: f, dur: 0.6, type: 'triangle', gain: 0.1, delay: 0.05 + i * 0.06 }),
+    );
+  },
+  pop(i = 0) {
+    tone({ freq: 600 + i * 150, to: 1200 + i * 200, dur: 0.12, type: 'sine', gain: 0.16 });
+  },
+  tick() {
+    tone({ freq: 2000 + Math.random() * 400, dur: 0.04, type: 'square', gain: 0.03 });
+  },
+  unlock() {
+    tone({ freq: 880, dur: 0.08, type: 'square', gain: 0.05 });
+    tone({ freq: 1320, dur: 0.3, type: 'triangle', gain: 0.12, delay: 0.08 });
+    noise({ dur: 0.2, freq: 4000, q: 2, gain: 0.06, delay: 0.05 });
+  },
   tap() {
     tone({ freq: 660, to: 520, dur: 0.06, type: 'sine', gain: 0.08 });
   },
