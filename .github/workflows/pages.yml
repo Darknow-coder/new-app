@@ -2,7 +2,7 @@ name: Test & deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, claude/sweet-maxwell-us6jzo]
   pull_request:
   workflow_dispatch:
 
