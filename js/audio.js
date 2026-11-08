@@ -141,6 +141,11 @@ export const sfx = {
     tone({ freq: 300, to: 1400, dur: 0.18, type: 'sine', gain: 0.12 });
     tone({ freq: 1400, to: 500, dur: 0.18, type: 'triangle', gain: 0.06, delay: 0.1 });
   },
+  combo(count = 2) {
+    const base = count >= 3 ? [659.25, 830.61, 987.77, 1318.5, 1661.2] : [587.33, 739.99, 880, 1174.7];
+    base.forEach((f, i) => tone({ freq: f, dur: 0.22, type: 'square', gain: 0.05, delay: i * 0.055 }));
+    tone({ freq: base[base.length - 1] * 2, dur: 0.5, type: 'sine', gain: 0.07, delay: base.length * 0.055 });
+  },
   tap() {
     tone({ freq: 660, to: 520, dur: 0.06, type: 'sine', gain: 0.08 });
   },

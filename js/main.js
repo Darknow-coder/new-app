@@ -1,4 +1,4 @@
-import { tilt, isSolved, solve, starsFor, stateKey, DIRS } from './engine.js';
+import { tilt, isSolved, solve, starsFor, stateKey, DIRS, comboReachable } from './engine.js';
 import { dateKey, puzzleNumber, msUntilTomorrow, dailyLevel, DAILY_ORDER, addDays } from './daily.js';
 import { store, computeStats, save } from './storage.js';
 import { sfx, haptic, setSoundEnabled, unlockAudio } from './audio.js';
@@ -20,6 +20,18 @@ import {
 import { buildScenery, iris, countTo, flyIcons, floatText, replay, burst, reducedMotion } from './fx.js';
 import { openChest, chestSVG, WORLD_CHESTS, chestId, isOpened, ODDS } from './chests.js';
 import { SKINS, hasSkin, equipped, equip, marbleHTML } from './skins.js';
+import {
+  track,
+  xpNeeded,
+  quests,
+  QUEST_TYPES,
+  claimQuest,
+  ACHIEVEMENTS,
+  claimAchievement,
+  achievementsReady,
+  takeFromInbox,
+  checkAchievements,
+} from './progress.js';
 
 const $ = (sel) => document.querySelector(sel);
 const DIFF_EMOJI = { easy: '🟢', medium: '🟡', hard: '🔴' };
@@ -127,6 +139,62 @@ function updateCoins(bump = false) {
 
 const worldHue = (n) => WORLD_HUES[worldOf(n) % WORLD_HUES.length];
 
+/* ---------- progression glue ---------- */
+async function openChestFlow(opts) {
+  const reward = await openChest(opts);
+  if (reward) handleProgress(track('chestOpened'));
+  return reward;
+}
+
+/** Show notifications produced by progress.track / claims. */
+function handleProgress(res) {
+  if (!res) return;
+  for (const n of res.notes || []) {
+    if (n.kind === 'quest') {
+      notify('i-flag', t('questDone'), t(`quest_${n.id}`, { n: n.target }));
+    } else if (n.kind === 'achievement') {
+      notify('i-star', t('achUnlocked'), t(`ach_${n.id}`));
+    }
+  }
+  for (const lvl of res.ups || []) notify('i-gift', t('levelUpTitle'), t('levelUpSub', { n: lvl }), 'levelup');
+  if (els.home.classList.contains('is-active')) renderHome();
+}
+
+const notifQueue = [];
+let notifBusy = false;
+function notify(icon, title, sub, kind = '') {
+  notifQueue.push({ icon, title, sub, kind });
+  if (!notifBusy) nextNotif();
+}
+function nextNotif() {
+  const n = notifQueue.shift();
+  const el = $('#notif');
+  if (!n) {
+    notifBusy = false;
+    return;
+  }
+  notifBusy = true;
+  $('#notif-icon').innerHTML = `<svg><use href="#${n.icon}"/></svg>`;
+  $('#notif-title').textContent = n.title;
+  $('#notif-sub').textContent = n.sub;
+  el.className = `notif ${n.kind}`;
+  // Popovers live in the top layer, so the banner shows even above an open dialog.
+  try {
+    if (el.matches(':popover-open')) el.hidePopover();
+    el.showPopover();
+  } catch {
+    /* no popover support: plain fixed banner */
+  }
+  replay(el, 'show');
+  if (n.kind === 'levelup') sfx.upgrade();
+  else sfx.star(2);
+  buzz([15, 25, 15]);
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(nextNotif, 350);
+  }, 2400);
+}
+
 function worldStars(w) {
   let total = 0;
   const first = w * LEVELS_PER_WORLD + 1;
@@ -159,7 +227,7 @@ function dailyChestReady(day = today) {
 }
 
 function openDailyChest(day = today) {
-  return openChest({ id: `d-${day}`, tier: dailyChestTier(day), title: t('dailyChest') }).then(() => {
+  return openChestFlow({ id: `d-${day}`, tier: dailyChestTier(day), title: t('dailyChest') }).then(() => {
     shownCoins = null;
     renderHome();
   });
@@ -220,6 +288,20 @@ function renderHome() {
   $('#adventure-bar').style.width = `${(((lvl - 1) % LEVELS_PER_WORLD) / LEVELS_PER_WORLD) * 100}%`;
   $('#btn-adventure').style.setProperty('--hue', WORLD_HUES[worldOf(lvl) % WORLD_HUES.length]);
   buildScenery($('#scenery-home'), 'home');
+  renderPlayerStrip();
+  renderQuests();
+  checkAchievements();
+  const achReady = achievementsReady();
+  const achDone = ACHIEVEMENTS.filter((a) => store.data.ach[a.id]).length;
+  $('#ach-desc').textContent = achReady ? t('achToClaim', { n: achReady }) : t('achDesc', { n: achDone, t: ACHIEVEMENTS.length });
+  $('#ach-badge').hidden = !achReady;
+  $('#ach-badge').textContent = achReady;
+  const inbox = store.data.inbox;
+  $('#inbox-btn').hidden = !inbox.length;
+  if (inbox.length) {
+    $('#inbox-chest').innerHTML = chestSVG(inbox[0].tier);
+    $('#inbox-count').textContent = inbox.length;
+  }
   const dChip = $('#daily-chest-chip');
   dChip.hidden = !dailyChestReady();
   if (!dChip.hidden) $('#daily-chest-mini').innerHTML = chestSVG(dailyChestTier(today));
@@ -287,6 +369,13 @@ function startLevel(n) {
     tip: mech ? t(`mech_${mech}_desc`) : null,
   });
   if (mech && !store.data.seenMech[mech]) setTimeout(() => showMechanic(mech), 500);
+  // Let curious players know a combo is hiding in this level.
+  setTimeout(() => {
+    if (game?.level === level && comboReachable(level)) {
+      const sub = $('#game-sub');
+      sub.innerHTML = `${sub.textContent} <span class="combo-chip">✨ ${t('comboPossible')}</span>`;
+    }
+  }, 900);
 }
 
 /** "New!" card the first time a mechanic appears. */
@@ -528,6 +617,7 @@ function move(dir) {
   const axis = DIRS[dir].dx ? 'impact-x' : 'impact-y';
   let longest = 0;
   let dropIndex = 0;
+  const sunkNow = moves.filter((m) => m && m.sunk);
   const WARP_GAP = 110;
   const moveMs = (m) => {
     const segs = m.segs || [m];
@@ -582,6 +672,10 @@ function move(dir) {
     if (m.sunk) dropIndex++;
   });
   const longestRoll = Math.max(...moves.filter((m) => m && m.dist).map(moveMs));
+  if (sunkNow.length >= 2 && game.mode !== 'tutorial') {
+    const lastDrop = Math.max(...sunkNow.map(moveMs));
+    setTimeout(() => showCombo(sunkNow.length), lastDrop + 80);
+  }
   sfx.roll(longestRoll / 1000);
   buzz(8);
 
@@ -599,6 +693,21 @@ function move(dir) {
       move(d);
     }
   }, Math.max(longest, 160));
+}
+
+/** "DOUBLE!" / "TRIPLE!" when several marbles drop in the same tilt. */
+function showCombo(count) {
+  const bonus = count >= 3 ? 25 : 10;
+  store.addCoins(bonus);
+  const el = $('#combo');
+  el.querySelector('strong').textContent = t(count >= 3 ? 'comboTriple' : 'comboDouble');
+  el.querySelector('small').textContent = `+${bonus}`;
+  replay(el, 'show');
+  replay(els.board, 'combo-hit');
+  sfx.combo(count);
+  buzz([20, 30, 20, 30, 40]);
+  burst(els.layer, 50, 50, { count: 24, colors: ['var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)', '#fff'], dist: 160 });
+  handleProgress(track('combo', { count }));
 }
 
 function sparks(cell, color) {
@@ -645,6 +754,7 @@ function restart() {
 function useBooster(id) {
   if (store.booster(id) > 0) {
     store.booster(id, -1);
+    if (game) game.usedBooster = true;
     return true;
   }
   toast(t('outOf', { b: t(`${id}Name`).toLowerCase() }));
@@ -696,6 +806,7 @@ function onSolved() {
   game.bonus = 0;
   els.board.classList.remove('intro');
   replay(els.board, 'won');
+  game.xpBefore = { ...store.data.player };
   buzz([20, 40, 20, 40, 60]);
 
   if (game.mode === 'daily' && !game.review) {
@@ -709,12 +820,14 @@ function onSolved() {
     game.reward = dailyReward(stars);
     game.dayDone = dailyChestReady(game.day);
     store.addCoins(game.reward);
+    game.prog = track('dailyWin', { stars });
   } else if (game.mode === 'level') {
     const prev = store.recordLevel(game.n, stars);
     game.newBest = prev > 0 && stars > prev;
     if (prev === 0 && store.data.levels.unlocked === game.n + 1) pendingUnlock = game.n + 1;
     game.reward = levelReward(prev, stars);
     if (game.reward) store.addCoins(game.reward);
+    game.prog = track('levelWin', { stars, first: prev === 0, newStars: Math.max(0, stars - prev), usedBooster: !!game.usedBooster });
     // Warm the cache so "Next level" opens instantly.
     setTimeout(() => adventureLevel(game.n + 1), 600);
   }
@@ -777,7 +890,43 @@ function showResult() {
   showResultCard({ stars, title, line, sub, actions, reward: (game.reward || 0) + (game.bonus || 0) });
 }
 
+function showResultXP() {
+  const box = $('#result-xp');
+  const prog = game?.prog;
+  box.hidden = !prog || !prog.xp;
+  if (box.hidden) return;
+  const before = game.xpBefore;
+  const after = store.data.player;
+  $('#result-xp-text').textContent = t('xpLine', { n: prog.xp });
+  const fill = $('#result-xp-fill');
+  fill.style.transition = 'none';
+  fill.style.width = `${(before.xp / xpNeeded(before.level)) * 100}%`;
+  const lvlUp = $('#result-levelup');
+  lvlUp.hidden = true;
+  setTimeout(() => {
+    fill.style.transition = 'width 0.9s var(--ease-out)';
+    if (after.level > before.level) {
+      fill.style.width = '100%';
+      setTimeout(() => {
+        fill.style.transition = 'none';
+        fill.style.width = '0%';
+        void fill.offsetWidth;
+        fill.style.transition = 'width 0.6s var(--ease-out)';
+        fill.style.width = `${(after.xp / xpNeeded(after.level)) * 100}%`;
+        lvlUp.textContent = t('playerLevel', { n: after.level });
+        lvlUp.hidden = false;
+        replay(lvlUp, 'pop-in');
+      }, 950);
+    } else {
+      fill.style.width = `${(after.xp / xpNeeded(after.level)) * 100}%`;
+    }
+  }, 600);
+  // Quest / achievement / level-up banners right after the stars land.
+  setTimeout(() => handleProgress(prog), 1300);
+}
+
 function showResultCard({ stars, title, line, sub, actions, reward = 0 }) {
+  showResultXP();
   $('#result-rays').classList.toggle('on', stars === 3);
   $('#new-best').hidden = !game?.newBest;
   const rewardEl = $('#result-reward');
@@ -1032,10 +1181,127 @@ els.mapEl.addEventListener('click', (e) => {
 });
 
 /* ==========================================================================
+   Player level, quests, achievements
+   ========================================================================== */
+function renderPlayerStrip() {
+  const pl = store.data.player;
+  $('#player-level').textContent = pl.level;
+  $('#player-title').textContent = t('playerLevel', { n: pl.level });
+  $('#player-xp').textContent = `${pl.xp}/${xpNeeded(pl.level)} XP`;
+  const pct = (pl.xp / xpNeeded(pl.level)) * 100;
+  $('#xp-fill').style.width = `${pct}%`;
+  $('#player-badge').style.setProperty('--p', `${pct}%`);
+}
+
+function renderQuests() {
+  const q = quests(today);
+  $('#quest-list').innerHTML = q.list
+    .map((it, i) => {
+      const def = QUEST_TYPES[it.id];
+      const done = it.progress >= it.target;
+      const action = it.claimed
+        ? `<span class="q-claimed">✓</span>`
+        : done
+          ? `<button class="q-claim" data-q="${i}"><svg><use href="#i-coin"/></svg>${def.coins}</button>`
+          : `<span class="q-reward"><svg><use href="#i-coin"/></svg>${def.coins}</span>`;
+      return `<li class="quest ${done ? 'is-done' : ''} ${it.claimed ? 'is-claimed' : ''}">
+        <span class="q-icon"><svg><use href="#${def.icon}"/></svg></span>
+        <span class="q-body"><span class="q-text">${t(`quest_${it.id}`, { n: it.target })}</span>
+          <span class="q-bar"><i style="width:${(it.progress / it.target) * 100}%"></i><b>${it.progress}/${it.target}</b></span></span>
+        ${action}</li>`;
+    })
+    .join('');
+  const claimedCount = q.list.filter((x) => x.claimed).length;
+  $('#quests-bonus').innerHTML = q.bonus
+    ? t('questsBonusDone')
+    : `<span class="mini-chest">${chestSVG('silver')}</span>${claimedCount}/3`;
+  $('#quests-bonus').title = t('questsBonus');
+}
+
+$('#quest-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('.q-claim');
+  if (!btn) return;
+  const res = claimQuest(Number(btn.dataset.q));
+  if (!res) return;
+  sfx.coin();
+  buzz([15, 25]);
+  flyIcons(btn, $('#view-home .coin-pill'), {
+    count: 7,
+    onArrive: (i) => {
+      sfx.tick();
+      if (i === 0) updateCoins(true);
+    },
+  });
+  floatText(btn, `+${res.coins}`);
+  if (res.bonus) setTimeout(() => notify('i-gift', t('questsBonusDone'), t('questChest')), 600);
+  handleProgress({ ups: res.ups, notes: checkAchievements() });
+  setTimeout(renderHome, 700);
+});
+
+function renderAchievements() {
+  const rank = (a) => {
+    const st = store.data.ach[a.id];
+    if (st === 'ready') return -1;
+    if (st === 'claimed') return 2;
+    return 1 - Math.min(a.value(), a.target) / a.target;
+  };
+  $('#ach-list').innerHTML = [...ACHIEVEMENTS].sort((x, y) => rank(x) - rank(y)).map((a) => {
+    const state = store.data.ach[a.id];
+    const v = Math.min(a.value(), a.target);
+    const action =
+      state === 'ready'
+        ? `<button class="q-claim" data-ach="${a.id}"><svg><use href="#i-coin"/></svg>${a.coins}</button>`
+        : state === 'claimed'
+          ? '<span class="q-claimed">✓</span>'
+          : `<span class="q-reward"><svg><use href="#i-coin"/></svg>${a.coins}</span>`;
+    return `<li class="ach ${state ? `is-${state}` : ''}">
+      <span class="ach-medal"><svg><use href="#i-star"/></svg></span>
+      <span class="q-body"><strong>${t(`ach_${a.id}`)}</strong><small>${t(`achd_${a.id}`)}</small>
+        <span class="q-bar"><i style="width:${(v / a.target) * 100}%"></i><b>${v}/${a.target}</b></span></span>
+      ${action}</li>`;
+  }).join('');
+}
+
+$('#ach-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-ach]');
+  if (!btn) return;
+  const res = claimAchievement(btn.dataset.ach);
+  if (!res) return;
+  sfx.coin();
+  buzz([15, 25]);
+  const dlg = $('#modal-achievements');
+  floatText(btn, `+${res.coins}`, dlg);
+  burst(btn, 50, 50, { count: 12, colors: ['var(--accent)', '#fff'], dist: 40 });
+  updateCoins(true);
+  renderAchievements();
+  handleProgress({ ups: res.ups, notes: [] });
+});
+
+const openAchievements = () => {
+  sfx.tap();
+  checkAchievements();
+  renderAchievements();
+  openModal('modal-achievements');
+};
+$('#btn-achievements').addEventListener('click', openAchievements);
+$('#player-badge').addEventListener('click', openAchievements);
+
+$('#inbox-btn').addEventListener('click', () => {
+  const item = store.data.inbox[0];
+  if (!item) return;
+  const title = item.reason === 'levelUp' ? t('lvlChest', { n: item.n }) : item.reason === 'quests' ? t('questChest') : undefined;
+  openChestFlow({ id: item.id, tier: item.tier, title }).then(() => {
+    takeFromInbox(item.id);
+    shownCoins = null;
+    renderHome();
+  });
+});
+
+/* ==========================================================================
    Chest preview & collection
    ========================================================================== */
 function openMapChest(id, tier) {
-  return openChest({ id, tier }).then(() => {
+  return openChestFlow({ id, tier }).then(() => {
     const sc = $('#map-scroll');
     const top = sc.scrollTop;
     shownCoins = null;
@@ -1439,4 +1705,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:' && !/localhost
 }
 
 // Debug hook for automated tests (harmless in production).
-window.__marbl = { get game() { return game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap, openShop, renderHome, openChest, setPendingUnlock: (n) => (pendingUnlock = n) };
+window.__marbl = { track, handleProgress, notify, quests, get game() { return game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap, openShop, renderHome, openChest, setPendingUnlock: (n) => (pendingUnlock = n) };

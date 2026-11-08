@@ -390,3 +390,29 @@ export function parseLevel(rows, known = null) {
   level.solution = sol.path;
   return level;
 }
+
+/** Can some sequence of tilts (within par + slack) drop two or more marbles at once? */
+export function comboReachable(level, slack = 2, maxStates = 5000) {
+  if (level.pieces.filter((p) => p.kind === 'marble').length < 2) return false;
+  const seen = new Set([stateKey(level.start)]);
+  let frontier = [level.start];
+  for (let d = 0; d < level.par + slack && frontier.length; d++) {
+    const next = [];
+    for (const s of frontier) {
+      for (const dir of DIR_NAMES) {
+        const r = tilt(level, s, dir);
+        let sunk = 0;
+        for (const m of r.moves) if (m && m.sunk) sunk++;
+        if (sunk >= 2) return true;
+        const k = stateKey(r.state);
+        if (!seen.has(k)) {
+          seen.add(k);
+          next.push(r.state);
+          if (seen.size > maxStates) return false;
+        }
+      }
+    }
+    frontier = next;
+  }
+  return false;
+}

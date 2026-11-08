@@ -182,3 +182,42 @@ test('chest rewards respect their tier', () => {
     if (g.skin) assert.notEqual(g.skin.rarity, 'common');
   }
 });
+
+import { track, xpNeeded, quests, claimQuest, checkAchievements, claimAchievement } from '../js/progress.js';
+import { store } from '../js/storage.js';
+
+test('XP levels the player up and drops a chest in the inbox', () => {
+  store.reset();
+  const need = xpNeeded(1);
+  let ups = [];
+  for (let i = 0; i < 10 && !ups.length; i++) ups = track('levelWin', { stars: 3, first: true, newStars: 3, usedBooster: false }).ups;
+  assert.deepEqual(ups, [2]);
+  assert.ok(store.data.player.xp < xpNeeded(2));
+  assert.equal(store.data.inbox[0].id, 'lvl-2');
+  assert.ok(need > 0);
+});
+
+test('daily quests are deterministic per day and can be claimed once complete', () => {
+  store.reset();
+  const a = JSON.stringify(quests('2026-12-01').list.map((q) => q.id));
+  store.data.quests.day = null;
+  const b = JSON.stringify(quests('2026-12-01').list.map((q) => q.id));
+  assert.equal(a, b);
+  assert.equal(new Set(JSON.parse(a)).size, 3, 'three different quests');
+  const q = quests('2026-12-01').list[0];
+  assert.equal(claimQuest(0, '2026-12-01'), null, 'not claimable before completion');
+  q.progress = q.target;
+  const coins = store.data.coins;
+  assert.ok(claimQuest(0, '2026-12-01').coins > 0);
+  assert.ok(store.data.coins > coins);
+  assert.equal(claimQuest(0, '2026-12-01'), null, 'only once');
+});
+
+test('achievements unlock from stats and pay out once', () => {
+  store.reset();
+  track('levelWin', { stars: 1, first: true, newStars: 1, usedBooster: true });
+  assert.equal(store.data.ach.firstWin, 'ready');
+  assert.ok(claimAchievement('firstWin').coins > 0);
+  assert.equal(claimAchievement('firstWin'), null);
+  assert.equal(checkAchievements().length, 0);
+});

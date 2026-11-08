@@ -15,6 +15,12 @@ const defaults = () => ({
   chests: { opened: {} },
   skins: { owned: ['classic'], equipped: 'classic' },
   seenMech: {},
+  player: { level: 1, xp: 0 },
+  inbox: [], // chests waiting to be opened: { id, tier, reason, n? }
+  quests: { day: null, list: [], bonus: false },
+  ach: {}, // achievement id -> 'ready' | 'claimed'
+  stats: { levelsWon: 0, perfects: 0, chestsOpened: 0, combos: 0, maxCombo: 0, boosterFree: 0, dailySolved: 0 },
+  settings2: { music: true },
 });
 
 let data = load();
@@ -35,7 +41,14 @@ function load() {
       chests: { opened: { ...((parsed.chests || {}).opened || {}) } },
       skins: { ...d.skins, ...(parsed.skins || {}) },
       seenMech: { ...(parsed.seenMech || {}) },
+      player: { ...d.player, ...(parsed.player || {}) },
+      quests: { ...d.quests, ...(parsed.quests || {}) },
+      ach: { ...(parsed.ach || {}) },
+      stats: { ...d.stats, ...(parsed.stats || {}) },
+      settings2: { ...d.settings2, ...(parsed.settings2 || {}) },
     };
+    // Migration: existing players get credit for the levels they already won.
+    if (!parsed.stats && parsed.levels?.best) merged.stats.levelsWon = Object.keys(parsed.levels.best).length;
     // Migration: players of the old Endless mode keep the level they reached.
     if (!parsed.levels && merged.endless.level > 1) merged.levels.unlocked = merged.endless.level;
     return merged;
