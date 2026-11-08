@@ -232,13 +232,22 @@
       </div>
     </dialog>
 
-    <dialog class="modal" id="modal-shop">
-      <div class="modal-card">
+    <dialog class="modal shop-modal" id="modal-shop">
+      <div class="modal-card shop-card">
         <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
-        <h2 data-i18n="shop"></h2>
-        <div class="shop-balance"><svg><use href="#i-coin"/></svg><b data-coins>0</b></div>
-        <p class="shop-sub" data-i18n="shopSub"></p>
-        <div class="shop-list" id="shop-list"></div>
+        <header class="shop-head">
+          <h2 data-i18n="shop"></h2>
+          <div class="shop-balance"><svg><use href="#i-coin"/></svg><b data-coins>0</b></div>
+        </header>
+        <div class="shop-deal" id="shop-deal"></div>
+        <div class="shop-tabs" role="tablist">
+          <button role="tab" data-tab="boost" class="is-on" data-i18n="tabBoost"></button>
+          <button role="tab" data-tab="chests" data-i18n="tabChests"></button>
+          <button role="tab" data-tab="skins" data-i18n="tabSkins"></button>
+          <i class="tab-ink" id="tab-ink"></i>
+        </div>
+        <div class="shop-panel" id="shop-list"></div>
+        <p class="shop-free"><svg><use href="#i-gift"/></svg><span data-i18n="freeCoins"></span></p>
       </div>
     </dialog>
 

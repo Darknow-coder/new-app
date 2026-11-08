@@ -16,10 +16,14 @@ import {
   dailyReward,
   SHOP,
   GIFT_LADDER,
+  SHOP_CHESTS,
+  SKIN_PRICES,
+  DEALS,
+  DEAL_OFF,
 } from './levels.js';
 import { buildScenery, iris, countTo, flyIcons, floatText, replay, burst, reducedMotion, stagger, installRipples } from './fx.js';
 import { openChest, chestSVG, WORLD_CHESTS, chestId, isOpened, ODDS } from './chests.js';
-import { SKINS, hasSkin, equipped, equip, marbleHTML } from './skins.js';
+import { SKINS, hasSkin, equipped, equip, marbleHTML, grantSkin } from './skins.js';
 import {
   track,
   xpNeeded,
@@ -367,6 +371,8 @@ setInterval(() => {
     return;
   }
   if (els.home.classList.contains('is-active')) updateCountdown();
+  const dt = document.getElementById('deal-timer');
+  if (dt && $('#modal-shop').open && store.data.dealDay !== today) dt.textContent = t('dealEnds', { t: fmtCountdown(msUntilTomorrow()) });
 }, 1000);
 
 /* ==========================================================================
@@ -819,7 +825,7 @@ function useBooster(id) {
     return true;
   }
   toast(t('outOf', { b: t(`${id}Name`).toLowerCase() }));
-  openShop();
+  openShop('boost');
   return false;
 }
 
@@ -1574,33 +1580,104 @@ $('#btn-collection').addEventListener('click', () => {
 /* ==========================================================================
    Shop & gift
    ========================================================================== */
-function shopItemName(item) {
-  if (item.id === 'pack') return t('packName');
-  const [b, q] = Object.entries(item.items)[0];
-  return `${t(`${b}Name`)}${q > 1 ? ` ×${q}` : ''}`;
+/* ---- shop helpers ---- */
+const itemsText = (items) =>
+  Object.entries(items)
+    .map(([b, q]) => `${t(`${b}Name`)} ×${q}`)
+    .join(' + ');
+
+function todaysDeal() {
+  const d = DEALS[hashString(`deal:${today}`) % DEALS.length];
+  return { ...d, price: Math.round((d.base * (1 - DEAL_OFF)) / 5) * 5, bought: store.data.dealDay === today };
 }
 
+const coinBtn = (price, attrs) =>
+  `<button class="price ${store.data.coins >= price ? '' : 'is-short'}" ${attrs} data-price="${price}"><svg><use href="#i-coin"/></svg>${price}</button>`;
+
+function renderDeal() {
+  const d = todaysDeal();
+  const art = d.chest
+    ? `<span class="deal-art">${chestSVG(d.chest)}</span>`
+    : `<span class="deal-art deal-boost" data-icon="deal"><svg><use href="#i-${Object.keys(d.items)[0]}"/></svg></span>`;
+  const name = d.chest ? t(`chest_${d.chest}`) : itemsText(d.items);
+  $('#shop-deal').className = `shop-deal ${d.bought ? 'is-bought' : ''}`;
+  $('#shop-deal').innerHTML = `
+    <span class="deal-off">-${Math.round(DEAL_OFF * 100)}%</span>
+    ${art}
+    <span class="deal-text">
+      <small>${t('dealTitle')}</small>
+      <strong>${name}</strong>
+      <em id="deal-timer">${d.bought ? t('dealDone') : t('dealEnds', { t: fmtCountdown(msUntilTomorrow()) })}</em>
+    </span>
+    ${d.bought ? '<span class="q-claimed">✓</span>' : `<span class="deal-price"><s>${d.base}</s>${coinBtn(d.price, 'data-buy="deal"')}</span>`}`;
+}
+
+let shopTab = 'boost';
 function renderShop() {
   updateCoins();
-  $('#shop-list').innerHTML = SHOP.map((item, i) => {
-    const can = store.data.coins >= item.price;
-    const kind = item.id === 'pack' ? 'pack' : Object.keys(item.items)[0];
-    const icon = kind === 'pack' ? 'i-gift' : `i-${kind}`;
-    const qty = kind === 'pack' ? 0 : item.items[kind];
-    const desc = kind === 'pack' ? t('packDesc') : t(`${kind}Desc`);
-    const owned = kind === 'pack' ? '' : `<small class="owned" data-owned="${kind}">${t('owned', { n: store.booster(kind) })}</small>`;
-    return `
-      <div class="shop-item ${kind === 'pack' ? 'is-featured' : ''}" style="--i:${i}">
-        ${item.tag ? `<span class="shop-tag">${item.tag}</span>` : ''}
-        <span class="shop-icon ${kind}" data-icon="${item.id}"><svg><use href="#${icon}"/></svg>${qty > 1 ? `<b>×${qty}</b>` : ''}</span>
-        <span class="shop-text">
-          <strong>${shopItemName(item)}</strong>
-          <small>${desc}</small>
-          ${owned}
-        </span>
-        <button class="price ${can ? '' : 'is-short'}" data-buy="${item.id}" data-price="${item.price}"><svg><use href="#i-coin"/></svg>${item.price}</button>
-      </div>`;
-  }).join('');
+  renderDeal();
+  document.querySelectorAll('.shop-tabs [data-tab]').forEach((b) => {
+    b.classList.toggle('is-on', b.dataset.tab === shopTab);
+    b.setAttribute('aria-selected', b.dataset.tab === shopTab);
+  });
+  const on = document.querySelector(`.shop-tabs [data-tab="${shopTab}"]`);
+  const ink = $('#tab-ink');
+  requestAnimationFrame(() => {
+    ink.style.width = `${on.offsetWidth}px`;
+    ink.style.transform = `translateX(${on.offsetLeft}px)`;
+  });
+  const panel = $('#shop-list');
+  panel.dataset.tab = shopTab;
+  if (shopTab === 'boost') {
+    panel.innerHTML = SHOP.map((item, i) => {
+      const kinds = Object.keys(item.items);
+      const pack = kinds.length > 1;
+      const icon = pack ? 'i-gift' : `i-${kinds[0]}`;
+      const qty = pack ? 0 : item.items[kinds[0]];
+      const owned = pack ? '' : `<small class="owned" data-owned="${kinds[0]}">${t('owned', { n: store.booster(kinds[0]) })}</small>`;
+      return `
+        <div class="shop-cardlet ${pack ? 'is-featured' : ''}" style="--i:${i}">
+          ${item.tag ? `<span class="shop-tag">${pack ? t('bestValue') : item.tag}</span>` : ''}
+          <span class="shop-icon ${pack ? 'pack' : kinds[0]}" data-icon="${item.id}"><svg><use href="#${icon}"/></svg>${qty > 1 ? `<b>×${qty}</b>` : ''}</span>
+          <span class="shop-text">
+            <strong>${pack ? t('packName') : itemsText(item.items)}</strong>
+            <small>${pack ? t('packDesc') : t(`${kinds[0]}Desc`)}</small>
+            ${owned}
+          </span>
+          ${coinBtn(item.price, `data-buy="${item.id}"`)}
+        </div>`;
+    }).join('');
+  } else if (shopTab === 'chests') {
+    panel.innerHTML = SHOP_CHESTS.map(
+      (c, i) => `
+        <div class="shop-cardlet chest-cardlet tier-${c.tier}" style="--i:${i}">
+          <span class="shop-chest">${chestSVG(c.tier)}</span>
+          <span class="shop-text">
+            <strong>${t(`chest_${c.tier}`)}</strong>
+            <small>${t(`chestShopDesc_${c.tier}`)}</small>
+          </span>
+          ${coinBtn(c.price, `data-buy="${c.id}"`)}
+        </div>`,
+    ).join('');
+  } else {
+    const eq = equipped();
+    panel.innerHTML = SKINS.map((sk, i) => {
+      const own = hasSkin(sk.id);
+      const price = SKIN_PRICES[sk.rarity];
+      const action = own
+        ? sk.id === eq
+          ? `<span class="skin-state is-eq">✓ ${t('equipped')}</span>`
+          : `<button class="skin-state" data-equip="${sk.id}">${t('equip')}</button>`
+        : coinBtn(price, `data-buy="skin:${sk.id}"`);
+      return `
+        <div class="shop-cardlet skin-cardlet r-${sk.rarity} ${own ? 'is-owned' : ''}" style="--i:${i}">
+          <em class="skin-rarity">${t(`rarity_${sk.rarity}`)}</em>
+          ${marbleHTML(sk.id, i % 4)}
+          <strong>${t(`skin_${sk.id}`)}</strong>
+          ${action}
+        </div>`;
+    }).join('');
+  }
 }
 
 /** Refresh owned counts and affordability without re-running the entrance animation. */
@@ -1608,48 +1685,107 @@ function refreshShop() {
   document.querySelectorAll('#shop-list [data-owned]').forEach((el) => {
     el.textContent = t('owned', { n: store.booster(el.dataset.owned) });
   });
-  document.querySelectorAll('#shop-list [data-buy]').forEach((b) => {
+  document.querySelectorAll('#modal-shop [data-buy]').forEach((b) => {
     b.classList.toggle('is-short', store.data.coins < Number(b.dataset.price));
   });
 }
 
-function openShop() {
+function openShop(tab) {
+  if (typeof tab === 'string') shopTab = tab;
   renderShop();
   openModal('modal-shop');
 }
 
-$('#shop-list').addEventListener('click', (e) => {
+document.querySelector('.shop-tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-tab]');
+  if (!b || b.dataset.tab === shopTab) return;
+  shopTab = b.dataset.tab;
+  sfx.tap();
+  renderShop();
+  stagger($('#shop-list'), '.shop-cardlet', { step: 40 });
+});
+
+/** Coins fly into the bought item, which bounces and shows "+N". */
+function celebrateBuy(target, label) {
+  const dlg = $('#modal-shop');
+  flyIcons(dlg.querySelector('.shop-balance svg'), target, {
+    count: 6,
+    layer: dlg,
+    onArrive: (i) => {
+      sfx.tick();
+      if (i === 5 || reducedMotion()) {
+        replay(target, 'got');
+        if (label) floatText(target, label, dlg);
+        burst(target, 50, 50, { count: 12, colors: ['var(--accent)', '#fff'], dist: 44 });
+        refreshShop();
+      }
+    },
+  });
+}
+
+$('#modal-shop').addEventListener('click', (e) => {
+  const eqBtn = e.target.closest('[data-equip]');
+  if (eqBtn) {
+    equip(eqBtn.dataset.equip);
+    sfx.pop(2);
+    renderShop();
+    renderHome();
+    return;
+  }
   const btn = e.target.closest('[data-buy]');
   if (!btn) return;
-  const item = SHOP.find((i) => i.id === btn.dataset.buy);
-  if (!store.spendCoins(item.price)) {
+  const id = btn.dataset.buy;
+  const price = Number(btn.dataset.price);
+  if (!store.spendCoins(price)) {
     replay(btn, 'deny');
     sfx.thud();
     buzz([30, 40, 30]);
     toast(t('notEnough'));
     return;
   }
-  for (const [b, q] of Object.entries(item.items)) store.booster(b, q);
   replay(btn, 'pressed');
   updateCoins();
   sfx.coin();
   buzz(20);
-  const dlg = $('#modal-shop');
-  const icon = dlg.querySelector(`[data-icon="${item.id}"]`);
-  flyIcons(dlg.querySelector('.shop-balance svg'), icon, {
-    count: 6,
-    layer: dlg,
-    onArrive: (i) => {
-      sfx.tick();
-      if (i === 5 || reducedMotion()) {
-        replay(icon, 'got');
-        const total = Object.values(item.items).reduce((a, b) => a + b, 0);
-        floatText(icon, `+${total}`, dlg);
-        burst(icon, 50, 50, { count: 10, colors: ['var(--accent)', '#fff'], dist: 40 });
-        refreshShop();
-      }
-    },
-  });
+  // Chests: close the shop, play the full ceremony, come back.
+  const chestTier = id === 'deal' ? todaysDeal().chest : SHOP_CHESTS.find((c) => c.id === id)?.tier;
+  if (id === 'deal') {
+    store.data.dealDay = today;
+    save();
+  }
+  if (chestTier) {
+    closeModal('modal-shop');
+    setTimeout(
+      () =>
+        openChestFlow({ tier: chestTier }).then(() => {
+          shownCoins = null;
+          openShop();
+        }),
+      260,
+    );
+    return;
+  }
+  if (id.startsWith('skin:')) {
+    const skin = id.slice(5);
+    grantSkin(skin);
+    equip(skin);
+    sfx.epic();
+    const tile = btn.closest('.skin-cardlet');
+    celebrateBuy(tile.querySelector('.marble-preview'), null);
+    toast(t('skinBought', { s: t(`skin_${skin}`) }));
+    setTimeout(() => {
+      renderShop();
+      renderHome();
+    }, 900);
+    handleProgress({ notes: checkAchievements() });
+    return;
+  }
+  const items = id === 'deal' ? todaysDeal().items : SHOP.find((i) => i.id === id).items;
+  for (const [b, q] of Object.entries(items)) store.booster(b, q);
+  const total = Object.values(items).reduce((a, b) => a + b, 0);
+  const target = $(`#modal-shop [data-icon="${id}"]`) || btn;
+  celebrateBuy(target, `+${total}`);
+  if (id === 'deal') setTimeout(renderDeal, 900);
   if (game) updateHud(false);
 });
 

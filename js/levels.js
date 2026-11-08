@@ -123,6 +123,22 @@ export const SHOP = [
   { id: 'rewind1', items: { rewind: 1 }, price: 25 },
   { id: 'rewind5', items: { rewind: 5 }, price: 100, tag: '-20%' },
 ];
+export const SHOP_CHESTS = [
+  { id: 'chest-wood', tier: 'wood', price: 90 },
+  { id: 'chest-silver', tier: 'silver', price: 220 },
+  { id: 'chest-gold', tier: 'gold', price: 520 },
+];
+export const SKIN_PRICES = { common: 250, rare: 600, epic: 1200 };
+/** Rotating deal of the day: same for everyone on a given day, 40% off, once per day. */
+export const DEALS = [
+  { items: { hint: 3 }, base: 120 },
+  { chest: 'silver', base: 220 },
+  { items: { rewind: 4 }, base: 100 },
+  { items: { hint: 2, rewind: 2 }, base: 130 },
+  { chest: 'gold', base: 520 },
+  { items: { hint: 5 }, base: 200 },
+];
+export const DEAL_OFF = 0.4;
 export const DAILY_GIFT = 25;
 /** Escalating login reward: day 1..7 of consecutive visits (day 7 is a silver chest), then it loops. */
 export const GIFT_LADDER = [25, 30, 40, 50, 60, 80, 'chest'];
