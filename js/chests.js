@@ -186,6 +186,11 @@ export function openChest({ id, tier: startTier, title }) {
       },
       reducedMotion() ? 0 : 650,
     );
+    // Dust puff and a little thud when the chest lands.
+    setTimeout(() => {
+      replay($('#chest-wrap'), 'landed');
+      sfx.chestShake(0);
+    }, reducedMotion() ? 0 : 430);
 
     const onTap = () => {
       if (!canTap || stage.dataset.stage === 'open' || stage.dataset.stage === 'done') return;
@@ -303,9 +308,15 @@ export function openChest({ id, tier: startTier, title }) {
       stage.removeEventListener('click', onTap);
       collect.removeEventListener('click', onCollect);
       dlg.removeEventListener('cancel', onCancel);
-      dlg.close();
-      busy = false;
-      resolve(reward);
+      stage.dataset.stage = 'leaving';
+      setTimeout(
+        () => {
+          dlg.close();
+          busy = false;
+          resolve(reward);
+        },
+        reducedMotion() ? 0 : 320,
+      );
     };
     const onCancel = (e) => {
       e.preventDefault();

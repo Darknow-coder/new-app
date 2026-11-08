@@ -163,3 +163,52 @@ export function burst(host, x, y, { count = 14, colors = ['var(--c2)', '#fff'], 
     setTimeout(() => p.remove(), 800);
   }
 }
+
+/* ---------- entrance choreography ---------- */
+/**
+ * Make matching elements rise in one after another. The class is removed when the
+ * animation ends, so elements keep their own idle animations afterwards.
+ */
+export function stagger(root, selector, { step = 45, base = 0, cls = 'enter-rise' } = {}) {
+  if (reducedMotion() || !root) return;
+  let i = 0;
+  root.querySelectorAll(selector).forEach((el) => {
+    if (el.hidden || el.offsetParent === null) return;
+    el.style.setProperty('--enter-delay', `${base + i * step}ms`);
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+    const done = (e) => {
+      if (e.target !== el) return;
+      el.classList.remove(cls);
+      el.removeEventListener('animationend', done);
+    };
+    el.addEventListener('animationend', done);
+    i++;
+  });
+}
+
+/* ---------- touch ripples on every button ---------- */
+export function installRipples() {
+  document.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (reducedMotion()) return;
+      const host = e.target.closest('button, .ripple-host');
+      if (!host || host.disabled || host.classList.contains('no-ripple')) return;
+      const r = host.getBoundingClientRect();
+      const wrap = document.createElement('span');
+      wrap.className = 'ripple-wrap';
+      const dot = document.createElement('span');
+      dot.className = 'ripple';
+      const size = Math.max(r.width, r.height) * 2.2;
+      dot.style.width = dot.style.height = `${size}px`;
+      dot.style.left = `${e.clientX - r.left - size / 2}px`;
+      dot.style.top = `${e.clientY - r.top - size / 2}px`;
+      wrap.appendChild(dot);
+      host.appendChild(wrap);
+      setTimeout(() => wrap.remove(), 650);
+    },
+    { passive: true },
+  );
+}

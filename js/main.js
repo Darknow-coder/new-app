@@ -17,7 +17,7 @@ import {
   SHOP,
   GIFT_LADDER,
 } from './levels.js';
-import { buildScenery, iris, countTo, flyIcons, floatText, replay, burst, reducedMotion } from './fx.js';
+import { buildScenery, iris, countTo, flyIcons, floatText, replay, burst, reducedMotion, stagger, installRipples } from './fx.js';
 import { openChest, chestSVG, WORLD_CHESTS, chestId, isOpened, ODDS } from './chests.js';
 import { SKINS, hasSkin, equipped, equip, marbleHTML } from './skins.js';
 import {
@@ -98,21 +98,53 @@ function announce(msg) {
   els.live.textContent = msg;
 }
 
+// What rises in, and in which order, when each screen appears.
+const ENTER = {
+  home: '.view-home .topbar > *, .player-strip, .hero > *, .adventure-hero, .daily-list > li, .share-row, .countdown, .quests-card, .quest, .meta-tile, .footer-note',
+  game: '.game-topbar > *, .tip, .controls > .ctrl',
+  map: '.view-map .topbar > *, .world-head',
+};
+
 function showView(name) {
   for (const v of ['home', 'game', 'map']) {
+    const was = els[v].classList.contains('is-active');
     els[v].classList.toggle('is-active', name === v);
     els[v].inert = name !== v;
+    if (name === v && !was) {
+      replay(els[v], 'entering');
+      clearTimeout(els[v].enterTimer);
+      els[v].enterTimer = setTimeout(() => els[v].classList.remove('entering'), 1400);
+      stagger(els[v], ENTER[v], { step: v === 'home' ? 40 : 55, base: 60 });
+    }
   }
   if (name === 'game') requestAnimationFrame(() => els.board.focus({ preventScroll: true }));
 }
 
+// Inside every window, these rise in one after another.
+const MODAL_ENTER =
+  '.modal-card > :not(.modal-close):not(.result-rays):not(.result-stars):not(.new-best):not(.confetti):not(#result-title):not(.result-reward):not(.mech-art):not(.mech-badge), .help-list > li, .stats-grid > .stat, .week > .day, .toggle, .ach-list > li, .preview-list > li';
+
 function openModal(id) {
   const m = document.getElementById(id);
+  clearTimeout(m.closeTimer);
+  m.classList.remove('closing');
   if (!m.open) m.showModal();
+  stagger(m, MODAL_ENTER, { step: 45, base: 90 });
 }
-function closeModal(id) {
-  const m = document.getElementById(id);
-  if (m.open) m.close();
+
+/** Close a dialog with an exit animation (cards shrink away, backdrop fades). */
+function closeModal(id, instant = false) {
+  const m = typeof id === 'string' ? document.getElementById(id) : id;
+  if (!m.open || m.classList.contains('closing')) return;
+  if (instant || reducedMotion()) {
+    m.close();
+    return;
+  }
+  m.classList.add('closing');
+  m.closeTimer = setTimeout(() => {
+    m.classList.remove('closing');
+    m.close();
+  }, 210);
 }
 function anyModalOpen() {
   return !!document.querySelector('dialog[open]');
@@ -574,6 +606,7 @@ function updateHud(bump = true) {
   }
   els.par.textContent = t('par', { n: game.level.par });
   els.counter.classList.toggle('is-over', game.moves > game.level.par);
+  if (bump && game.moves === game.level.par + 1) replay(els.counter, 'over-shake');
   els.undo.disabled = game.done || game.history.length === 0;
   els.restart.disabled = game.done || game.history.length === 0;
   els.hint.disabled = game.done;
@@ -1597,8 +1630,11 @@ function renderStats() {
     [s.levelReached, 'statLevel'],
   ];
   $('#stats-grid').innerHTML = items
-    .map(([v, k]) => `<div class="stat"><b>${v}</b><small>${t(k)}</small></div>`)
+    .map(([v, k]) => `<div class="stat"><b data-v="${v}">0</b><small>${t(k)}</small></div>`)
     .join('');
+  setTimeout(() => {
+    document.querySelectorAll('#stats-grid b').forEach((b, i) => setTimeout(() => countTo(b, 0, Number(b.dataset.v), 700), i * 60));
+  }, 150);
   const wd = new Intl.DateTimeFormat(LANG, { weekday: 'narrow' });
   let week = '';
   for (let i = 6; i >= 0; i--) {
@@ -1695,9 +1731,15 @@ $('#btn-replay-tutorial').addEventListener('click', () => {
 
 document.querySelectorAll('dialog').forEach((d) => {
   d.addEventListener('click', (e) => {
-    if (e.target === d && d.id !== 'modal-result') d.close();
+    if (e.target === d && d.id !== 'modal-result') closeModal(d);
   });
-  d.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => d.close()));
+  d.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => closeModal(d)));
+  if (d.id !== 'modal-result' && d.id !== 'modal-chest') {
+    d.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      closeModal(d);
+    });
+  }
 });
 // Escape on the result dialog behaves like "Home" so the player never ends up on a dead board.
 $('#modal-result').addEventListener('cancel', (e) => {
@@ -1759,7 +1801,18 @@ $('#btn-install').addEventListener('click', async () => {
    Boot
    ========================================================================== */
 applyStaticText();
+installRipples();
 renderHome();
+// Cold-start splash: marbles drop in, then it lifts away.
+const splash = $('#splash');
+if (splash) {
+  if (reducedMotion()) splash.remove();
+  else {
+    const hold = store.data.tutorialDone ? 900 : 1250;
+    setTimeout(() => splash.classList.add('out'), hold);
+    setTimeout(() => splash.remove(), hold + 600);
+  }
+}
 if (!store.data.tutorialDone) {
   startTutorial(0);
 } else {

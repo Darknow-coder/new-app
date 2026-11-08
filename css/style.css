@@ -1571,9 +1571,17 @@ p {
 }
 @keyframes node-pulse {
   50% {
-    box-shadow: 0 0 0 14px color-mix(in srgb, var(--accent) 0%, transparent), 0 10px 24px rgba(0, 0, 0, 0.35);
     transform: scale(1.05);
   }
+}
+.node.is-current::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 4px solid var(--accent);
+  animation: badge-ring 1.6s ease-out infinite;
+  pointer-events: none;
 }
 .node.is-locked {
   background: var(--surface-2);
@@ -3496,8 +3504,7 @@ p {
 }
 @keyframes go-pulse {
   50% {
-    box-shadow: 0 0 0 8px color-mix(in srgb, var(--hue) 0%, transparent), 0 0 0 0 transparent;
-    transform: scale(1.06);
+    transform: scale(1.08);
   }
 }
 
@@ -3936,4 +3943,748 @@ p {
   86% {
     transform: rotate(6deg) scale(1.06);
   }
+}
+
+/* ==========================================================================
+   MOTION LAYER — everything around the gameplay is alive
+   ========================================================================== */
+
+/* Hidden screens don't burn battery. */
+.view:not(.is-active) *,
+.view:not(.is-active) *::before,
+.view:not(.is-active) *::after {
+  animation-play-state: paused !important;
+}
+
+/* ---------- splash ---------- */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(120% 80% at 50% 20%, var(--bg-glow), var(--bg) 65%);
+  transition: opacity 0.55s var(--ease-out), transform 0.55s var(--ease-out);
+}
+.splash.out {
+  opacity: 0;
+  transform: scale(1.08);
+  pointer-events: none;
+}
+.splash-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.splash-marbles {
+  position: relative;
+  width: 88px;
+  height: 88px;
+}
+.splash-marbles .lm-1 {
+  width: 52px;
+  height: 52px;
+  animation: splash-drop 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.splash-marbles .lm-2 {
+  width: 38px;
+  height: 38px;
+  right: 2px;
+  top: 14px;
+  animation: splash-drop 0.7s 0.12s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.splash-marbles .lm-3 {
+  width: 42px;
+  height: 42px;
+  left: 22px;
+  bottom: 0;
+  animation: splash-drop 0.7s 0.24s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+@keyframes splash-drop {
+  from {
+    transform: translateY(-60vh) scale(0.6);
+  }
+  70% {
+    transform: translateY(0) scale(1.12, 0.86);
+  }
+}
+.splash-word {
+  display: flex;
+  font-size: 54px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+.splash-word b {
+  display: inline-block;
+  animation: letter-up 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.splash-word b:nth-child(1) { animation-delay: 0.45s; }
+.splash-word b:nth-child(2) { animation-delay: 0.5s; }
+.splash-word b:nth-child(3) { animation-delay: 0.55s; }
+.splash-word b:nth-child(4) { animation-delay: 0.6s; }
+.splash-word b:nth-child(5) { animation-delay: 0.65s; }
+@keyframes letter-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotate(8deg);
+  }
+}
+.splash-tag {
+  color: var(--accent);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  animation: fade 0.5s 0.85s both;
+}
+
+/* ---------- entrances ---------- */
+.enter-rise {
+  animation: enter-rise 0.55s cubic-bezier(0.2, 1.2, 0.4, 1) both !important;
+  animation-delay: var(--enter-delay, 0ms) !important;
+}
+@keyframes enter-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+}
+.view.entering .q-bar i,
+.view.entering .xp-bar i,
+.view.entering .adv-progress i {
+  animation: bar-fill 1s 0.35s var(--ease-out) both;
+}
+@keyframes bar-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+.q-bar i,
+.xp-bar i,
+.adv-progress i {
+  transform-origin: left center;
+}
+.view-game.entering .board-stage {
+  animation: board-arrive 0.6s cubic-bezier(0.2, 1.1, 0.4, 1) both;
+}
+@keyframes board-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.92) rotateX(18deg);
+  }
+}
+
+/* ---------- dialogs: open & close ---------- */
+.modal.closing .modal-card {
+  animation: modal-out 0.21s ease-in forwards !important;
+}
+.modal.closing::backdrop {
+  animation: backdrop-out 0.21s ease-in forwards;
+}
+@keyframes modal-out {
+  to {
+    opacity: 0;
+    transform: translateY(16px) scale(0.92);
+  }
+}
+@keyframes backdrop-out {
+  to {
+    opacity: 0;
+  }
+}
+.modal-close svg {
+  transition: transform 0.3s var(--spring);
+}
+.modal-close:hover svg {
+  transform: rotate(90deg);
+}
+
+/* ---------- ripples ---------- */
+button {
+  position: relative;
+}
+.ripple-wrap {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.22;
+  transform: scale(0);
+  animation: ripple 0.6s ease-out forwards;
+}
+@keyframes ripple {
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* ---------- header ---------- */
+.logo .lm {
+  animation: logo-bounce 4.5s ease-in-out infinite;
+}
+.logo .lm-2 {
+  animation-delay: 0.18s;
+}
+.logo .lm-3 {
+  animation-delay: 0.36s;
+}
+@keyframes logo-bounce {
+  0%,
+  80%,
+  100% {
+    transform: none;
+  }
+  85% {
+    transform: translateY(-7px) scale(0.95, 1.05);
+  }
+  90% {
+    transform: translateY(0) scale(1.08, 0.92);
+  }
+  94% {
+    transform: translateY(-2px);
+  }
+}
+.coin-pill > svg {
+  animation: coin-spin 4s ease-in-out infinite;
+}
+.icon-btn:hover svg {
+  animation: icon-wiggle 0.5s var(--ease-out);
+}
+@keyframes icon-wiggle {
+  30% {
+    transform: rotate(-12deg) scale(1.1);
+  }
+  60% {
+    transform: rotate(8deg);
+  }
+}
+#btn-settings:hover svg {
+  animation: spin 0.8s var(--ease-out);
+}
+
+/* ---------- home ---------- */
+.player-badge::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  animation: badge-ring 2.8s ease-out infinite;
+}
+@keyframes badge-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+  70%,
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+.xp-bar i::after,
+.adv-progress i::after,
+.q-bar i::after,
+.preview-progress i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.45) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: bar-shine 2.6s ease-in-out infinite;
+}
+@keyframes bar-shine {
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -130% 0;
+  }
+}
+.streak-chip.is-hot svg {
+  animation: flame 1.2s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+@keyframes flame {
+  0%,
+  100% {
+    transform: scale(1) rotate(-3deg);
+  }
+  50% {
+    transform: scale(1.15, 1.22) rotate(4deg);
+  }
+}
+.daily-card .dc-ball {
+  animation: ball-bob 3s ease-in-out infinite;
+}
+.daily-list li:nth-child(2) .dc-ball {
+  animation-delay: -1s;
+}
+.daily-list li:nth-child(3) .dc-ball {
+  animation-delay: -2s;
+}
+@keyframes ball-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-4px) rotate(12deg);
+  }
+}
+.daily-card.is-done .dc-ball {
+  animation: hole-breathe 2.6s ease-in-out infinite;
+}
+@keyframes hole-breathe {
+  50% {
+    box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.6), 0 0 0 3px var(--tone), 0 0 18px color-mix(in srgb, var(--tone) 60%, transparent);
+  }
+}
+.dc-play,
+.btn-primary,
+.q-claim,
+.price,
+.gift-chip {
+  overflow: hidden;
+}
+.dc-play::after,
+.btn-primary::after,
+.gift-chip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: sheen 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.dc-play {
+  position: relative;
+}
+.daily-list li:nth-child(2) .dc-play::after {
+  animation-delay: 0.4s;
+}
+.daily-list li:nth-child(3) .dc-play::after {
+  animation-delay: 0.8s;
+}
+@keyframes sheen {
+  0%,
+  55% {
+    transform: translateX(-120%);
+  }
+  85%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+.daily-card .stars .on {
+  animation: star-twinkle 3s ease-in-out infinite;
+}
+.daily-card .stars .on:nth-child(2) {
+  animation-delay: 0.3s;
+}
+.daily-card .stars .on:nth-child(3) {
+  animation-delay: 0.6s;
+}
+@keyframes star-twinkle {
+  0%,
+  80%,
+  100% {
+    transform: none;
+  }
+  88% {
+    transform: scale(1.3) rotate(15deg);
+  }
+}
+.adventure-hero .endless-icon svg {
+  animation: flag-wave 2.2s ease-in-out infinite;
+  transform-origin: 25% 90%;
+}
+@keyframes flag-wave {
+  0%,
+  100% {
+    transform: rotate(0) skewY(0);
+  }
+  50% {
+    transform: rotate(-6deg) skewY(-4deg);
+  }
+}
+.countdown {
+  animation: countdown-breathe 2s ease-in-out infinite;
+}
+@keyframes countdown-breathe {
+  50% {
+    opacity: 0.7;
+  }
+}
+.quest.is-done .q-icon {
+  animation: got 0.6s var(--spring);
+}
+.q-claimed {
+  animation: pop 0.5s var(--spring);
+}
+.quests-bonus .mini-chest svg,
+.chest-chip .mini-chest svg,
+.inbox-btn .mini-chest svg {
+  animation: mini-wobble 2.4s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+@keyframes mini-wobble {
+  0%,
+  70%,
+  100% {
+    transform: none;
+  }
+  78% {
+    transform: rotate(-10deg);
+  }
+  86% {
+    transform: rotate(8deg);
+  }
+  93% {
+    transform: rotate(-4deg);
+  }
+}
+.collection-balls .marble-preview {
+  animation: ball-bob 2.8s ease-in-out infinite;
+}
+.collection-balls .marble-preview:nth-child(2) {
+  animation-delay: -0.9s;
+}
+.collection-balls .marble-preview:nth-child(3) {
+  animation-delay: -1.8s;
+}
+.ach-icon svg {
+  animation: star-twinkle 2.6s ease-in-out infinite;
+}
+.meta-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.08) 50%, transparent 60%);
+  background-size: 260% 100%;
+  animation: bar-shine 5s ease-in-out infinite;
+  pointer-events: none;
+}
+.daily-card:hover .dc-ball,
+.meta-tile:hover .marble-preview {
+  animation-duration: 0.9s;
+}
+
+/* ---------- game screen ---------- */
+.counter.over-shake .counter-par {
+  animation: shake 0.4s;
+}
+.tip:not([hidden]) {
+  animation: tip-in 0.5s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+}
+.ctrl svg {
+  transition: transform 0.25s var(--spring);
+}
+.ctrl:active:not(:disabled) svg {
+  transform: scale(0.8) rotate(-10deg);
+}
+#btn-restart:active:not(:disabled) svg {
+  transform: rotate(-200deg);
+}
+.badge {
+  animation: pop 0.4s var(--spring);
+}
+.combo-chip {
+  animation: pop 0.5s var(--spring), chip-glow 2s 0.5s ease-in-out infinite;
+}
+@keyframes chip-glow {
+  50% {
+    box-shadow: 0 0 12px color-mix(in srgb, var(--c3) 60%, transparent);
+  }
+}
+
+/* ---------- map ---------- */
+.path-svg polyline {
+  animation: path-march 1.4s linear infinite;
+}
+@keyframes path-march {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+.node.is-done {
+  animation: node-float 3.4s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -0.37s);
+}
+@keyframes node-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -4px;
+  }
+}
+.view-map.is-active .node.is-done {
+  animation: node-in 0.45s var(--spring) both, node-float 3.4s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 22ms), calc(var(--i, 0) * -0.37s);
+}
+.node.is-locked svg {
+  opacity: 0.8;
+}
+.chest-node.is-locked {
+  animation: mini-wobble 4s ease-in-out infinite;
+}
+.chest-node.is-ready .chest-svg .chest-lid {
+  animation: lid-peek 1.4s ease-in-out infinite;
+}
+@keyframes lid-peek {
+  0%,
+  55%,
+  100% {
+    transform: none;
+  }
+  70% {
+    transform: translateY(-4px) rotate(-4deg);
+  }
+}
+.world-head {
+  overflow: hidden;
+}
+.world-head::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 40%, rgba(255, 255, 255, 0.12) 50%, transparent 60%);
+  background-size: 260% 100%;
+  animation: bar-shine 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.world-stars svg {
+  animation: star-twinkle 3s ease-in-out infinite;
+}
+
+/* ---------- windows content ---------- */
+.stat b {
+  display: inline-block;
+}
+.week .day i {
+  transition: transform 0.3s var(--spring);
+}
+.week .day.today i {
+  animation: badge-ring-dot 2s ease-in-out infinite;
+}
+@keyframes badge-ring-dot {
+  50% {
+    transform: scale(1.25);
+  }
+}
+.skin-tile .marble-preview {
+  animation: ball-bob 3s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -0.33s);
+}
+.skin-tile.is-equipped .marble-preview {
+  animation: equipped-spin 3s ease-in-out infinite;
+}
+@keyframes equipped-spin {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-5px) rotate(180deg);
+  }
+}
+.skin-tile.r-epic::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.14) 50%, transparent 60%);
+  background-size: 260% 100%;
+  animation: bar-shine 3s ease-in-out infinite;
+  pointer-events: none;
+}
+.ach.is-ready .ach-medal {
+  animation: star-twinkle 1.6s ease-in-out infinite;
+}
+.shop-icon svg {
+  animation: ball-bob 2.6s ease-in-out infinite;
+}
+.preview-chest .chest-svg .chest-sparkle {
+  animation-duration: 1.2s;
+}
+.mech-card .mech-art {
+  animation: pop 0.6s 0.15s var(--spring) both;
+}
+.toggle i::after {
+  transition: transform 0.3s var(--spring), width 0.2s;
+}
+.toggle:active i::after {
+  width: 30px;
+}
+.toggle input:checked + i {
+  animation: toggle-glow 0.5s ease-out;
+}
+@keyframes toggle-glow {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--c1) 60%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+.result-card h2 {
+  animation: title-pop 0.6s 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+@keyframes title-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5) rotate(-4deg);
+  }
+}
+.result-reward {
+  animation: pop 0.5s 0.6s var(--spring) both;
+}
+.result-reward svg {
+  animation: coin-spin 1.4s 1s ease-in-out infinite;
+}
+
+/* ---------- chest ceremony extras ---------- */
+.chest-motes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.chest-motes i {
+  position: absolute;
+  bottom: -10px;
+  left: var(--x);
+  width: calc(6px * var(--s));
+  height: calc(6px * var(--s));
+  border-radius: 50%;
+  background: var(--glow);
+  box-shadow: 0 0 10px var(--glow);
+  opacity: 0;
+  animation: mote 4.5s linear infinite;
+  animation-delay: var(--d);
+}
+@keyframes mote {
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.5;
+  }
+  to {
+    transform: translate(20px, -105vh);
+    opacity: 0;
+  }
+}
+.chest-stage[data-stage='open'] .chest-motes i,
+.chest-stage[data-stage='done'] .chest-motes i {
+  animation-duration: 2.2s;
+}
+.chest-wrap::after {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: 2%;
+  height: 22%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 255, 255, 0.5), transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+.chest-wrap.landed::after {
+  animation: dust 0.6s ease-out;
+}
+@keyframes dust {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.4, 0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6, 1.2);
+  }
+}
+.chest-title {
+  background: linear-gradient(100deg, #fff 35%, var(--glow) 50%, #fff 65%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: rise 0.5s var(--ease-out), title-shine 2.4s 0.5s ease-in-out infinite;
+}
+@keyframes title-shine {
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -130% 0;
+  }
+}
+.reward-card.flipped {
+  animation: reward-out 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) both, card-float 3s 1s ease-in-out infinite;
+}
+.chest-rewards .reward-card.flipped:nth-child(2) {
+  animation-delay: 0s, 1.4s;
+}
+.chest-rewards .reward-card.flipped:nth-child(3) {
+  animation-delay: 0s, 1.8s;
+}
+.chest-rewards .reward-card.flipped:nth-child(4) {
+  animation-delay: 0s, 2.2s;
+}
+@keyframes card-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -6px;
+  }
+}
+.chest-collect::after {
+  animation-duration: 1.8s;
+}
+.chest-stage[data-stage='leaving'] {
+  animation: stage-out 0.32s ease-in forwards;
+}
+@keyframes stage-out {
+  to {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+.chest-coins svg {
+  animation: coin-spin 3s ease-in-out infinite;
+}
+
+/* ---------- toasts ---------- */
+.toast.show {
+  animation: toast-bounce 0.45s var(--spring);
+}
+@keyframes toast-bounce {
+  from {
+    transform: scale(0.85);
+  }
+}
+.adv-progress i {
+  position: relative;
+  overflow: hidden;
 }
