@@ -18,6 +18,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="preload" href="fonts/fredoka-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
@@ -56,29 +57,18 @@
       <!-- HOME -->
       <section class="view view-home is-active" id="view-home" aria-labelledby="home-title">
         <div class="scenery" id="scenery-home" aria-hidden="true"></div>
-        <header class="topbar">
-          <div class="brand">
-            <span class="logo" aria-hidden="true"><i class="lm lm-1"></i><i class="lm lm-2"></i><i class="lm lm-3"></i></span>
-            <h1 id="home-title" class="wordmark">marbl</h1>
-          </div>
-          <div class="topbar-actions">
-            <button class="coin-pill" data-shop data-i18n-label="shop"><svg><use href="#i-coin"/></svg><b data-coins>0</b></button>
-            <button class="icon-btn" id="btn-help" data-i18n-label="howTo"><svg><use href="#i-help"/></svg></button>
-            <button class="icon-btn" id="btn-stats" data-i18n-label="stats"><svg><use href="#i-stats"/></svg></button>
-            <button class="icon-btn" id="btn-settings" data-i18n-label="settings"><svg><use href="#i-settings"/></svg></button>
-          </div>
+        <header class="topbar hud">
+          <button class="hud-player" id="player-badge" type="button" data-i18n-label="achievements">
+            <span class="player-badge"><span id="player-level">1</span></span>
+            <span class="hud-xp"><strong id="player-title"></strong><span class="xp-bar"><i id="xp-fill"></i></span><small id="player-xp"></small></span>
+          </button>
+          <button class="inbox-btn" id="inbox-btn" type="button" hidden><span class="mini-chest" id="inbox-chest"></span><b id="inbox-count"></b></button>
+          <button class="coin-pill hud-coins" data-shop data-i18n-label="shop"><svg><use href="#i-coin"/></svg><b data-coins>0</b><i class="plus">+</i></button>
+          <button class="icon-btn hud-btn" id="btn-help" data-i18n-label="howTo"><svg><use href="#i-help"/></svg></button>
+          <button class="icon-btn hud-btn" id="btn-settings" data-i18n-label="settings"><svg><use href="#i-settings"/></svg></button>
         </header>
 
         <main class="home-main">
-          <div class="player-strip">
-            <button class="player-badge" id="player-badge" type="button"><span id="player-level">1</span></button>
-            <div class="xp">
-              <div class="xp-top"><strong id="player-title"></strong><small id="player-xp"></small></div>
-              <div class="xp-bar"><i id="xp-fill"></i></div>
-            </div>
-            <button class="inbox-btn" id="inbox-btn" type="button" hidden><span class="mini-chest" id="inbox-chest"></span><b id="inbox-count"></b></button>
-          </div>
-
           <div class="hero">
             <p class="eyebrow" id="home-date"></p>
             <h2 class="hero-title"><span data-i18n="todayTitle"></span> <span class="hero-num" id="home-num"></span></h2>
@@ -115,20 +105,15 @@
             <ul class="quest-list" id="quest-list"></ul>
           </section>
 
-          <div class="meta-row">
-            <button class="meta-tile" id="btn-collection">
-              <span class="collection-balls" id="collection-balls"></span>
-              <strong data-i18n="collection"></strong>
-              <small id="collection-desc"></small>
-            </button>
-            <button class="meta-tile" id="btn-achievements">
-              <span class="ach-icon"><svg><use href="#i-star"/></svg><b class="badge" id="ach-badge" hidden></b></span>
-              <strong data-i18n="achievements"></strong>
-              <small id="ach-desc"></small>
-            </button>
-          </div>
           <p class="footer-note" data-i18n="footer"></p>
         </main>
+        <nav class="bottom-nav" aria-label="Menu">
+          <button class="nav-item" data-shop><span class="nav-ico nav-shop"><svg><use href="#i-coin"/></svg></span><span data-i18n="shop"></span></button>
+          <button class="nav-item" id="btn-collection"><span class="nav-ico nav-coll" id="collection-balls"></span><span data-i18n="collection"></span></button>
+          <button class="nav-play" id="nav-play"><span class="nav-play-ball"><svg><use href="#i-play"/></svg></span><span data-i18n="playBig"></span></button>
+          <button class="nav-item" id="btn-achievements"><span class="nav-ico nav-ach"><svg><use href="#i-star"/></svg><b class="badge" id="ach-badge" hidden></b></span><span data-i18n="achievements"></span></button>
+          <button class="nav-item" id="btn-stats"><span class="nav-ico nav-stats"><svg><use href="#i-stats"/></svg></span><span data-i18n="statsShort"></span></button>
+        </nav>
       </section>
 
       <!-- ADVENTURE MAP -->

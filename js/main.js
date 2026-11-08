@@ -104,7 +104,7 @@ function announce(msg) {
 
 // What rises in, and in which order, when each screen appears.
 const ENTER = {
-  home: '.view-home .topbar > *, .player-strip, .hero > *, .adventure-hero, .daily-list > li, .share-row, .countdown, .quests-card, .quest, .meta-tile, .footer-note',
+  home: '.view-home .topbar > *, .hero > *, .adventure-hero, .daily-list > li, .share-row, .countdown, .quests-card, .quest, .footer-note, .bottom-nav > *',
   game: '.game-topbar > *, .tip, .controls > .ctrl',
   map: '.view-map .topbar > *, .world-head',
 };
@@ -330,7 +330,7 @@ function renderHome() {
   checkAchievements();
   const achReady = achievementsReady();
   const achDone = ACHIEVEMENTS.filter((a) => store.data.ach[a.id]).length;
-  $('#ach-desc').textContent = achReady ? t('achToClaim', { n: achReady }) : t('achDesc', { n: achDone, t: ACHIEVEMENTS.length });
+  $('#ach-desc') && ($('#ach-desc').textContent = achReady ? t('achToClaim', { n: achReady }) : t('achDesc', { n: achDone, t: ACHIEVEMENTS.length }));
   $('#ach-badge').hidden = !achReady;
   $('#ach-badge').textContent = achReady;
   const inbox = store.data.inbox;
@@ -347,10 +347,10 @@ function renderHome() {
   advChests.hidden = !ready;
   advChests.textContent = t('chestsReady', { n: ready });
   const ownedSkins = SKINS.filter((sk) => hasSkin(sk.id));
-  $('#collection-desc').textContent = t('collectionDesc', { n: ownedSkins.length, t: SKINS.length });
+  $('#collection-desc') && ($('#collection-desc').textContent = t('collectionDesc', { n: ownedSkins.length, t: SKINS.length }));
   $('#collection-balls').innerHTML = ownedSkins
-    .slice(-3)
-    .map((sk, i) => marbleHTML(sk.id, [1, 2, 0][i]))
+    .slice(-1)
+    .map((sk) => marbleHTML(sk.id, 3))
     .join('');
   const giftChip = $('#gift-chip');
   giftChip.hidden = store.data.giftDay === today;
@@ -1391,7 +1391,7 @@ function renderPlayerStrip() {
   $('#player-xp').textContent = `${pl.xp}/${xpNeeded(pl.level)} XP`;
   const pct = (pl.xp / xpNeeded(pl.level)) * 100;
   $('#xp-fill').style.width = `${pct}%`;
-  $('#player-badge').style.setProperty('--p', `${pct}%`);
+  $('#player-badge .player-badge').style.setProperty('--p', `${pct}%`);
 }
 
 function renderQuests() {
@@ -1971,6 +1971,10 @@ $('#btn-back').addEventListener('click', () => {
 $('#btn-map-back').addEventListener('click', () => {
   sfx.tap();
   goHome();
+});
+$('#nav-play').addEventListener('click', () => {
+  sfx.tap();
+  iris(openMap, worldHue(store.data.levels.unlocked));
 });
 $('#btn-adventure').addEventListener('click', () => {
   sfx.tap();
