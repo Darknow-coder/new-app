@@ -124,3 +124,5 @@ export const SHOP = [
   { id: 'rewind5', items: { rewind: 5 }, price: 100, tag: '-20%' },
 ];
 export const DAILY_GIFT = 25;
+/** Escalating login reward: day 1..7 of consecutive visits (day 7 is a silver chest), then it loops. */
+export const GIFT_LADDER = [25, 30, 40, 50, 60, 80, 'chest'];

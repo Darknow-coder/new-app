@@ -28,6 +28,7 @@ function ensure() {
 /** Call from the first user gesture so iOS unlocks audio. */
 export function unlockAudio() {
   ensure();
+  if (typeof unlockMusic === 'function') unlockMusic();
 }
 
 function tone({ freq, to, dur = 0.15, type = 'sine', gain = 0.3, delay = 0 }) {
@@ -160,4 +161,128 @@ export function haptic(pattern) {
   } catch {
     /* unsupported */
   }
+}
+
+/* ==========================================================================
+   Procedural ambient music — calm chords, a pentatonic arpeggio with echo,
+   and a soft bass. Each world has its own key and tempo. No audio files.
+   ========================================================================== */
+const THEMES = {
+  home: { root: 261.63, minor: false, bpm: 72 }, // C
+  daily: { root: 293.66, minor: false, bpm: 70 }, // D
+  0: { root: 261.63, minor: false, bpm: 76 }, // Pebble Beach — C
+  1: { root: 329.63, minor: false, bpm: 70 }, // Sunny Dunes — E
+  2: { root: 220.0, minor: true, bpm: 80 }, // Ember Canyon — A minor
+  3: { root: 349.23, minor: false, bpm: 68 }, // Coral Reef — F
+  4: { root: 246.94, minor: true, bpm: 66 }, // Violet Peaks — B minor
+  5: { root: 392.0, minor: false, bpm: 62 }, // Glacier Bay — G
+  6: { root: 293.66, minor: true, bpm: 74 }, // Mossy Woods — D minor
+  7: { root: 311.13, minor: false, bpm: 84 }, // Neon City — E♭
+};
+// Scale degrees in semitones; chord progressions as scale-degree roots.
+const PENTA_MAJ = [0, 2, 4, 7, 9, 12, 14, 16];
+const PENTA_MIN = [0, 3, 5, 7, 10, 12, 15, 17];
+const PROG_MAJ = [[0, 4, 7], [9, 12, 16], [5, 9, 12], [7, 11, 14]]; // I vi IV V
+const PROG_MIN = [[0, 3, 7], [8, 12, 15], [3, 7, 10], [10, 14, 17]]; // i VI III VII
+
+let music = { on: false, wanted: false, theme: 'home', gain: null, delay: null, timer: 0, step: 0, next: 0, last: 2 };
+const semi = (root, n) => root * Math.pow(2, n / 12);
+
+function musicNodes(c) {
+  if (music.gain) return;
+  music.gain = c.createGain();
+  music.gain.gain.value = 0;
+  const lp = c.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 2600;
+  music.delay = c.createDelay(1);
+  music.delay.delayTime.value = 0.36;
+  const fb = c.createGain();
+  fb.gain.value = 0.32;
+  music.delay.connect(fb).connect(music.delay);
+  music.delay.connect(lp);
+  music.gain.connect(lp).connect(c.destination);
+  music.gain.connect(music.delay);
+}
+
+function note(c, freq, t, dur, { type = 'sine', gain = 0.05, attack = 0.02 } = {}) {
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(gain, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(music.gain);
+  o.start(t);
+  o.stop(t + dur + 0.05);
+}
+
+function scheduler() {
+  const c = ctx;
+  if (!c || !music.on) return;
+  const th = THEMES[music.theme] || THEMES.home;
+  const eighth = 60 / th.bpm / 2;
+  const scale = th.minor ? PENTA_MIN : PENTA_MAJ;
+  const prog = th.minor ? PROG_MIN : PROG_MAJ;
+  while (music.next < c.currentTime + 0.3) {
+    const t = music.next;
+    const s = music.step;
+    const bar = Math.floor(s / 8);
+    const chord = prog[bar % 4];
+    if (s % 16 === 0) {
+      // Pad: a soft chord every two bars.
+      for (const n of chord) note(c, semi(th.root, n - 12), t, eighth * 16, { type: 'triangle', gain: 0.022, attack: 0.6 });
+    }
+    if (s % 8 === 0) note(c, semi(th.root, chord[0] - 24), t, eighth * 7, { type: 'sine', gain: 0.05, attack: 0.05 });
+    // Arpeggio: a gentle random walk on the pentatonic scale, with rests.
+    if (Math.random() < (s % 2 === 0 ? 0.72 : 0.35)) {
+      music.last = Math.max(0, Math.min(scale.length - 1, music.last + [-2, -1, -1, 1, 1, 2][Math.floor(Math.random() * 6)]));
+      note(c, semi(th.root, scale[music.last]), t, eighth * 2.2, { type: 'sine', gain: 0.028 });
+    }
+    music.next += eighth;
+    music.step++;
+  }
+}
+
+function startMusic() {
+  const c = ensure();
+  if (!c || music.on) return;
+  musicNodes(c);
+  music.on = true;
+  music.next = c.currentTime + 0.1;
+  music.gain.gain.cancelScheduledValues(c.currentTime);
+  music.gain.gain.setTargetAtTime(0.55, c.currentTime, 1.2);
+  music.timer = setInterval(scheduler, 100);
+}
+
+function stopMusic() {
+  if (!music.on || !ctx) return;
+  music.on = false;
+  clearInterval(music.timer);
+  music.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
+}
+
+/** Turn background music on/off (it only actually starts after a user gesture). */
+export function setMusicEnabled(on) {
+  music.wanted = on;
+  if (on && ctx && ctx.state !== 'suspended' && !document.hidden) startMusic();
+  if (!on) stopMusic();
+}
+
+/** Switch the musical theme (world index, 'home' or 'daily'). */
+export function setMusicTheme(key) {
+  music.theme = String(key);
+}
+
+/** Called on the first user gesture (browsers block audio before that). */
+export function unlockMusic() {
+  if (music.wanted && !document.hidden) startMusic();
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopMusic();
+    else if (music.wanted && ctx) startMusic();
+  });
 }

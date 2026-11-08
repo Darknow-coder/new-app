@@ -1,7 +1,7 @@
 import { tilt, isSolved, solve, starsFor, stateKey, DIRS, comboReachable } from './engine.js';
 import { dateKey, puzzleNumber, msUntilTomorrow, dailyLevel, DAILY_ORDER, addDays } from './daily.js';
 import { store, computeStats, save } from './storage.js';
-import { sfx, haptic, setSoundEnabled, unlockAudio } from './audio.js';
+import { sfx, haptic, setSoundEnabled, unlockAudio, setMusicEnabled, setMusicTheme } from './audio.js';
 import { t, LANG } from './i18n.js';
 import { TUTORIAL } from './tutorial.js';
 import { burstConfetti } from './confetti.js';
@@ -15,7 +15,7 @@ import {
   levelReward,
   dailyReward,
   SHOP,
-  DAILY_GIFT,
+  GIFT_LADDER,
 } from './levels.js';
 import { buildScenery, iris, countTo, flyIcons, floatText, replay, burst, reducedMotion } from './fx.js';
 import { openChest, chestSVG, WORLD_CHESTS, chestId, isOpened, ODDS } from './chests.js';
@@ -288,6 +288,7 @@ function renderHome() {
   $('#adventure-bar').style.width = `${(((lvl - 1) % LEVELS_PER_WORLD) / LEVELS_PER_WORLD) * 100}%`;
   $('#btn-adventure').style.setProperty('--hue', WORLD_HUES[worldOf(lvl) % WORLD_HUES.length]);
   buildScenery($('#scenery-home'), 'home');
+  setMusicTheme('home');
   renderPlayerStrip();
   renderQuests();
   checkAchievements();
@@ -317,7 +318,9 @@ function renderHome() {
     .join('');
   const giftChip = $('#gift-chip');
   giftChip.hidden = store.data.giftDay === today;
-  $('#gift-text').textContent = t('giftClaim', { n: DAILY_GIFT });
+  const g = giftToday();
+  $('#gift-text').textContent =
+    g.reward === 'chest' ? t('giftDayChest', { d: g.day }) : t('giftDay', { d: g.day, n: g.reward });
   updateCoins();
   updateCountdown();
 }
@@ -437,8 +440,13 @@ function startGame(opts) {
   els.restart.hidden = opts.mode === 'tutorial' && opts.tut === 0;
   animating = false;
   queued = null;
-  if (opts.mode === 'level') buildScenery($('#scenery-game'), worldOf(opts.n) % WORLD_HUES.length, worldHue(opts.n));
-  else buildScenery($('#scenery-game'), 'daily');
+  if (opts.mode === 'level') {
+    buildScenery($('#scenery-game'), worldOf(opts.n) % WORLD_HUES.length, worldHue(opts.n));
+    setMusicTheme(worldOf(opts.n) % WORLD_HUES.length);
+  } else {
+    buildScenery($('#scenery-game'), 'daily');
+    setMusicTheme('daily');
+  }
   buildBoard();
   updateHud(false);
   showView('game');
@@ -569,6 +577,8 @@ function updateHud(bump = true) {
   els.undo.disabled = game.done || game.history.length === 0;
   els.restart.disabled = game.done || game.history.length === 0;
   els.hint.disabled = game.done;
+  // Gentle nudge towards the hint when a level clearly resists.
+  els.hint.classList.toggle('nudge', game.mode === 'level' && !game.done && game.moves >= game.level.par * 2 + 2);
   els.rewind.disabled = game.done || game.history.length === 0;
   for (const b of ['hint', 'rewind']) {
     const n = store.booster(b);
@@ -646,6 +656,7 @@ function move(dir) {
         }
         el.style.transition = `transform ${segMs}ms cubic-bezier(0.45, 0, 0.9, 0.65)`;
         setPos(el, sg.to);
+        if (sg.dist >= 2 && game.level.pieces[i].kind === 'marble') trail(sg, game.level.pieces[i].color, dir, segMs);
       };
       if (k === 0) run();
       else setTimeout(run, t + WARP_GAP);
@@ -693,6 +704,23 @@ function move(dir) {
       move(d);
     }
   }, Math.max(longest, 160));
+}
+
+/** A coloured streak that grows behind a rolling marble, then fades. */
+function trail(sg, color, dir, ms) {
+  if (reducedMotion()) return;
+  const a = cellXY(sg.from);
+  const b = cellXY(sg.to);
+  const { w, h } = game.level;
+  const tr = document.createElement('i');
+  tr.className = `trail c${color} trail-${dir}`;
+  tr.style.left = `${(Math.min(a.x, b.x) / w) * 100}%`;
+  tr.style.top = `${(Math.min(a.y, b.y) / h) * 100}%`;
+  tr.style.width = `${((Math.abs(a.x - b.x) + 1) / w) * 100}%`;
+  tr.style.height = `${((Math.abs(a.y - b.y) + 1) / h) * 100}%`;
+  tr.style.setProperty('--ms', `${ms}ms`);
+  els.layer.appendChild(tr);
+  setTimeout(() => tr.remove(), ms + 520);
 }
 
 /** "DOUBLE!" / "TRIPLE!" when several marbles drop in the same tilt. */
@@ -852,7 +880,13 @@ function onTutorialStep() {
     title: t('tutDone'),
     line: '',
     sub: t('tutDoneSub'),
-    actions: [{ label: t('letsGo'), primary: true, onClick: goHome }],
+    actions: [
+      {
+        label: t('letsGo'),
+        primary: true,
+        onClick: () => iris(() => startLevel(store.data.levels.unlocked), worldHue(store.data.levels.unlocked)),
+      },
+    ],
   });
 }
 
@@ -1081,6 +1115,7 @@ function updateMapScenery() {
     if (sec.getBoundingClientRect().top <= mid) w = Number(sec.dataset.world);
   }
   buildScenery($('#scenery-map'), w % WORLD_HUES.length, WORLD_HUES[w % WORLD_HUES.length]);
+  setMusicTheme(w % WORLD_HUES.length);
 }
 let mapScrollRaf = 0;
 $('#map-scroll').addEventListener('scroll', () => {
@@ -1460,14 +1495,32 @@ $('#shop-list').addEventListener('click', (e) => {
 
 document.querySelectorAll('[data-shop]').forEach((b) => b.addEventListener('click', openShop));
 
+/** Which step of the 7-day gift ladder today's visit is on (resets after a missed day). */
+function giftToday() {
+  const last = store.data.giftDay;
+  const prevCount = store.data.giftCount || 0;
+  const continues = last && addDays(last, 1) === today;
+  const count = last === today ? prevCount : continues ? prevCount + 1 : 1;
+  const idx = (count - 1) % GIFT_LADDER.length;
+  return { count, day: idx + 1, reward: GIFT_LADDER[idx] };
+}
+
 $('#gift-chip').addEventListener('click', () => {
   if (store.data.giftDay === today) return;
+  const g = giftToday();
   store.data.giftDay = today;
-  store.addCoins(DAILY_GIFT);
+  store.data.giftCount = g.count;
   const chip = $('#gift-chip');
+  if (g.reward === 'chest') {
+    save();
+    chip.hidden = true;
+    openChestFlow({ id: `gift-${today}`, tier: 'silver', title: t('giftDayChest', { d: g.day }) }).then(() => renderHome());
+    return;
+  }
+  store.addCoins(g.reward);
   sfx.coin();
   buzz([20, 30, 20]);
-  toast(t('giftToast', { n: DAILY_GIFT }));
+  toast(t('giftToast', { n: g.reward }));
   flyIcons(chip, $('#view-home .coin-pill'), {
     count: 8,
     onArrive: (i) => {
@@ -1652,6 +1705,18 @@ $('#modal-result').addEventListener('cancel', (e) => {
   exitGame();
 });
 
+const musicBox = $('#set-music');
+musicBox.checked = store.data.settings2.music;
+setMusicEnabled(musicBox.checked && store.setting('sound'));
+musicBox.addEventListener('change', () => {
+  store.data.settings2.music = musicBox.checked;
+  save();
+  unlockAudio();
+  setMusicEnabled(musicBox.checked && store.setting('sound'));
+});
+// Any first tap anywhere unlocks audio (and starts the music if enabled).
+window.addEventListener('pointerdown', () => unlockAudio(), { once: true });
+
 const soundBox = $('#set-sound');
 const hapticBox = $('#set-haptics');
 soundBox.checked = store.setting('sound');
@@ -1660,6 +1725,7 @@ setSoundEnabled(soundBox.checked);
 soundBox.addEventListener('change', () => {
   store.setting('sound', soundBox.checked);
   setSoundEnabled(soundBox.checked);
+  setMusicEnabled(soundBox.checked && store.data.settings2.music);
   sfx.tap();
 });
 hapticBox.addEventListener('change', () => {
