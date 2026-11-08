@@ -14,6 +14,7 @@ const defaults = () => ({
   rewardedDays: {}, // days whose completion bonus was paid
   chests: { opened: {} },
   skins: { owned: ['classic'], equipped: 'classic' },
+  seenMech: {},
 });
 
 let data = load();
@@ -33,6 +34,7 @@ function load() {
       boosters: { ...d.boosters, ...(parsed.boosters || {}) },
       chests: { opened: { ...((parsed.chests || {}).opened || {}) } },
       skins: { ...d.skins, ...(parsed.skins || {}) },
+      seenMech: { ...(parsed.seenMech || {}) },
     };
     // Migration: players of the old Endless mode keep the level they reached.
     if (!parsed.levels && merged.endless.level > 1) merged.levels.unlocked = merged.endless.level;

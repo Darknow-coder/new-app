@@ -7,6 +7,7 @@ import { TUTORIAL } from './tutorial.js';
 import { burstConfetti } from './confetti.js';
 import {
   adventureLevel,
+  introAt,
   worldOf,
   isBoss,
   LEVELS_PER_WORLD,
@@ -274,6 +275,7 @@ function startDaily(diff) {
 function startLevel(n) {
   sfx.tap();
   const level = adventureLevel(n);
+  const mech = introAt(n);
   const best = store.levelStars(n);
   const world = t(`world${worldOf(n) % WORLD_HUES.length}`);
   startGame({
@@ -282,7 +284,20 @@ function startLevel(n) {
     level,
     title: t('level', { n }),
     sub: isBoss(n) ? `${t('boss')} · ${world}` : best ? `${world} · ${starsText(best)}` : world,
+    tip: mech ? t(`mech_${mech}_desc`) : null,
   });
+  if (mech && !store.data.seenMech[mech]) setTimeout(() => showMechanic(mech), 500);
+}
+
+/** "New!" card the first time a mechanic appears. */
+function showMechanic(mech) {
+  store.data.seenMech[mech] = true;
+  save();
+  $('#mech-title').textContent = t(`mech_${mech}_title`);
+  $('#mech-desc').textContent = t(`mech_${mech}_desc`);
+  $('#mech-art').innerHTML = `<div class="mech-demo mech-${mech}"><i class="t1"></i><i class="t2"></i><i class="ball c1"></i></div>`;
+  sfx.epic();
+  openModal('modal-mech');
 }
 
 function startTutorial(i = 0) {
@@ -323,6 +338,7 @@ function startGame(opts) {
   $('#game-sub').textContent = opts.sub || '';
   if (opts.tip) {
     els.tip.textContent = opts.tip;
+    els.tip.classList.toggle('is-new', opts.mode === 'level');
     els.tip.hidden = false;
   } else {
     els.tip.hidden = true;
@@ -374,6 +390,13 @@ function buildBoard() {
       w.className = 'cell wall';
       setPos(w, c);
       frag.appendChild(w);
+    } else if (level.sand?.[c] || (level.portal && level.portal[c] >= 0) || (level.gates && level.gates[c] >= 0)) {
+      const t = document.createElement('div');
+      if (level.sand?.[c]) t.className = 'cell sand';
+      else if (level.portal && level.portal[c] >= 0) t.className = 'cell portal';
+      else t.className = `cell gate c${level.gates[c]}`;
+      setPos(t, c);
+      frag.appendChild(t);
     } else if (level.holes[c] >= 0) {
       const h = document.createElement('div');
       h.className = `cell hole c${level.holes[c]}`;
@@ -505,14 +528,39 @@ function move(dir) {
   const axis = DIRS[dir].dx ? 'impact-x' : 'impact-y';
   let longest = 0;
   let dropIndex = 0;
+  const WARP_GAP = 110;
+  const moveMs = (m) => {
+    const segs = m.segs || [m];
+    return segs.reduce((acc, sg, k) => acc + (sg.dist ? rollMs(sg.dist) : 0) + (k > 0 ? WARP_GAP : 0), 0);
+  };
   moves.forEach((m, i) => {
     if (!m || m.dist === 0) return;
     const el = game.pieceEls[i];
-    const ms = rollMs(m.dist);
+    const ms = moveMs(m);
     longest = Math.max(longest, ms + (m.sunk ? 300 : 120));
-    el.classList.remove('impact-x', 'impact-y', 'sinking');
-    el.style.transition = `transform ${ms}ms cubic-bezier(0.45, 0, 0.9, 0.65)`;
-    setPos(el, m.to);
+    el.classList.remove('impact-x', 'impact-y', 'sinking', 'warp');
+    // Each straight run is animated separately; between runs the piece warps through a portal.
+    const segs = m.segs || [{ from: m.from, to: m.to, dist: m.dist }];
+    let t = 0;
+    segs.forEach((sg, k) => {
+      const segMs = sg.dist ? rollMs(sg.dist) : 0;
+      const run = () => {
+        if (k > 0) {
+          el.style.transition = 'none';
+          setPos(el, sg.from);
+          void el.offsetWidth;
+          replay(el, 'warp');
+          els.layer.querySelectorAll('.portal').forEach((p) => replay(p, 'pulse'));
+          sfx.warp();
+          buzz(12);
+        }
+        el.style.transition = `transform ${segMs}ms cubic-bezier(0.45, 0, 0.9, 0.65)`;
+        setPos(el, sg.to);
+      };
+      if (k === 0) run();
+      else setTimeout(run, t + WARP_GAP);
+      t += segMs + (k > 0 ? WARP_GAP : 0);
+    });
     const piece = game.level.pieces[i];
     const order = dropIndex;
     setTimeout(() => {
@@ -533,7 +581,7 @@ function move(dir) {
     }, ms);
     if (m.sunk) dropIndex++;
   });
-  const longestRoll = Math.max(...moves.filter((m) => m && m.dist).map((m) => rollMs(m.dist)));
+  const longestRoll = Math.max(...moves.filter((m) => m && m.dist).map(moveMs));
   sfx.roll(longestRoll / 1000);
   buzz(8);
 
@@ -830,7 +878,7 @@ function renderMap({ hideUnlock = 0 } = {}) {
       if (n === hideUnlock) state = 'locked';
       const inner = state === 'locked' ? '<svg><use href="#i-lock"/></svg>' : `<span>${n}</span>`;
       const starRow = state === 'done' ? `<span class="node-stars">${starsHTML(stars)}</span>` : '';
-      nodes += `<button class="node is-${state} ${isBoss(n) ? 'is-boss' : ''}" data-n="${n}" style="left:${x}%;top:${y}px;--i:${i}" aria-label="${t('level', { n })}${stars ? `, ${stars}/3` : ''}">${inner}${starRow}${isBoss(n) ? '<em>BOSS</em>' : ''}</button>`;
+      nodes += `<button class="node is-${state} ${isBoss(n) ? 'is-boss' : ''}" data-n="${n}" style="left:${x}%;top:${y}px;--i:${i}" aria-label="${t('level', { n })}${stars ? `, ${stars}/3` : ''}">${inner}${starRow}${isBoss(n) ? '<em>BOSS</em>' : introAt(n) ? `<em class="em-new">${t('newShort')}</em>` : ''}</button>`;
     }
     // Star chests along the path.
     for (const c of WORLD_CHESTS) {

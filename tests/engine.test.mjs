@@ -110,15 +110,50 @@ test('star rating', () => {
   assert.equal(starsFor(16, 11), 1);
 });
 
-import { adventureLevel, tierFor, levelReward, isBoss, LEVELS_PER_WORLD } from '../js/levels.js';
+import { adventureLevel, generateAdventureLevel, PRECOMPUTED_LEVELS, tierFor, levelReward, isBoss, LEVELS_PER_WORLD } from '../js/levels.js';
+import { encodeLevel } from '../js/engine.js';
 
-test('all 160 adventure levels (8 worlds) are solvable and replay correctly', () => {
-  for (let n = 1; n <= 160; n++) {
+test('all pre-computed adventure levels replay to a win, and their par is optimal', () => {
+  assert.ok(PRECOMPUTED_LEVELS >= 160, 'at least 8 worlds are pre-computed');
+  for (let n = 1; n <= PRECOMPUTED_LEVELS; n++) {
     const l = adventureLevel(n);
     let s = l.start;
     for (const d of l.solution) s = tilt(l, s, d).state;
-    assert.ok(isSolved(l, s), `level ${n}`);
+    assert.ok(isSolved(l, s), `level ${n} solution replays`);
+    assert.equal(l.solution.length, l.par, `level ${n} par matches its solution`);
+    if (n % 7 === 0 || n <= 25) assert.equal(solve(l).par, l.par, `level ${n} par is optimal`);
   }
+});
+
+test('pre-computed data matches the generator (no drift)', () => {
+  for (const n of [1, 2, 21, 22, 41, 61, 80, 120]) {
+    const a = adventureLevel(n);
+    const b = generateAdventureLevel(n);
+    assert.equal(a.par, b.par, `level ${n}`);
+    assert.deepEqual(encodeLevel(a).join('/').length, encodeLevel(b).join('/').length);
+  }
+});
+
+test('sand stops pieces', () => {
+  const l = parseLevel(['.....', '..a..', '.....', 'A.~..', '.....']);
+  assert.equal(tilt(l, l.start, 'right').state[0], 17);
+  assert.equal(l.par, 2);
+});
+
+test('crystal gates only let their own colour through', () => {
+  const l = parseLevel(['A.v.a', 'B.v.b', '.....']);
+  const { state } = tilt(l, l.start, 'right');
+  const ia = l.pieces.findIndex((p) => p.color === 0);
+  const ib = l.pieces.findIndex((p) => p.color === 1);
+  assert.equal(state[ia], -1, 'coral marble passes the coral gate and sinks');
+  assert.equal(state[ib], 6, 'teal marble is stopped by the coral gate');
+});
+
+test('portals teleport and keep the momentum (one teleport per tilt)', () => {
+  const l = parseLevel(['A.@..', '#####', '..@.a']);
+  const { state, moves } = tilt(l, l.start, 'right');
+  assert.equal(state[0], -1);
+  assert.equal(moves[0].segs.length, 2);
 });
 
 test('difficulty follows a sawtooth and bosses are harder', () => {

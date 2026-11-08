@@ -53,12 +53,22 @@ export function isSolved(level, state) {
 }
 
 /**
- * Apply a tilt. Returns { state, moves } where moves[i] = { from, to, sunk, dist } for each
- * piece that was on the board, or null for pieces already sunk. state is a new array.
+ * Apply a tilt. Returns { state, moves } where moves[i] = { from, to, sunk, dist, segs } for each
+ * piece that was on the board, or null for pieces already sunk. `segs` lists the straight runs
+ * of the move (more than one when the piece went through a portal). state is a new array.
+ *
+ * Optional level features (all may be null):
+ *   sand:   Uint8Array — a piece that rolls onto sand stops there.
+ *   portal: Int16Array — portal[c] is the paired cell; a piece entering c reappears there and keeps
+ *           rolling (at most one teleport per tilt, so moves stay readable).
+ *   gates:  Int8Array  — a crystal gate of colour k only lets marbles of colour k through.
  */
 export function tilt(level, state, dirName) {
   const { dx, dy } = DIRS[dirName];
   const { w, h, walls, holes, pieces } = level;
+  const sand = level.sand || null;
+  const portal = level.portal || null;
+  const gates = level.gates || null;
   const next = state.slice();
   const moves = new Array(pieces.length).fill(null);
 
@@ -69,7 +79,8 @@ export function tilt(level, state, dirName) {
     const c = state[i];
     return (c % w) * dx + Math.floor(c / w) * dy;
   };
-  order.sort((a, b) => proj(b) - proj(a) || a - b);
+  // Ties are broken by cell index (not piece index) so the result only depends on the board.
+  order.sort((a, b) => proj(b) - proj(a) || state[a] - state[b]);
 
   const occupied = new Int16Array(w * h).fill(-1);
   for (const i of order) occupied[state[i]] = i;
@@ -77,32 +88,54 @@ export function tilt(level, state, dirName) {
   for (const i of order) {
     const from = state[i];
     occupied[from] = -1;
+    const isMarble = pieces[i].kind === 'marble';
+    const col = pieces[i].color;
     let x = from % w;
     let y = Math.floor(from / w);
     let dist = 0;
     let sunk = false;
+    let segStart = from;
+    let segDist = 0;
+    let hops = 0;
+    const segs = [];
     for (;;) {
       const nx = x + dx;
       const ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= w || ny >= h) break;
       const nc = ny * w + nx;
       if (walls[nc] || occupied[nc] !== -1) break;
+      if (gates && gates[nc] >= 0 && !(isMarble && gates[nc] === col)) break;
       x = nx;
       y = ny;
       dist++;
-      if (pieces[i].kind === 'marble' && holes[nc] === pieces[i].color) {
+      segDist++;
+      if (isMarble && holes[nc] === col) {
         sunk = true;
         break;
       }
+      if (portal && portal[nc] >= 0 && hops < 1) {
+        const out = portal[nc];
+        if (occupied[out] === -1) {
+          segs.push({ from: segStart, to: nc, dist: segDist });
+          x = out % w;
+          y = Math.floor(out / w);
+          segStart = out;
+          segDist = 0;
+          hops++;
+          continue;
+        }
+      }
+      if (sand && sand[nc]) break;
     }
     const to = y * w + x;
+    segs.push({ from: segStart, to, dist: segDist });
     if (sunk) {
       next[i] = -1;
     } else {
       next[i] = to;
       occupied[to] = i;
     }
-    moves[i] = { from, to, sunk, dist };
+    moves[i] = { from, to, sunk, dist, segs };
   }
   return { state: next, moves };
 }
@@ -172,6 +205,7 @@ function buildCandidate(rng, p) {
   const n = w * h;
   const walls = new Uint8Array(n);
   const holes = new Int8Array(n).fill(-1);
+  const f = p.features || null;
   const wallCount = p.walls[0] + randInt(rng, p.walls[1] - p.walls[0] + 1);
   const cells = shuffle(rng, Array.from({ length: n }, (_, i) => i));
   let k = 0;
@@ -189,7 +223,39 @@ function buildCandidate(rng, p) {
     pieces.push({ kind: 'stone', color: -1 });
     start.push(cells[k++]);
   }
-  return { w, h, walls, holes, pieces, start };
+  const level = { w, h, walls, holes, pieces, start, sand: null, portal: null, gates: null };
+  if (f) {
+    if (f.sand) {
+      level.sand = new Uint8Array(n);
+      const count = f.sand[0] + randInt(rng, f.sand[1] - f.sand[0] + 1);
+      for (let i = 0; i < count; i++) level.sand[cells[k++]] = 1;
+    }
+    if (f.portals) {
+      level.portal = new Int16Array(n).fill(-1);
+      const a = cells[k++];
+      const b = cells[k++];
+      level.portal[a] = b;
+      level.portal[b] = a;
+    }
+    if (f.gates) {
+      level.gates = new Int8Array(n).fill(-1);
+      const count = f.gates[0] + randInt(rng, f.gates[1] - f.gates[0] + 1);
+      for (let i = 0; i < count; i++) level.gates[cells[k++]] = colors[randInt(rng, colors.length)];
+    }
+  }
+  return level;
+}
+
+export function hasFeatures(level) {
+  return !!(level.sand || level.portal || level.gates);
+}
+
+/** True when the special tiles actually change the optimal solution (so they are not decoration). */
+function featuresMatter(level, par, maxDepth) {
+  if (!hasFeatures(level)) return true;
+  const plain = { ...level, sand: null, portal: null, gates: null };
+  const sol = solve(plain, plain.start, { maxDepth, maxStates: 120000 });
+  return !sol || sol.par !== par;
 }
 
 // Rough "interest" score: favour solutions that use many distinct directions and change direction often.
@@ -217,6 +283,7 @@ export function generate(seedStr, params, { attempts = 400, candidates = 6 } = {
     if (sol.par < params.par[0]) continue;
     // Every tilt in the first move must do something interesting: avoid levels solved by one direction spam.
     if (new Set(sol.path).size < Math.min(3, sol.par)) continue;
+    if (!featuresMatter(lvl, sol.par, params.par[1] + 4)) continue;
     found++;
     const score = sol.par * 100 + interest(sol.path);
     if (!best || score > best.score) best = { level: lvl, solution: sol, score };
@@ -248,15 +315,39 @@ export function starsFor(moves, par) {
 
 /**
  * Build a level from ASCII rows. Legend: '.' floor, '#' wall, 'a'-'d' hole of colour 0-3,
- * 'A'-'D' marble of colour 0-3, 'S' stone.
+ * 'A'-'D' marble of colour 0-3, 'S' stone, '~' sand, '@' portal (exactly two),
+ * 'v' 'w' 'x' 'y' crystal gate of colour 0-3.
  */
-export function parseLevel(rows) {
+/** Inverse of parseLevel: ASCII rows for a level (every special cell is distinct, so one char per cell). */
+export function encodeLevel(level) {
+  const { w, h } = level;
+  const grid = new Array(w * h).fill('.');
+  for (let c = 0; c < w * h; c++) {
+    if (level.walls[c]) grid[c] = '#';
+    else if (level.holes[c] >= 0) grid[c] = String.fromCharCode(97 + level.holes[c]);
+    else if (level.sand?.[c]) grid[c] = '~';
+    else if (level.portal && level.portal[c] >= 0) grid[c] = '@';
+    else if (level.gates && level.gates[c] >= 0) grid[c] = String.fromCharCode(118 + level.gates[c]);
+  }
+  level.pieces.forEach((p, i) => {
+    grid[level.start[i]] = p.kind === 'stone' ? 'S' : String.fromCharCode(65 + p.color);
+  });
+  const rows = [];
+  for (let y = 0; y < h; y++) rows.push(grid.slice(y * w, y * w + w).join(''));
+  return rows;
+}
+
+/** `known` ({ par, solution }) skips the solver for pre-computed levels. */
+export function parseLevel(rows, known = null) {
   const h = rows.length;
   const w = rows[0].length;
   const walls = new Uint8Array(w * h);
   const holes = new Int8Array(w * h).fill(-1);
   const pieces = [];
   const start = [];
+  let sand = null;
+  let gates = null;
+  const portals = [];
   rows.forEach((row, y) => {
     if (row.length !== w) throw new Error('Ragged level row ' + y);
     [...row].forEach((ch, x) => {
@@ -269,10 +360,30 @@ export function parseLevel(rows) {
       } else if (ch === 'S') {
         pieces.push({ kind: 'stone', color: -1 });
         start.push(c);
+      } else if (ch === '~') {
+        sand = sand || new Uint8Array(w * h);
+        sand[c] = 1;
+      } else if (ch === '@') {
+        portals.push(c);
+      } else if (ch >= 'v' && ch <= 'y') {
+        gates = gates || new Int8Array(w * h).fill(-1);
+        gates[c] = ch.charCodeAt(0) - 118;
       } else if (ch !== '.') throw new Error('Unknown tile ' + ch);
     });
   });
-  const level = { w, h, walls, holes, pieces, start };
+  let portal = null;
+  if (portals.length) {
+    if (portals.length !== 2) throw new Error('Portals come in pairs');
+    portal = new Int16Array(w * h).fill(-1);
+    portal[portals[0]] = portals[1];
+    portal[portals[1]] = portals[0];
+  }
+  const level = { w, h, walls, holes, pieces, start, sand, portal, gates };
+  if (known) {
+    level.par = known.par;
+    level.solution = known.solution;
+    return level;
+  }
   const sol = solve(level);
   if (!sol) throw new Error('Unsolvable hand-made level');
   level.par = sol.par;

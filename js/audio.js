@@ -137,6 +137,10 @@ export const sfx = {
   coinRain() {
     for (let i = 0; i < 10; i++) tone({ freq: 1800 + Math.random() * 900, dur: 0.05, type: 'square', gain: 0.025, delay: i * 0.06 + Math.random() * 0.03 });
   },
+  warp() {
+    tone({ freq: 300, to: 1400, dur: 0.18, type: 'sine', gain: 0.12 });
+    tone({ freq: 1400, to: 500, dur: 0.18, type: 'triangle', gain: 0.06, delay: 0.1 });
+  },
   tap() {
     tone({ freq: 660, to: 520, dur: 0.06, type: 'sine', gain: 0.08 });
   },

@@ -1,10 +1,11 @@
-import { generate } from './engine.js';
+import { generate, parseLevel, hashString } from './engine.js';
+import { LEVEL_DATA } from './levels-data.js';
 
 // Adventure mode: an unbounded sequence of levels, grouped into worlds of 20.
 // Difficulty follows a sawtooth: every world starts a little easier than the
 // previous one ended, ramps up, and finishes with a tougher "boss" level.
 export const LEVELS_PER_WORLD = 20;
-export const LEVEL_GENERATOR_VERSION = 1;
+export const LEVEL_GENERATOR_VERSION = 2;
 
 const TIERS = [
   { size: 5, marbles: 1, stones: 0, walls: [3, 5], par: [2, 3] },
@@ -45,10 +46,57 @@ export function levelParams(n) {
   return TIERS[tierFor(n)];
 }
 
+// Each world brings something new. Later worlds remix everything.
+const WORLD_FEATURES = [
+  null, // 1 Pebble Beach — the basics
+  { sand: [1, 3] }, // 2 Sunny Dunes — sand traps
+  { gates: [1, 2] }, // 3 Ember Canyon — crystal gates
+  { portals: 1 }, // 4 Coral Reef — portals
+  { sand: [1, 2], gates: [1, 1] }, // 5 Violet Peaks
+  { portals: 1, sand: [1, 2] }, // 6 Glacier Bay
+  { gates: [1, 2], portals: 1 }, // 7 Mossy Woods
+  { sand: [1, 2], gates: [1, 1], portals: 1 }, // 8+ Neon City and beyond
+];
+
+/** Hand-made first level of a world, so each new mechanic is discovered in a calm, obvious setting. */
+export const MECHANIC_INTROS = {
+  21: { mech: 'sand', rows: ['.....', '..a..', '.....', 'A.~..', '.....'] },
+  41: { mech: 'gates', rows: ['.....', 'A.v.a', '.....', 'B.v..', '....b'] },
+  61: { mech: 'portals', rows: ['.....', 'A.@..', '#####', '..@.a', '.....'] },
+};
+
+export function featuresFor(n) {
+  const world = worldOf(n);
+  const f = WORLD_FEATURES[Math.min(world, WORLD_FEATURES.length - 1)];
+  if (!f) return null;
+  const idx = (n - 1) % LEVELS_PER_WORLD;
+  // Right after an intro, keep the new mechanic in every level; later, ~75% of levels.
+  if (idx <= 5 || hashString(`feat:${n}`) % 100 < 75) return f;
+  return null;
+}
+
+/** Which mechanic (if any) is introduced at level n. */
+export const introAt = (n) => MECHANIC_INTROS[n]?.mech || null;
+
+/** Build level n from scratch (used by scripts/build-levels.mjs and beyond the pre-computed range). */
+export function generateAdventureLevel(n) {
+  if (MECHANIC_INTROS[n]) return parseLevel(MECHANIC_INTROS[n].rows);
+  return generate(`marbl:level:v${LEVEL_GENERATOR_VERSION}:${n}`, { ...levelParams(n), features: featuresFor(n) });
+}
+
+const DIR_CODE = { U: 'up', D: 'down', L: 'left', R: 'right' };
+function decode(entry) {
+  const [rows, par, sol] = entry.split('|');
+  return parseLevel(rows.split('/'), { par: Number(par), solution: [...sol].map((c) => DIR_CODE[c]) });
+}
+
+export const PRECOMPUTED_LEVELS = LEVEL_DATA.length;
+
 const cache = new Map();
 export function adventureLevel(n) {
   if (!cache.has(n)) {
-    cache.set(n, generate(`marbl:level:v${LEVEL_GENERATOR_VERSION}:${n}`, levelParams(n)));
+    const level = n <= LEVEL_DATA.length ? decode(LEVEL_DATA[n - 1]) : generateAdventureLevel(n);
+    cache.set(n, level);
     if (cache.size > 30) cache.delete(cache.keys().next().value);
   }
   return cache.get(n);
