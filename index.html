@@ -140,6 +140,7 @@
           <button class="coin-pill" data-shop data-i18n-label="shop"><svg><use href="#i-coin"/></svg><b data-coins>0</b></button>
         </header>
         <div class="map-scroll" id="map-scroll"><div class="map" id="map"></div></div>
+        <button class="map-recenter" id="map-recenter" hidden><svg class="mr-arrow"><use href="#i-back"/></svg><span id="map-recenter-n"></span></button>
       </section>
 
       <!-- GAME -->
@@ -249,6 +250,18 @@
       </div>
     </dialog>
 
+    <dialog class="modal" id="modal-level">
+      <div class="modal-card level-card">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <small class="lp-world" id="lp-world"></small>
+        <h2 id="lp-title"></h2>
+        <div class="lp-stars" id="lp-stars"></div>
+        <p class="lp-best" id="lp-best"></p>
+        <div class="lp-chips" id="lp-chips"></div>
+        <div class="modal-actions"><button class="btn btn-primary btn-full lp-play" id="lp-play"><svg><use href="#i-play"/></svg><span data-i18n="play"></span></button></div>
+      </div>
+    </dialog>
+
     <dialog class="modal" id="modal-mech">
       <div class="modal-card mech-card">
         <span class="mech-badge" data-i18n="newMechanic"></span>
@@ -298,6 +311,7 @@
         <div class="chest-motes" aria-hidden="true"><i style="--x:0%;--d:0.00s;--s:0.60"></i><i style="--x:37%;--d:0.37s;--s:0.93"></i><i style="--x:74%;--d:0.74s;--s:1.27"></i><i style="--x:11%;--d:1.11s;--s:0.77"></i><i style="--x:48%;--d:1.48s;--s:1.10"></i><i style="--x:85%;--d:1.85s;--s:0.60"></i><i style="--x:22%;--d:2.22s;--s:0.93"></i><i style="--x:59%;--d:2.59s;--s:1.27"></i><i style="--x:96%;--d:2.96s;--s:0.77"></i><i style="--x:33%;--d:0.33s;--s:1.10"></i><i style="--x:70%;--d:0.70s;--s:0.60"></i><i style="--x:7%;--d:1.07s;--s:0.93"></i><i style="--x:44%;--d:1.44s;--s:1.27"></i><i style="--x:81%;--d:1.81s;--s:0.77"></i><i style="--x:18%;--d:2.18s;--s:1.10"></i><i style="--x:55%;--d:2.55s;--s:0.60"></i></div>
         <div class="chest-top"><span class="coin-pill chest-coins"><svg><use href="#i-coin"/></svg><b id="chest-balance">0</b></span></div>
         <p class="chest-title" id="chest-title"></p>
+        <div class="chest-light" aria-hidden="true"><i class="cl-glow"></i><i class="cl-rays"></i><i class="cl-beam"></i><i class="cl-beam cl-beam2"></i></div>
         <div class="chest-wrap" id="chest-wrap"></div>
         <div class="chest-upgrade" id="chest-upgrade" data-i18n="upgraded"></div>
         <p class="chest-tap" data-i18n="tapToOpen"></p>

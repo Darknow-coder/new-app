@@ -58,19 +58,26 @@ function sparkle(x, y, s, d) {
 }
 
 /** SVG chest. Lid, seam light and body are separate so they can be animated. */
+let svgSeq = 0;
 export function chestSVG(tier, cls = '') {
   const c = TIERS[tier];
+  const gid = `chest-glow-${++svgSeq}`;
   const wood = tier === 'wood';
   const rivets = (y) =>
     [26.5, 93.5].map((x) => `<circle cx="${x}" cy="${y}" r="1.8" fill="${c.dark}" opacity=".55"/>`).join('');
   return `
   <svg class="chest-svg tier-${tier} ${cls}" viewBox="0 0 120 112" aria-hidden="true">
     <ellipse class="chest-shadow" cx="60" cy="104" rx="46" ry="6" fill="rgba(0,0,0,.28)"/>
+    <defs>
+      <radialGradient id="${gid}" cx="50%" cy="50%" r="50%">
+        <stop offset="0" stop-color="#fff"/>
+        <stop offset=".35" stop-color="#fff" stop-opacity=".95"/>
+        <stop offset=".7" stop-color="${c.glow}" stop-opacity=".85"/>
+        <stop offset="1" stop-color="${c.glow}" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
     <g class="chest-inner">
-      <path d="M30 52 L14 -40 L106 -40 L90 52z" fill="${c.glow}" opacity=".28"/>
-      <path d="M44 52 L36 -40 L84 -40 L76 52z" fill="#fff" opacity=".25"/>
-      <ellipse cx="60" cy="52" rx="44" ry="10" fill="${c.glow}"/>
-      <ellipse cx="60" cy="52" rx="26" ry="5" fill="#fff"/>
+      <ellipse cx="60" cy="52" rx="48" ry="12" fill="url(#${gid})"/>
     </g>
     <g class="chest-body">
       <rect x="10" y="50" width="100" height="50" rx="9" fill="${c.body}"/>
@@ -105,6 +112,19 @@ const $ = (s) => document.querySelector(s);
 const buzz = (p) => store.setting('haptics') && haptic(p);
 const TAPS = 3;
 let busy = false;
+
+/** Anchor the light effects on the chest's mouth (where the lid meets the body). */
+function placeLight() {
+  const stage = $('#chest-stage');
+  const wrap = $('#chest-wrap');
+  const light = stage.querySelector('.chest-light');
+  if (!light || !wrap) return;
+  const s = stage.getBoundingClientRect();
+  const w = wrap.getBoundingClientRect();
+  light.style.left = `${w.left - s.left + w.width / 2}px`;
+  light.style.top = `${w.top - s.top + w.height * (50 / 112)}px`;
+  light.style.setProperty('--k', (w.width / 240).toFixed(3));
+}
 
 function setTier(stage, tier, title) {
   stage.dataset.tier = tier;
@@ -187,7 +207,9 @@ export function openChest({ id, tier: startTier, title }) {
       reducedMotion() ? 0 : 650,
     );
     // Dust puff and a little thud when the chest lands.
+    placeLight();
     setTimeout(() => {
+      placeLight();
       replay($('#chest-wrap'), 'landed');
       sfx.chestShake(0);
     }, reducedMotion() ? 0 : 430);
@@ -237,6 +259,9 @@ export function openChest({ id, tier: startTier, title }) {
       save();
 
       stage.dataset.stage = 'open';
+      // The chest shrinks once open: keep the light glued to its mouth while it does.
+      const follow = setInterval(placeLight, 50);
+      setTimeout(() => clearInterval(follow), 700);
       replay($('#chest-flash'), 'flash');
       sfx.chestOpen();
       buzz([30, 40, 60]);

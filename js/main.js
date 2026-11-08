@@ -1,4 +1,4 @@
-import { tilt, isSolved, solve, starsFor, stateKey, DIRS, comboReachable } from './engine.js';
+import { tilt, isSolved, solve, starsFor, stateKey, DIRS, comboReachable, hashString } from './engine.js';
 import { dateKey, puzzleNumber, msUntilTomorrow, dailyLevel, DAILY_ORDER, addDays } from './daily.js';
 import { store, computeStats, save } from './storage.js';
 import { sfx, haptic, setSoundEnabled, unlockAudio, setMusicEnabled, setMusicTheme } from './audio.js';
@@ -1065,6 +1065,37 @@ function nodeX(n) {
   return 50 + 30 * Math.sin(n * 0.8);
 }
 
+// Decoration shapes per world theme (index % 8), drawn in CSS.
+const DECOS = [
+  ['pebble', 'shell'],
+  ['dune', 'cactus'],
+  ['spire', 'rock'],
+  ['coral', 'bubble'],
+  ['mountain', 'pine'],
+  ['crystal', 'snow'],
+  ['tree', 'bush'],
+  ['neon', 'neonring'],
+];
+
+/** Deterministic pseudo-random in [0,1) from a string. */
+const rand01 = (key) => (hashString(key) % 10000) / 10000;
+
+function worldBanner(w, ws, first, unlocked) {
+  const max = LEVELS_PER_WORLD * 3;
+  const marks = WORLD_CHESTS.map((c) => {
+    const id = chestId(w, c.k);
+    const state = isOpened(id) ? 'opened' : ws >= c.stars ? 'ready' : 'locked';
+    return `<b class="wh-mark is-${state}" style="left:${(c.stars / max) * 100}%">${chestSVG(c.tier, state === 'opened' ? 'is-open' : '')}</b>`;
+  }).join('');
+  return `
+    <header class="world-head">
+      <span class="wh-badge"><span>${w + 1}</span></span>
+      <span class="wh-text"><small>${t('world', { n: w + 1 })}</small><strong>${t(`world${w % WORLD_HUES.length}`)}</strong></span>
+      <span class="world-stars"><svg><use href="#i-star"/></svg>${ws}/${max}</span>
+      <span class="wh-bar"><i style="width:${(ws / max) * 100}%"></i>${marks}</span>
+    </header>`;
+}
+
 function renderMap({ hideUnlock = 0 } = {}) {
   const unlocked = store.data.levels.unlocked;
   const lastWorld = worldOf(unlocked) + 1; // show the next world as a locked preview
@@ -1073,30 +1104,51 @@ function renderMap({ hideUnlock = 0 } = {}) {
   let total = 0;
   for (let w = 0; w <= lastWorld; w++) {
     const hue = WORLD_HUES[w % WORLD_HUES.length];
+    const theme = w % WORLD_HUES.length;
     const first = w * LEVELS_PER_WORLD + 1;
     const ws = worldStars(w);
     total += ws;
+    const locked = first > unlocked;
 
     const sec = document.createElement('section');
-    sec.className = `world ${first > unlocked ? 'is-locked' : ''}`;
+    sec.className = `world theme-${theme} ${locked ? 'is-locked' : ''}`;
     sec.dataset.world = w;
     sec.style.setProperty('--hue', hue);
     const height = LEVELS_PER_WORLD * ROW + 30 + 90;
     const pts = [];
+    const donePts = [];
     let nodes = '';
+    let land = '';
+    let decos = '';
     for (let i = 0; i < LEVELS_PER_WORLD; i++) {
       const n = first + i;
       const x = nodeX(n);
       const y = i * ROW + 50;
       pts.push(`${x},${y}`);
+      if (n <= unlocked && n !== hideUnlock) donePts.push(`${x},${y}`);
       const stars = store.levelStars(n);
       let state = n < unlocked || stars ? 'done' : n === unlocked ? 'current' : 'locked';
       if (n === hideUnlock) state = 'locked';
       const inner = state === 'locked' ? '<svg><use href="#i-lock"/></svg>' : `<span>${n}</span>`;
       const starRow = state === 'done' ? `<span class="node-stars">${starsHTML(stars)}</span>` : '';
-      nodes += `<button class="node is-${state} ${isBoss(n) ? 'is-boss' : ''}" data-n="${n}" style="left:${x}%;top:${y}px;--i:${i}" aria-label="${t('level', { n })}${stars ? `, ${stars}/3` : ''}">${inner}${starRow}${isBoss(n) ? '<em>BOSS</em>' : introAt(n) ? `<em class="em-new">${t('newShort')}</em>` : ''}</button>`;
+      const tag = isBoss(n) ? '<em>BOSS</em>' : introAt(n) ? `<em class="em-new">${t('newShort')}</em>` : '';
+      nodes += `<button class="node is-${state} ${isBoss(n) ? 'is-boss' : ''}" data-n="${n}" style="left:${x}%;top:${y}px;--i:${i}" aria-label="${t('level', { n })}${stars ? `, ${stars}/3` : ''}">${inner}${starRow}${tag}</button>`;
+      if (state === 'current') nodes += `<i class="you-are-here" style="left:${x}%;top:${y}px"></i>`;
+      // Islands of land under the road.
+      if (i % 2 === 0) {
+        const r = 150 + rand01(`land:${w}:${i}`) * 90;
+        land += `<i class="land" style="left:${x + (rand01(`lx:${w}:${i}`) - 0.5) * 16}%;top:${y + ROW / 2}px;--r:${r}px"></i>`;
+      }
+      // Themed props on the empty side of the road.
+      if (rand01(`deco:${w}:${i}`) < 0.75) {
+        const side = x > 50 ? 4 + rand01(`dx:${w}:${i}`) * 26 : 70 + rand01(`dx:${w}:${i}`) * 26;
+        const kinds = DECOS[theme];
+        const kind = kinds[hashString(`dk:${w}:${i}`) % kinds.length];
+        const sc = 0.7 + rand01(`ds:${w}:${i}`) * 0.6;
+        decos += `<i class="deco deco-${kind}" style="left:${side}%;top:${y + (rand01(`dy:${w}:${i}`) - 0.5) * 50}px;--s:${sc.toFixed(2)};--dd:${(-rand01(`dd:${w}:${i}`) * 4).toFixed(2)}s"></i>`;
+      }
     }
-    // Star chests along the path.
+    // Star chests along the road.
     for (const c of WORLD_CHESTS) {
       const id = chestId(w, c.k);
       const opened = isOpened(id);
@@ -1107,6 +1159,7 @@ function renderMap({ hideUnlock = 0 } = {}) {
         x = 50;
         y = LEVELS_PER_WORLD * ROW + 40;
         pts.push(`${x},${y}`);
+        if (unlocked > first + LEVELS_PER_WORLD - 1) donePts.push(`${x},${y}`);
       } else {
         const mid = (nodeX(first + c.after - 1) + nodeX(first + c.after)) / 2;
         x = mid > 50 ? 20 : 80;
@@ -1120,23 +1173,30 @@ function renderMap({ hideUnlock = 0 } = {}) {
           : `<b class="chest-label">${Math.min(ws, c.stars)}/${c.stars}<svg><use href="#i-star"/></svg></b>`;
       nodes += `<button class="chest-node is-${state}" data-chest="${id}" data-tier="${c.tier}" data-need="${c.stars}" style="left:${x}%;top:${y}px" aria-label="${t(`chest_${c.tier}`)}">${chestSVG(c.tier, opened ? 'is-open' : '')}${label}</button>`;
     }
+    const line = (cls, list) => (list.length > 1 ? `<polyline class="${cls}" points="${list.join(' ')}" vector-effect="non-scaling-stroke"/>` : '');
+    const fog = locked
+      ? `<div class="world-fog"><span><svg><use href="#i-lock"/></svg>${t('worldLocked', { n: w })}</span></div>`
+      : '';
     sec.innerHTML = `
-      <header class="world-head">
-        <small>${t('world', { n: w + 1 })}</small>
-        <strong>${t(`world${w % WORLD_HUES.length}`)}</strong>
-        <span class="world-stars"><svg><use href="#i-star"/></svg>${ws}/${LEVELS_PER_WORLD * 3}</span>
-      </header>
+      ${worldBanner(w, ws, first, unlocked)}
       <div class="world-path" style="height:${height}px">
+        <div class="world-land">${land}</div>
+        ${decos}
         <svg class="path-svg" viewBox="0 0 100 ${height}" preserveAspectRatio="none" aria-hidden="true">
-          <polyline points="${pts.join(' ')}" vector-effect="non-scaling-stroke"/>
+          ${line('road-base', pts)}
+          ${line('road-done', donePts)}
+          ${line('road-dash', pts)}
+          ${line('road-dash-done', donePts)}
         </svg>
         ${nodes}
+        ${fog}
       </div>`;
     map.appendChild(sec);
   }
   $('#map-sub').textContent = `${total}★ · ${t('level', { n: unlocked })}`;
   updateCoins();
   updateMapScenery();
+  requestAnimationFrame(() => typeof updateRecenter === 'function' && updateRecenter());
 }
 
 /** The animated background follows the world you are scrolling through. */
@@ -1191,6 +1251,19 @@ function playUnlock(u) {
       node.className = `node is-current ${isBoss(u) ? 'is-boss' : ''} just-unlocked`;
       node.innerHTML = `<span>${u}</span>${isBoss(u) ? '<em>BOSS</em>' : ''}`;
       const path = node.parentElement;
+      const here = document.createElement('i');
+      here.className = 'you-are-here arrive';
+      here.style.left = node.style.left;
+      here.style.top = node.style.top;
+      path.appendChild(here);
+      // Extend the lit road to the new level.
+      const done = path.querySelector('.road-done');
+      if (done) {
+        const pt = `${parseFloat(node.style.left)},${parseFloat(node.style.top)}`;
+        done.setAttribute('points', `${done.getAttribute('points')} ${pt}`);
+        const dd = path.querySelector('.road-dash-done');
+        if (dd) dd.setAttribute('points', done.getAttribute('points'));
+      }
       burst(path, parseFloat(node.style.left), (parseFloat(node.style.top) / path.clientHeight) * 100, {
         count: 18,
         colors: ['var(--accent)', '#fff', worldHue(u)],
@@ -1245,7 +1318,61 @@ els.mapEl.addEventListener('click', (e) => {
     return;
   }
   sfx.tap();
-  iris(() => startLevel(n), worldHue(n));
+  showLevelPreview(n);
+});
+
+/** Level card shown before playing: best stars, par, special tiles, combo hint. */
+function showLevelPreview(n) {
+  const level = adventureLevel(n);
+  const best = store.levelStars(n);
+  const card = $('#modal-level .modal-card');
+  card.style.setProperty('--hue', worldHue(n));
+  $('#lp-world').textContent = `${t('world', { n: worldOf(n) + 1 })} · ${t(`world${worldOf(n) % WORLD_HUES.length}`)}`;
+  $('#lp-title').textContent = isBoss(n) ? `${t('level', { n })} · BOSS` : t('level', { n });
+  $('#lp-stars').innerHTML = [0, 1, 2]
+    .map((i) => `<span class="${i < best ? 'on' : ''}" style="--i:${i}"><svg><use href="#i-star"/></svg></span>`)
+    .join('');
+  const chips = [`<span class="lp-chip lp-par">${t('par', { n: level.par })}</span>`];
+  const marbles = level.pieces.filter((p) => p.kind === 'marble').length;
+  chips.push(`<span class="lp-chip"><i class="lp-ico ico-marble"></i>×${marbles}</span>`);
+  if (level.pieces.some((p) => p.kind === 'stone')) chips.push(`<span class="lp-chip"><i class="lp-ico ico-stone"></i>${t('stones')}</span>`);
+  if (level.sand) chips.push(`<span class="lp-chip"><i class="lp-ico ico-sand"></i>${t('mech_sand_title')}</span>`);
+  if (level.gates) chips.push(`<span class="lp-chip"><i class="lp-ico ico-gate"></i>${t('mech_gates_title')}</span>`);
+  if (level.portal) chips.push(`<span class="lp-chip"><i class="lp-ico ico-portal"></i>${t('mech_portals_title')}</span>`);
+  $('#lp-chips').innerHTML = chips.join('');
+  $('#lp-best').textContent = best === 3 ? t('perfect') : best ? t('lpImprove', { n: 3 - best }) : t('lpGoal');
+  $('#lp-play').onclick = () => {
+    closeModal('modal-level');
+    sfx.tap();
+    iris(() => startLevel(n), worldHue(n));
+  };
+  openModal('modal-level');
+  setTimeout(() => {
+    if (comboReachable(level)) {
+      $('#lp-chips').insertAdjacentHTML('beforeend', `<span class="lp-chip combo-chip">✨ ${t('comboPossible')}</span>`);
+    }
+  }, 120);
+}
+
+/* "Back to my level" button when the current level is off screen. */
+const recenter = $('#map-recenter');
+function updateRecenter() {
+  const cur = els.mapEl.querySelector('.node.is-current');
+  const sc = $('#map-scroll');
+  if (!cur) {
+    recenter.hidden = true;
+    return;
+  }
+  const r = cur.getBoundingClientRect();
+  const v = sc.getBoundingClientRect();
+  const off = r.bottom < v.top + 40 ? 'up' : r.top > v.bottom - 40 ? 'down' : '';
+  recenter.hidden = !off;
+  recenter.dataset.dir = off;
+  $('#map-recenter-n').textContent = cur.dataset.n;
+}
+$('#map-scroll').addEventListener('scroll', () => requestAnimationFrame(updateRecenter), { passive: true });
+recenter.addEventListener('click', () => {
+  scrollMapTo(els.mapEl.querySelector('.node.is-current'), true);
 });
 
 /* ==========================================================================
