@@ -7,7 +7,9 @@
   "scripts": {
     "start": "python3 -m http.server 8080",
     "test": "node --test tests/*.test.mjs",
-    "build:levels": "node scripts/build-levels.mjs 240"
+    "build:levels": "node scripts/build-levels.mjs 240",
+    "e2e": "node tests/e2e/smoke.cjs",
+    "audit:levels": "node scripts/audit-levels.mjs"
   },
   "license": "MIT"
 }

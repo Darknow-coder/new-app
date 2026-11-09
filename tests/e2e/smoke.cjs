@@ -1,0 +1,145 @@
+// End-to-end smoke test: plays through the main flows in a real (headless) browser
+// on a phone viewport and fails on any JS error or broken flow.
+// Run with:  npm run e2e        (needs Playwright + Chromium installed)
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { chromium, devices } = require('playwright');
+
+const ROOT = path.resolve(__dirname, '../..');
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2' };
+
+function serve() {
+  return new Promise((resolve) => {
+    const srv = http.createServer((req, res) => {
+      const url = decodeURIComponent(req.url.split('?')[0]);
+      const file = path.join(ROOT, url === '/' ? 'index.html' : url);
+      if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+        res.writeHead(404);
+        return res.end();
+      }
+      res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
+      fs.createReadStream(file).pipe(res);
+    });
+    srv.listen(0, () => resolve(srv));
+  });
+}
+
+const steps = [];
+async function step(name, fn) {
+  const t = Date.now();
+  try {
+    await fn();
+    steps.push(`✓ ${name} (${Date.now() - t}ms)`);
+  } catch (e) {
+    steps.push(`✗ ${name}: ${e.message.split('\n')[0]}`);
+    throw e;
+  }
+}
+const assert = (c, m) => {
+  if (!c) throw new Error(m);
+};
+
+(async () => {
+  const srv = await serve();
+  const base = `http://localhost:${srv.address().port}/`;
+  const browser = await chromium.launch();
+  const ctx = await browser.newContext({ ...devices['Pixel 7'], locale: 'fr-FR' });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  const M = (fn, arg) => page.evaluate(fn, arg);
+  const solve = async () => {
+    for (const d of await M(() => window.__marbl.game.level.solution)) {
+      await M((d) => window.__marbl.move(d), d);
+      await page.waitForTimeout(450);
+    }
+    await page.waitForTimeout(1200);
+  };
+  let ok = true;
+  try {
+    await step('new player: tutorial', async () => {
+      await page.goto(base);
+      await page.waitForTimeout(1800);
+      for (let i = 0; i < 4; i++) await solve();
+      await page.click('#result-actions .btn-primary');
+      await page.waitForTimeout(1500);
+      assert((await M(() => window.__marbl.game?.n)) === 1, 'tutorial should lead to level 1');
+    });
+    await step('adventure: win level 1 and 2', async () => {
+      await solve();
+      assert(await M(() => window.__marbl.game.done), 'level 1 not solved');
+      await page.click('#result-actions .btn-primary');
+      await page.waitForTimeout(1500);
+      await solve();
+      assert((await M(() => window.__marbl.store.data.levels.unlocked)) === 3, 'level 3 should be unlocked');
+    });
+    await step('map renders with scenery', async () => {
+      await M(() => window.__marbl.openMap());
+      await page.waitForTimeout(1200);
+      assert((await page.locator('.map-scene use').count()) > 5, 'no map props drawn');
+      assert((await page.locator('.node').count()) >= 20, 'nodes missing');
+    });
+    await step('chest ceremony', async () => {
+      await M(() => {
+        window.__marbl.openChest({ tier: 'silver' });
+      });
+      await page.waitForTimeout(1300);
+      await page.mouse.click(200, 450);
+      await page.waitForTimeout(5200);
+      await page.click('#chest-collect');
+      await page.waitForTimeout(1800);
+      assert(!(await M(() => document.querySelector('#modal-chest').open)), 'chest dialog stuck open');
+    });
+    await step('shop: buy a booster pack', async () => {
+      await M(() => {
+        window.__marbl.store.data.coins = 1000;
+        window.__marbl.openShop('boost');
+      });
+      await page.waitForTimeout(800);
+      const before = await M(() => window.__marbl.store.data.boosters.hint);
+      await page.click('[data-buy="pack"]', { force: true });
+      await page.waitForTimeout(1200);
+      assert((await M(() => window.__marbl.store.data.boosters.hint)) === before + 3, 'pack not granted');
+      await M(() => document.querySelector('#modal-shop').close());
+    });
+    await step('daily puzzle', async () => {
+      await M(() => window.__marbl.renderHome());
+      await page.evaluate(() => document.querySelector('.daily-card[data-diff=easy]').click());
+      await page.waitForTimeout(1500);
+      await solve();
+      assert(await M(() => window.__marbl.game.done), 'daily not solved');
+    });
+    await step('season pass opens', async () => {
+      await M(() => document.querySelector('#modal-result').close());
+      await M(() => window.__marbl.openSeason());
+      await page.waitForTimeout(600);
+      assert((await page.locator('.sp-tier').count()) === 30, 'season tiers missing');
+      await M(() => document.querySelector('#modal-season').close());
+    });
+    await step('challenge link', async () => {
+      await page.goto(`${base}?defi=5&c=9`);
+      await page.waitForTimeout(1800);
+      assert((await M(() => window.__marbl.game?.mode)) === 'challenge', 'challenge mode not started');
+      await solve();
+      assert(await M(() => window.__marbl.game.done), 'challenge not solved');
+    });
+    await step('save export / import', async () => {
+      const ok2 = await M(async () => {
+        const s = await import('./js/storage.js');
+        const code = s.exportProgress();
+        return s.importProgress(code);
+      });
+      assert(ok2, 'round-trip failed');
+    });
+    assert(!errors.length, `JS errors: ${errors.join(' | ')}`);
+  } catch {
+    ok = false;
+  }
+  console.log(steps.join('\n'));
+  if (errors.length) console.log('errors:', errors);
+  await browser.close();
+  srv.close();
+  process.exit(ok ? 0 : 1);
+})();

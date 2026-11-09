@@ -50,6 +50,8 @@ Marbl #7 🔥4
 npm start      # serves on http://localhost:8080 (python3 http.server)
 npm test       # engine, levels, chests and progression tests (node --test)
 npm run build:levels   # re-generate js/levels-data.js after changing the generator
+npm run e2e            # end-to-end smoke test in a headless browser (needs Playwright)
+npm run audit:levels   # difficulty audit of all levels
 ```
 
 ## Publish for free
@@ -81,3 +83,5 @@ so link previews show the image on every platform, and bump `VERSION` in `sw.js`
 | `sw.js` | Offline-first service worker. |
 
 All art (icons, marbles, board) is original CSS/SVG; sounds are synthesised at runtime. MIT licensed.
+
+See [RELEASE.md](RELEASE.md) for the release checklist.
