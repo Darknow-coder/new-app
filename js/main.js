@@ -429,6 +429,120 @@ function startDaily(diff) {
   });
 }
 
+/** Play a friend's challenge: same level, beat their move count. Never touches progress. */
+function startChallenge(n, target) {
+  const level = adventureLevel(n);
+  startGame({
+    mode: 'challenge',
+    n,
+    target,
+    level,
+    title: t('chTitle'),
+    sub: t('level', { n }),
+    tip: t('chTip', { c: target }),
+  });
+}
+
+/** Draw a shareable result picture (board + score) and share it with a challenge link. */
+async function challengeImage(n, moves, stars) {
+  const lvl = adventureLevel(n);
+  const S = 720;
+  const c = document.createElement('canvas');
+  c.width = S;
+  c.height = 900;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, 900);
+  g.addColorStop(0, '#2a3070');
+  g.addColorStop(1, '#11142b');
+  x.fillStyle = g;
+  x.fillRect(0, 0, S, 900);
+  const font = (w, px) => `${w} ${px}px Fredoka, system-ui, sans-serif`;
+  x.textAlign = 'center';
+  x.fillStyle = '#fff';
+  x.font = font(700, 64);
+  x.fillText('marbl', S / 2, 90);
+  x.font = font(600, 34);
+  x.fillStyle = '#ffc23d';
+  x.fillText(`${t('level', { n })} · ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`, S / 2, 140);
+  // board
+  const pad = 70;
+  const size = S - pad * 2;
+  const cell = size / lvl.w;
+  const top = 175;
+  x.fillStyle = '#262b5c';
+  x.beginPath();
+  x.roundRect(pad - 16, top - 16, size + 32, cell * lvl.h + 32, 28);
+  x.fill();
+  const cols = ['#ff5d73', '#1fd1b9', '#ffc23d', '#9a7bff'];
+  for (let i = 0; i < lvl.w * lvl.h; i++) {
+    const cx = pad + (i % lvl.w) * cell;
+    const cy = top + Math.floor(i / lvl.w) * cell;
+    x.fillStyle = (i % lvl.w + Math.floor(i / lvl.w)) % 2 ? '#2d336b' : '#2a3065';
+    x.fillRect(cx, cy, cell, cell);
+    if (lvl.walls[i]) {
+      x.fillStyle = '#4a5294';
+      x.beginPath();
+      x.roundRect(cx + 4, cy + 4, cell - 8, cell - 8, 10);
+      x.fill();
+    } else if (lvl.holes[i] >= 0) {
+      x.fillStyle = '#05060f';
+      x.strokeStyle = cols[lvl.holes[i]];
+      x.lineWidth = 6;
+      x.beginPath();
+      x.arc(cx + cell / 2, cy + cell / 2, cell * 0.32, 0, 7);
+      x.fill();
+      x.stroke();
+    }
+  }
+  lvl.pieces.forEach((p, i) => {
+    const at = lvl.start[i];
+    const cx = pad + (at % lvl.w) * cell + cell / 2;
+    const cy = top + Math.floor(at / lvl.w) * cell + cell / 2;
+    x.fillStyle = p.kind === 'stone' ? '#9ea3c2' : cols[p.color];
+    x.beginPath();
+    if (p.kind === 'stone') x.roundRect(cx - cell * 0.38, cy - cell * 0.38, cell * 0.76, cell * 0.76, 12);
+    else x.arc(cx, cy, cell * 0.38, 0, 7);
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,.7)';
+    x.beginPath();
+    x.arc(cx - cell * 0.12, cy - cell * 0.14, cell * 0.08, 0, 7);
+    x.fill();
+  });
+  const by = top + cell * lvl.h + 80;
+  x.fillStyle = '#fff';
+  x.font = font(700, 46);
+  x.fillText(t('chImgScore', { m: moves }), S / 2, by);
+  x.fillStyle = '#a4a7cf';
+  x.font = font(600, 32);
+  x.fillText(t('chImgCta'), S / 2, by + 50);
+  return new Promise((r) => c.toBlob(r, 'image/png'));
+}
+
+async function shareChallenge(n, moves, stars) {
+  const url = `${location.origin}${location.pathname.replace(/index\.html$/, '')}?defi=${n}&c=${moves}`;
+  const text = t('chShareText', { n, m: moves });
+  try {
+    const blob = await challengeImage(n, moves, stars);
+    const file = new File([blob], `marbl-${n}.png`, { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) {
+      await navigator.share({ files: [file], text: `${text}\n${url}` });
+      return;
+    }
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+      await navigator.share({ text, url });
+      return;
+    }
+  } catch (e) {
+    if (e?.name === 'AbortError') return;
+  }
+  try {
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    toast(t('chCopied'));
+  } catch {
+    toast(url);
+  }
+}
+
 function startLevel(n) {
   sfx.tap();
   const level = adventureLevel(n);
@@ -926,6 +1040,12 @@ function onSolved() {
     game.dayDone = dailyChestReady(game.day);
     store.addCoins(game.reward);
     game.prog = track('dailyWin', { stars });
+  } else if (game.mode === 'challenge') {
+    if (game.moves <= game.target && !store.data.chWon?.[`${game.n}:${game.target}`]) {
+      store.data.chWon = { ...(store.data.chWon || {}), [`${game.n}:${game.target}`]: 1 };
+      game.reward = 30;
+      store.addCoins(30);
+    }
   } else if (game.mode === 'level') {
     const prev = store.recordLevel(game.n, stars);
     game.newBest = prev > 0 && stars > prev;
@@ -997,8 +1117,25 @@ function showResult() {
       actions.push({ label: t('openChest'), primary: true, wide: true, icon: 'i-gift', onClick: () => openDailyChest(day).then(goHome) });
       actions.find((a) => a.icon === 'i-share').primary = false;
     }
+  } else if (game.mode === 'challenge') {
+    const n = game.n;
+    const won = moves <= game.target;
+    showResultCard({
+      stars,
+      title: won ? t('chWon') : t('chLost'),
+      line: t('chLine', { m: moves, c: game.target }),
+      sub: won ? t('chWonSub') : t('chLostSub'),
+      reward: game.reward || 0,
+      actions: [
+        { label: t('home'), onClick: goHome },
+        ...(won ? [] : [{ label: t('retry'), onClick: () => iris(() => startChallenge(n, game.target)) }]),
+        { label: t('chBack'), primary: true, icon: 'i-share', wide: true, keepOpen: true, onClick: () => shareChallenge(n, moves, stars) },
+      ],
+    });
+    return;
   } else if (game.mode === 'level') {
     const n = game.n;
+    actions.push({ label: t('challengeFriend'), icon: 'i-share', keepOpen: true, wide: true, onClick: () => shareChallenge(n, game.moves, stars) });
     actions.push({ label: t('map'), onClick: () => iris(openMap, worldHue(n)) });
     if (stars < 3) actions.push({ label: t('retry'), onClick: () => iris(() => startLevel(n), worldHue(n)) });
     actions.push({ label: t('nextLevel'), primary: true, icon: 'i-play', iconAfter: true, onClick: () => iris(() => startLevel(n + 1), worldHue(n + 1)), wide: true });
@@ -2330,7 +2467,14 @@ if (splash) {
     setTimeout(() => splash.remove(), hold + 600);
   }
 }
-if (!store.data.tutorialDone) {
+const params = new URLSearchParams(location.search);
+const chN = Number(params.get('defi'));
+const chC = Number(params.get('c'));
+if (chN >= 1 && chN <= 240 && chC >= 1 && chC <= 99) {
+  history.replaceState(null, '', location.pathname);
+  showView('home');
+  setTimeout(() => startChallenge(chN, chC), 300);
+} else if (!store.data.tutorialDone) {
   startTutorial(0);
 } else {
   showView('home');
@@ -2341,5 +2485,5 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:' && !/localhost
 }
 
 // Debug hook for automated tests (harmless in production).
-window.__marbl = { season, openSeason,
+window.__marbl = { startChallenge, challengeImage, season, openSeason,
   track, handleProgress, notify, quests, get game() { return game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap, openShop, renderHome, openChest, setPendingUnlock: (n) => (pendingUnlock = n) };
