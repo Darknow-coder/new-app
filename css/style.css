@@ -7139,3 +7139,228 @@ body {
     transform: translateX(5px);
   }
 }
+
+/* ==========================================================================
+   Season pass
+   ========================================================================== */
+.season-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 2px 0 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  text-align: left;
+  background: linear-gradient(120deg, #ff9a3d, #ff5d73 55%, #9a7bff);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 6px 0 rgba(120, 30, 60, 0.5), 0 12px 24px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+.season-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.25) 50%, transparent 60%);
+  transform: translateX(-100%);
+  animation: shimmer 3.2s 1s ease-in-out infinite;
+  pointer-events: none;
+}
+.season-badge {
+  position: relative;
+  flex: none;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  color: #ffd34d;
+  font-size: 46px;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.25));
+}
+.season-badge svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.season-badge b {
+  position: relative;
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #7a3b00;
+}
+.season-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.season-text strong {
+  font-size: 18px;
+  font-weight: 700;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+.season-text small {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+.season-card .xp-bar,
+.sp-progress .xp-bar {
+  height: 9px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.season-card .xp-bar i,
+.sp-progress .xp-bar i {
+  background: linear-gradient(90deg, #fff3a0, #ffd34d);
+}
+.season-ready {
+  flex: none;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 99px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  color: #e2405b;
+  font-weight: 700;
+  animation: claim-glow 1.2s ease-in-out infinite;
+}
+.season-modal {
+  padding: 0 0 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 40px);
+}
+.sp-head {
+  padding: 22px 18px 14px;
+  color: #fff;
+  background: linear-gradient(120deg, #ff9a3d, #ff5d73 55%, #9a7bff);
+  text-align: center;
+}
+.sp-head > small {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.sp-head h2 {
+  margin: 2px 0 0;
+  color: #fff;
+}
+.sp-head p {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+.sp-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 6px;
+}
+.sp-progress .xp-bar {
+  flex: 1;
+}
+.sp-progress small {
+  font-weight: 700;
+  font-size: 12px;
+}
+.sp-how {
+  font-size: 12px !important;
+  line-height: 1.35;
+}
+.sp-track {
+  list-style: none;
+  margin: 0;
+  padding: 12px 14px 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+}
+.sp-tier {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  border: 2px solid var(--rim);
+  box-shadow: 0 4px 0 var(--edge);
+}
+.sp-tier.is-big {
+  background: linear-gradient(110deg, color-mix(in srgb, #ffc23d 22%, var(--surface-2)), var(--surface-2));
+  border-color: color-mix(in srgb, #ffc23d 50%, transparent);
+}
+.sp-tier.is-locked,
+.sp-tier.is-next {
+  opacity: 0.65;
+}
+.sp-tier.is-next {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.sp-tier.is-claimed {
+  opacity: 0.5;
+}
+.sp-num {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  background: var(--surface-3);
+}
+.sp-tier.is-ready .sp-num,
+.sp-tier.is-claimed .sp-num {
+  background: linear-gradient(to bottom, var(--gold-1), var(--gold-3));
+  color: #fff;
+  text-shadow: 0 1px 0 var(--gold-edge);
+}
+.sp-reward {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.sp-ico {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  color: var(--accent);
+}
+.sp-ico.rewind {
+  color: var(--c1);
+}
+.sp-chest {
+  width: 40px;
+  height: 36px;
+}
+.sp-chest svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.sp-skin .marble-preview {
+  width: 36px;
+  height: 36px;
+}
+.sp-lock {
+  color: var(--faint);
+  font-size: 16px;
+  padding: 0 8px;
+}

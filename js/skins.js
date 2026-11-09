@@ -22,6 +22,7 @@ export const SETS = [
   { id: 'classic', world: -1 },
   ...Array.from({ length: 8 }, (_, w) => ({ id: `w${w}`, world: w })),
   { id: 'cute', world: -2 },
+  { id: 'season', world: -3 },
 ];
 export const LEGEND_BONUS = 300;
 
@@ -161,6 +162,20 @@ export const SKINS = [
   { id: 'cute-wink', set: 'cute', rarity: 'rare', n: ['Winky', 'Clin d’œil'], face: 'wink', req: 'reqTriple' },
   { id: 'cute-cool', set: 'cute', rarity: 'epic', n: ['Cool', 'Stylée'], face: 'cool', req: 'reqStreak7' },
   { id: 'cute-cat', set: 'cute', rarity: 'epic', n: ['Kitty', 'Chaton'], face: 'cat', req: 'reqChests25' },
+
+  // ── Saison (season pass exclusives) ──────────────────────────────────────
+  { id: 'season-comet', set: 'season', rarity: 'epic', n: ['Comet', 'Comète'], req: 'reqSeason',
+    bg: L(`linear-gradient(135deg, transparent 35%, ${W(0.9)} 48%, transparent 52%)`, `radial-gradient(circle at 70% 30%, #fff 0 8%, transparent 14%)`, `radial-gradient(circle at 40% 70%, ${W(0.4)} 0 4%, transparent 6%)`),
+    css: 'animation: sk-twinkle 1.4s ease-in-out infinite;' },
+  { id: 'season-crown', set: 'season', rarity: 'legendary', n: ['Royal', 'Royale'], req: 'reqSeason',
+    bg: L(`radial-gradient(circle, transparent 54%, #ffd34d 56% 62%, transparent 64%)`, `repeating-conic-gradient(#ffd34d 0 4deg, transparent 4deg 30deg)`),
+    css: 'animation: sk-pulse 1.6s ease-in-out infinite;' },
+  { id: 'season-rainbow', set: 'season', rarity: 'epic', n: ['Rainbow', 'Arc-en-ciel'], req: 'reqSeason',
+    bg: [HL, `conic-gradient(from 90deg, #ff5d73, #ffc23d, #5ed36a, #1fd1b9, #4aa8ff, #9a7bff, #ff5d73)`].join(','),
+    css: 'box-shadow: inset 0 0 0 3px var(--col), 0 5px 10px rgba(0,0,0,.35);' },
+  { id: 'season-phoenix', set: 'season', rarity: 'legendary', n: ['Phoenix', 'Phénix'], req: 'reqSeason',
+    bg: L(`radial-gradient(ellipse 30% 45% at 50% 60%, rgba(255,240,170,.95), rgba(255,140,60,.6) 50%, transparent 70%)`, `repeating-conic-gradient(from 200deg at 50% 70%, rgba(255,200,80,.5) 0 8deg, transparent 8deg 24deg)`),
+    css: 'animation: sk-flame 1.1s ease-in-out infinite;' },
 ];
 const BY_ID = new Map(SKINS.map((s) => [s.id, s]));
 export const skinById = (id) => BY_ID.get(id);
@@ -273,7 +288,7 @@ export function availableSets() {
  * the player has reached. Legendary and cute marbles are never dropped directly.
  */
 export function pickSkin(rarities, world = null) {
-  const droppable = (s) => !hasSkin(s.id) && s.rarity !== 'legendary' && s.set !== 'cute';
+  const droppable = (s) => !hasSkin(s.id) && s.rarity !== 'legendary' && s.set !== 'cute' && s.set !== 'season';
   const sets = availableSets();
   const tries = [];
   if (world != null && world >= 0 && world < 8) tries.push((s) => s.set === `w${world}` && rarities.includes(s.rarity));

@@ -56,6 +56,12 @@ import {
   achievementsReady,
   takeFromInbox,
   checkAchievements,
+  season,
+  seasonReady,
+  claimTier,
+  tierReward,
+  SEASON_TIERS,
+  TIER_SP,
 } from './progress.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -125,7 +131,7 @@ function announce(msg) {
 
 // What rises in, and in which order, when each screen appears.
 const ENTER = {
-  home: '.view-home .topbar > *, .hero > *, .adventure-hero, .daily-list > li, .share-row, .countdown, .quests-card, .quest, .footer-note, .bottom-nav > *',
+  home: '.view-home .topbar > *, .hero > *, .adventure-hero, .season-card, .daily-list > li, .share-row, .countdown, .quests-card, .quest, .footer-note, .bottom-nav > *',
   game: '.game-topbar > *, .tip, .controls > .ctrl',
   map: '.view-map .topbar > *, .world-head',
 };
@@ -209,6 +215,8 @@ function handleProgress(res) {
   for (const n of res.notes || []) {
     if (n.kind === 'quest') {
       notify('i-flag', t('questDone'), t(`quest_${n.id}`, { n: n.target }));
+    } else if (n.kind === 'season') {
+      notify('i-star', t('seasonTierUp', { n: n.tier }), t('seasonPass'), 'levelup');
     } else if (n.kind === 'achievement') {
       notify('i-star', t('achUnlocked'), t(`ach_${n.id}`));
     }
@@ -348,6 +356,7 @@ function renderHome() {
   setMusicTheme('home');
   renderPlayerStrip();
   renderQuests();
+  renderSeasonCard();
   checkAchievements();
   const achReady = achievementsReady();
   const achDone = ACHIEVEMENTS.filter((a) => store.data.ach[a.id]).length;
@@ -1568,6 +1577,105 @@ $('#inbox-btn').addEventListener('click', () => {
 });
 
 /* ==========================================================================
+   Season pass
+   ========================================================================== */
+function renderSeasonCard() {
+  const s = season(today);
+  $('#season-tier').textContent = s.tier;
+  $('#season-title').textContent = t('seasonTitle', { n: s.id });
+  $('#season-sub').textContent = t('seasonSub', { t: s.tier, max: SEASON_TIERS, d: s.daysLeft });
+  $('#season-bar').style.width = `${s.tier >= SEASON_TIERS ? 100 : (s.inTier / TIER_SP) * 100}%`;
+  const ready = seasonReady();
+  $('#season-ready').hidden = !ready;
+  $('#season-ready').textContent = ready;
+}
+
+function seasonSkinFor(k) {
+  // Tier 15 gives the next epic season marble, tier 30 the next legendary one.
+  const want = k === 30 ? 'legendary' : 'epic';
+  return setSkins('season').find((x) => x.rarity === want && !hasSkin(x.id)) || null;
+}
+
+function tierIcon(r, k) {
+  if (r.kind === 'coins') return `<span class="sp-ico"><svg><use href="#i-coin"/></svg></span><b>${r.n}</b>`;
+  if (r.kind === 'hint' || r.kind === 'rewind') return `<span class="sp-ico ${r.kind}"><svg><use href="#i-${r.kind}"/></svg></span><b>×${r.n}</b>`;
+  if (r.kind === 'chest') return `<span class="sp-chest">${chestSVG(r.tier)}</span><b>${t(`chest_${r.tier}`)}</b>`;
+  const sk = seasonSkinFor(k);
+  return `<span class="sp-skin">${marbleHTML(sk ? sk.id : 'season-crown', k === 30 ? 2 : 3)}</span><b>${sk ? skinName(sk.id) : '+300'}</b>`;
+}
+
+function renderSeason() {
+  const s = season(today);
+  $('#sp-title').textContent = t('seasonTitle', { n: s.id });
+  $('#sp-end').textContent = t('seasonEnd', { d: s.daysLeft });
+  $('#sp-tier').textContent = s.tier;
+  $('#sp-bar').style.width = `${s.tier >= SEASON_TIERS ? 100 : (s.inTier / TIER_SP) * 100}%`;
+  $('#sp-pts').textContent = s.tier >= SEASON_TIERS ? '★' : `${s.inTier}/${TIER_SP}`;
+  let html = '';
+  for (let k = 1; k <= SEASON_TIERS; k++) {
+    const r = tierReward(k);
+    const state = s.claimed.includes(k) ? 'claimed' : k <= s.tier ? 'ready' : k === s.tier + 1 ? 'next' : 'locked';
+    const big = r.kind === 'skin' || (r.kind === 'chest' && r.tier === 'gold');
+    html += `<li class="sp-tier is-${state} ${big ? 'is-big' : ''}" data-k="${k}" style="--i:${k}">
+      <span class="sp-num">${k}</span>
+      <span class="sp-reward">${tierIcon(r, k)}</span>
+      ${state === 'ready' ? `<button class="q-claim sp-claim" data-k="${k}">${t('seasonClaimAll')}</button>` : state === 'claimed' ? '<span class="q-claimed">✓</span>' : '<span class="sp-lock"><svg><use href="#i-lock"/></svg></span>'}
+    </li>`;
+  }
+  $('#sp-track').innerHTML = html;
+}
+
+function openSeason() {
+  sfx.tap();
+  renderSeason();
+  openModal('modal-season');
+  requestAnimationFrame(() => {
+    const s = season(today);
+    const target = $(`#sp-track .sp-tier[data-k="${Math.max(1, Math.min(SEASON_TIERS, s.tier))}"]`);
+    target?.scrollIntoView({ block: 'center' });
+  });
+}
+$('#btn-season').addEventListener('click', openSeason);
+
+$('#sp-track').addEventListener('click', (e) => {
+  const btn = e.target.closest('.sp-claim');
+  if (!btn) return;
+  const k = Number(btn.dataset.k);
+  const r = claimTier(k);
+  if (!r) return;
+  const row = btn.closest('.sp-tier');
+  const dlg = $('#modal-season');
+  if (r.kind === 'chest') {
+    closeModal('modal-season');
+    setTimeout(() => openChestFlow({ tier: r.tier, title: t('seasonTitle', { n: season(today).id }) }).then(() => {
+      shownCoins = null;
+      renderHome();
+      openSeason();
+    }), 260);
+    return;
+  }
+  if (r.kind === 'skin') {
+    const sk = seasonSkinFor(k);
+    if (sk) {
+      grantSkin(sk.id);
+      notify('i-star', t('newMarble'), skinName(sk.id), 'levelup');
+      sfx.epic();
+    } else {
+      store.addCoins(300);
+      toast(t('seasonSkinDone'));
+    }
+  } else sfx.coin();
+  buzz([15, 25]);
+  burst(row, 50, 50, { count: 14, colors: ['var(--accent)', '#fff'], dist: 60 });
+  floatText(btn, r.kind === 'coins' ? `+${r.n}` : '✓', dlg);
+  updateCoins(true);
+  setTimeout(() => {
+    renderSeason();
+    renderHome();
+  }, 450);
+});
+
+/* ==========================================================================
    Chest preview & collection
    ========================================================================== */
 function openMapChest(id, tier) {
@@ -1610,8 +1718,8 @@ function showChestPreview(id, tier, need) {
 }
 
 const setTitle = (set) =>
-  set.id === 'classic' ? t('setClassic') : set.id === 'cute' ? t('setCute') : `${t('world', { n: set.world + 1 })} · ${t(`world${set.world}`)}`;
-const setHue = (set) => (set.world >= 0 ? WORLD_HUES[set.world] : set.id === 'cute' ? '#ff7bb0' : '#9a7bff');
+  set.id === 'classic' ? t('setClassic') : set.id === 'cute' ? t('setCute') : set.id === 'season' ? t('setSeason') : `${t('world', { n: set.world + 1 })} · ${t(`world${set.world}`)}`;
+const setHue = (set) => (set.world >= 0 ? WORLD_HUES[set.world] : set.id === 'cute' ? '#ff7bb0' : set.id === 'season' ? '#ffb02e' : '#9a7bff');
 
 function skinSource(sk) {
   if (sk.req) return t(sk.req);
@@ -2233,4 +2341,5 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:' && !/localhost
 }
 
 // Debug hook for automated tests (harmless in production).
-window.__marbl = { track, handleProgress, notify, quests, get game() { return game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap, openShop, renderHome, openChest, setPendingUnlock: (n) => (pendingUnlock = n) };
+window.__marbl = { season, openSeason,
+  track, handleProgress, notify, quests, get game() { return game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap, openShop, renderHome, openChest, setPendingUnlock: (n) => (pendingUnlock = n) };

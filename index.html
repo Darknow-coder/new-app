@@ -90,6 +90,16 @@
             <span class="endless-go"><svg><use href="#i-play"/></svg></span>
           </button>
 
+          <button class="season-card" id="btn-season" type="button">
+            <span class="season-badge"><svg><use href="#i-star"/></svg><b id="season-tier">0</b></span>
+            <span class="season-text">
+              <strong id="season-title"></strong>
+              <small id="season-sub"></small>
+              <span class="xp-bar"><i id="season-bar"></i></span>
+            </span>
+            <span class="season-ready" id="season-ready" hidden></span>
+          </button>
+
           <ol class="daily-list" id="daily-list"></ol>
 
           <div class="share-row" id="share-row" hidden>
@@ -254,6 +264,20 @@
         <p class="lp-best" id="lp-best"></p>
         <div class="lp-chips" id="lp-chips"></div>
         <div class="modal-actions"><button class="btn btn-primary btn-full lp-play" id="lp-play"><svg><use href="#i-play"/></svg><span data-i18n="play"></span></button></div>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="modal-season">
+      <div class="modal-card season-modal">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <header class="sp-head">
+          <small data-i18n="seasonPass"></small>
+          <h2 id="sp-title"></h2>
+          <p id="sp-end"></p>
+          <div class="sp-progress"><span class="season-badge"><svg><use href="#i-star"/></svg><b id="sp-tier">0</b></span><span class="xp-bar"><i id="sp-bar"></i></span><small id="sp-pts"></small></div>
+          <p class="sp-how" data-i18n="seasonHow"></p>
+        </header>
+        <ol class="sp-track" id="sp-track"></ol>
       </div>
     </dialog>
 

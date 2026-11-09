@@ -15,6 +15,7 @@ const defaults = () => ({
   chests: { opened: {} },
   skins: { owned: ['classic'], equipped: 'classic', seen: ['classic'] },
   seenMech: {},
+  season: null,
   player: { level: 1, xp: 0 },
   inbox: [], // chests waiting to be opened: { id, tier, reason, n? }
   quests: { day: null, list: [], bonus: false },

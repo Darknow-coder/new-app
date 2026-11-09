@@ -85,6 +85,7 @@ export function claimQuest(i, day = dateKey()) {
   const coins = QUEST_TYPES[q.id].coins;
   store.data.coins += coins;
   const result = { coins, xp: 25, ups: addXP(25), bonus: false };
+  addSeasonPoints(5);
   const all = quests(day);
   if (!all.bonus && all.list.every((x) => x.claimed)) {
     all.bonus = true;
@@ -182,7 +183,79 @@ export function track(event, d = {}) {
     notes.push(...bumpQuest('chest'));
   }
   const ups = xp ? addXP(xp) : [];
+  const sp = event === 'levelWin' ? d.newStars * 2 + (d.first ? 1 : 0) : event === 'dailyWin' ? d.stars * 2 + 2 : 0;
+  if (sp && addSeasonPoints(sp) > 0) notes.push({ kind: 'season', tier: season().tier });
   notes.push(...checkAchievements());
   save();
   return { xp, ups, notes };
+}
+
+/* ---------- free season pass ---------- */
+// A season lasts 28 days. Season points (SP) come from stars and quests;
+// every 10 SP unlocks the next of 30 reward tiers. Free for everyone.
+export const SEASON_DAYS = 28;
+export const TIER_SP = 10;
+export const SEASON_EPOCH = '2026-11-01';
+
+function dayIndex(day) {
+  const [a, b] = [SEASON_EPOCH, day].map((k) => {
+    const [y, m, d] = k.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  });
+  return Math.floor((b - a) / 86400000);
+}
+
+export function seasonInfo(day = dateKey()) {
+  const i = Math.max(0, dayIndex(day));
+  return { id: Math.floor(i / SEASON_DAYS) + 1, daysLeft: SEASON_DAYS - (i % SEASON_DAYS) };
+}
+
+/** Reward of tier k (1..30). Kinds: coins, hint, rewind, chest, skin. */
+export function tierReward(k) {
+  if (k === 15 || k === 30) return { kind: 'skin', big: k === 30 };
+  if (k % 10 === 0) return { kind: 'chest', tier: 'gold' };
+  if (k % 5 === 0) return { kind: 'chest', tier: 'silver' };
+  if (k % 4 === 0) return { kind: 'chest', tier: 'wood' };
+  if (k % 3 === 0) return { kind: 'hint', n: 2 };
+  if (k % 3 === 2) return { kind: 'rewind', n: 2 };
+  return { kind: 'coins', n: 40 + k * 4 };
+}
+export const SEASON_TIERS = 30;
+
+export function season(day = dateKey()) {
+  const info = seasonInfo(day);
+  if (!store.data.season || store.data.season.id !== info.id) {
+    store.data.season = { id: info.id, sp: 0, claimed: [] };
+    save();
+  }
+  const s = store.data.season;
+  const tier = Math.min(SEASON_TIERS, Math.floor(s.sp / TIER_SP));
+  return { ...info, sp: s.sp, tier, inTier: s.sp % TIER_SP, claimed: s.claimed };
+}
+
+export function addSeasonPoints(n) {
+  if (!n) return 0;
+  const before = season().tier;
+  store.data.season.sp += n;
+  save();
+  return season().tier - before; // tiers gained
+}
+
+export const seasonReady = () => {
+  const s = season();
+  let n = 0;
+  for (let k = 1; k <= s.tier; k++) if (!s.claimed.includes(k)) n++;
+  return n;
+};
+
+/** Claim tier k. Returns the reward (chest rewards are opened by the UI). */
+export function claimTier(k) {
+  const s = season();
+  if (k > s.tier || s.claimed.includes(k)) return null;
+  const r = tierReward(k);
+  store.data.season.claimed.push(k);
+  if (r.kind === 'coins') store.data.coins += r.n;
+  if (r.kind === 'hint' || r.kind === 'rewind') store.data.boosters[r.kind] += r.n;
+  save();
+  return r;
 }
