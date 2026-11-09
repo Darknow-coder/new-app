@@ -21,6 +21,7 @@ import {
   DEALS,
   DEAL_OFF,
 } from './levels.js';
+import { ensureMapDefs, worldScene, roadD, MAP_THEMES } from './map.js';
 import { buildScenery, iris, countTo, flyIcons, floatText, replay, burst, reducedMotion, stagger, installRipples } from './fx.js';
 import { openChest, chestSVG, WORLD_CHESTS, chestId, isOpened, ODDS } from './chests.js';
 import {
@@ -1106,21 +1107,6 @@ function nodeX(n) {
   return 50 + 30 * Math.sin(n * 0.8);
 }
 
-// Decoration shapes per world theme (index % 8), drawn in CSS.
-const DECOS = [
-  ['pebble', 'shell'],
-  ['dune', 'cactus'],
-  ['spire', 'rock'],
-  ['coral', 'bubble'],
-  ['mountain', 'pine'],
-  ['crystal', 'snow'],
-  ['tree', 'bush'],
-  ['neon', 'neonring'],
-];
-
-/** Deterministic pseudo-random in [0,1) from a string. */
-const rand01 = (key) => (hashString(key) % 10000) / 10000;
-
 function worldBanner(w, ws, first, unlocked) {
   const max = LEVELS_PER_WORLD * 3;
   const marks = WORLD_CHESTS.map((c) => {
@@ -1139,14 +1125,17 @@ function worldBanner(w, ws, first, unlocked) {
 }
 
 function renderMap({ hideUnlock = 0 } = {}) {
+  ensureMapDefs();
   const unlocked = store.data.levels.unlocked;
   const lastWorld = worldOf(unlocked) + 1; // show the next world as a locked preview
   const map = els.mapEl;
   map.innerHTML = '';
   let total = 0;
+  const scenes = [];
   for (let w = 0; w <= lastWorld; w++) {
     const hue = WORLD_HUES[w % WORLD_HUES.length];
     const theme = w % WORLD_HUES.length;
+    const mt = MAP_THEMES[theme];
     const first = w * LEVELS_PER_WORLD + 1;
     const ws = worldStars(w);
     total += ws;
@@ -1156,39 +1145,29 @@ function renderMap({ hideUnlock = 0 } = {}) {
     sec.className = `world theme-${theme} ${locked ? 'is-locked' : ''}`;
     sec.dataset.world = w;
     sec.style.setProperty('--hue', hue);
-    const height = LEVELS_PER_WORLD * ROW + 30 + 90;
-    const pts = [];
-    const donePts = [];
+    sec.style.setProperty('--g0', mt.g0);
+    sec.style.setProperty('--g1', mt.g1);
+    sec.style.setProperty('--prev', w ? MAP_THEMES[(w - 1) % MAP_THEMES.length].g1 : mt.g0);
+    sec.style.setProperty('--road', mt.road);
+    const height = LEVELS_PER_WORLD * ROW + 90;
+    const pts = []; // [xPercent, y]
+    let lit = 0; // how many of pts are on the lit part of the road
     let nodes = '';
-    let land = '';
-    let decos = '';
+    const avoid = [];
     for (let i = 0; i < LEVELS_PER_WORLD; i++) {
       const n = first + i;
       const x = nodeX(n);
       const y = i * ROW + 50;
-      pts.push(`${x},${y}`);
-      if (n <= unlocked && n !== hideUnlock) donePts.push(`${x},${y}`);
+      pts.push([x, y]);
+      if (n <= unlocked && n !== hideUnlock) lit = pts.length;
       const stars = store.levelStars(n);
       let state = n < unlocked || stars ? 'done' : n === unlocked ? 'current' : 'locked';
       if (n === hideUnlock) state = 'locked';
       const inner = state === 'locked' ? '<svg><use href="#i-lock"/></svg>' : `<span>${n}</span>`;
       const starRow = state === 'done' ? `<span class="node-stars">${starsHTML(stars)}</span>` : '';
       const tag = isBoss(n) ? '<em>BOSS</em>' : introAt(n) ? `<em class="em-new">${t('newShort')}</em>` : '';
-      nodes += `<button class="node is-${state} ${isBoss(n) ? 'is-boss' : ''}" data-n="${n}" style="left:${x}%;top:${y}px;--i:${i}" aria-label="${t('level', { n })}${stars ? `, ${stars}/3` : ''}">${inner}${starRow}${tag}</button>`;
+      nodes += `<button class="node is-${state} ${isBoss(n) ? 'is-boss' : ''}" data-n="${n}" data-i="${i}" style="left:${x}%;top:${y}px;--i:${i}" aria-label="${t('level', { n })}${stars ? `, ${stars}/3` : ''}">${inner}${starRow}${tag}</button>`;
       if (state === 'current') nodes += `<i class="you-are-here" style="left:${x}%;top:${y}px"></i>`;
-      // Islands of land under the road.
-      if (i % 2 === 0) {
-        const r = 150 + rand01(`land:${w}:${i}`) * 90;
-        land += `<i class="land" style="left:${x + (rand01(`lx:${w}:${i}`) - 0.5) * 16}%;top:${y + ROW / 2}px;--r:${r}px"></i>`;
-      }
-      // Themed props on the empty side of the road.
-      if (rand01(`deco:${w}:${i}`) < 0.75) {
-        const side = x > 50 ? 4 + rand01(`dx:${w}:${i}`) * 26 : 70 + rand01(`dx:${w}:${i}`) * 26;
-        const kinds = DECOS[theme];
-        const kind = kinds[hashString(`dk:${w}:${i}`) % kinds.length];
-        const sc = 0.7 + rand01(`ds:${w}:${i}`) * 0.6;
-        decos += `<i class="deco deco-${kind}" style="left:${side}%;top:${y + (rand01(`dy:${w}:${i}`) - 0.5) * 50}px;--s:${sc.toFixed(2)};--dd:${(-rand01(`dd:${w}:${i}`) * 4).toFixed(2)}s"></i>`;
-      }
     }
     // Star chests along the road.
     for (const c of WORLD_CHESTS) {
@@ -1199,14 +1178,15 @@ function renderMap({ hideUnlock = 0 } = {}) {
       let y;
       if (c.after >= LEVELS_PER_WORLD) {
         x = 50;
-        y = LEVELS_PER_WORLD * ROW + 40;
-        pts.push(`${x},${y}`);
-        if (unlocked > first + LEVELS_PER_WORLD - 1) donePts.push(`${x},${y}`);
+        y = LEVELS_PER_WORLD * ROW + 30;
+        pts.push([x, y]);
+        if (unlocked > first + LEVELS_PER_WORLD - 1) lit = pts.length;
       } else {
         const mid = (nodeX(first + c.after - 1) + nodeX(first + c.after)) / 2;
         x = mid > 50 ? 20 : 80;
         y = (c.after - 1) * ROW + 50 + ROW / 2;
       }
+      avoid.push([x, y, 44]);
       const state = opened ? 'opened' : ready ? 'ready' : 'locked';
       const label = ready
         ? `<b class="chest-label">${t('chestReady')}</b>`
@@ -1215,48 +1195,78 @@ function renderMap({ hideUnlock = 0 } = {}) {
           : `<b class="chest-label">${Math.min(ws, c.stars)}/${c.stars}<svg><use href="#i-star"/></svg></b>`;
       nodes += `<button class="chest-node is-${state}" data-chest="${id}" data-tier="${c.tier}" data-need="${c.stars}" style="left:${x}%;top:${y}px" aria-label="${t(`chest_${c.tier}`)}">${chestSVG(c.tier, opened ? 'is-open' : '')}${label}</button>`;
     }
-    const line = (cls, list) => (list.length > 1 ? `<polyline class="${cls}" points="${list.join(' ')}" vector-effect="non-scaling-stroke"/>` : '');
     const fog = locked
       ? `<div class="world-fog"><span><svg><use href="#i-lock"/></svg>${t('worldLocked', { n: w })}</span></div>`
       : '';
     sec.innerHTML = `
       ${worldBanner(w, ws, first, unlocked)}
       <div class="world-path" style="height:${height}px">
-        <div class="world-land">${land}</div>
-        ${decos}
-        <svg class="path-svg" viewBox="0 0 100 ${height}" preserveAspectRatio="none" aria-hidden="true">
-          ${line('road-base', pts)}
-          ${line('road-done', donePts)}
-          ${line('road-dash', pts)}
-          ${line('road-dash-done', donePts)}
-        </svg>
+        <svg class="map-scene" aria-hidden="true"></svg>
         ${nodes}
         ${fog}
       </div>`;
+    sec.style.containIntrinsicSize = `auto ${height + 180}px`;
     map.appendChild(sec);
+    scenes.push({ sec, w, height, pts, lit, avoid, lastWorld: w === lastWorld });
+  }
+  // Second pass, now that sizes are known: draw scenery and road in real pixels.
+  const W = map.querySelector('.world-path')?.clientWidth || 360;
+  for (const sc of scenes) {
+    const path = sc.sec.querySelector('.world-path');
+    const top = path.offsetTop; // road enters from the top of the section
+    const px = sc.pts.map(([x, y]) => [(x / 100) * W, y]);
+    const road = [[W / 2, -top], ...px];
+    if (!sc.lastWorld) road.push([W / 2, sc.height]);
+    const litN = sc.lit ? sc.lit + 1 + (sc.lit === sc.pts.length && !sc.lastWorld ? 1 : 0) : 0;
+    const avoid = sc.avoid.map(([x, y, r]) => [(x / 100) * W, y, r]);
+    const svg = path.querySelector('.map-scene');
+    svg.setAttribute('viewBox', `0 ${-top} ${W} ${sc.height + top}`);
+    svg.style.top = `${-top}px`;
+    svg.style.height = `${sc.height + top}px`;
+    svg.dataset.road = JSON.stringify(road.map(([x, y]) => [Math.round(x), Math.round(y)]));
+    svg.dataset.lit = litN;
+    const d = roadD(road);
+    const dLit = litN > 1 ? roadD(road.slice(0, litN)) : '';
+    svg.innerHTML = `${worldScene(sc.w, W, sc.height, road, avoid, top)}
+      <path class="road-edge" d="${d}"/><path class="road-fill" d="${d}"/>
+      <path class="road-lit-edge" d="${dLit}"/><path class="road-lit" d="${dLit}"/><path class="road-dots" d="${dLit}"/>`;
   }
   $('#map-sub').textContent = `${total}★ · ${t('level', { n: unlocked })}`;
   updateCoins();
-  updateMapScenery();
+  observeWorlds();
   requestAnimationFrame(() => typeof updateRecenter === 'function' && updateRecenter());
 }
 
-/** The animated background follows the world you are scrolling through. */
-function updateMapScenery() {
-  const sc = $('#map-scroll');
-  const mid = sc.getBoundingClientRect().top + sc.clientHeight * 0.4;
-  let w = worldOf(store.data.levels.unlocked);
-  for (const sec of els.mapEl.querySelectorAll('.world')) {
-    if (sec.getBoundingClientRect().top <= mid) w = Number(sec.dataset.world);
-  }
-  buildScenery($('#scenery-map'), w % WORLD_HUES.length, WORLD_HUES[w % WORLD_HUES.length]);
-  setMusicTheme(w % WORLD_HUES.length);
+/** Music and background follow the world in the middle of the screen (no per-frame layout). */
+let worldIO = null;
+function observeWorlds() {
+  worldIO?.disconnect();
+  worldIO = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        const w = Number(e.target.dataset.world);
+        setMusicTheme(w % WORLD_HUES.length);
+      }
+    },
+    { root: $('#map-scroll'), rootMargin: '-45% 0px -45% 0px' },
+  );
+  els.mapEl.querySelectorAll('.world').forEach((s) => worldIO.observe(s));
 }
-let mapScrollRaf = 0;
-$('#map-scroll').addEventListener('scroll', () => {
-  cancelAnimationFrame(mapScrollRaf);
-  mapScrollRaf = requestAnimationFrame(updateMapScenery);
-});
+
+// Re-draw the map when the width changes (rotation, desktop resize).
+let mapW = 0;
+new ResizeObserver(() => {
+  const w = els.mapEl.clientWidth;
+  if (!w || w === mapW) return;
+  const first = mapW === 0;
+  mapW = w;
+  if (first || !els.map.classList.contains('is-active')) return;
+  const sc = $('#map-scroll');
+  const top = sc.scrollTop;
+  renderMap();
+  sc.scrollTop = top;
+}).observe(els.mapEl);
 
 function scrollMapTo(node, smooth = false) {
   const sc = $('#map-scroll');
@@ -1298,13 +1308,25 @@ function playUnlock(u) {
       here.style.left = node.style.left;
       here.style.top = node.style.top;
       path.appendChild(here);
-      // Extend the lit road to the new level.
-      const done = path.querySelector('.road-done');
-      if (done) {
-        const pt = `${parseFloat(node.style.left)},${parseFloat(node.style.top)}`;
-        done.setAttribute('points', `${done.getAttribute('points')} ${pt}`);
-        const dd = path.querySelector('.road-dash-done');
-        if (dd) dd.setAttribute('points', done.getAttribute('points'));
+      // Extend the lit road to the new level, drawing it in.
+      const svg = path.querySelector('.map-scene');
+      if (svg) {
+        const road = JSON.parse(svg.dataset.road);
+        const from = Number(svg.dataset.lit);
+        const to = Number(node.dataset.i) + 2;
+        const d = roadD(road.slice(0, to));
+        const lits = svg.querySelectorAll('.road-lit-edge, .road-lit, .road-dots');
+        lits.forEach((p) => p.setAttribute('d', d));
+        const len = lits[1].getTotalLength();
+        const tmp = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        tmp.setAttribute('d', roadD(road.slice(0, from)));
+        svg.appendChild(tmp);
+        const old = from > 1 ? tmp.getTotalLength() : 0;
+        tmp.remove();
+        [lits[0], lits[1]].forEach((p) =>
+          p.animate([{ strokeDasharray: `${len} ${len}`, strokeDashoffset: len - old }, { strokeDasharray: `${len} ${len}`, strokeDashoffset: 0 }], { duration: 650, easing: 'ease-out' }),
+        );
+        svg.dataset.lit = to;
       }
       burst(path, parseFloat(node.style.left), (parseFloat(node.style.top) / path.clientHeight) * 100, {
         count: 18,

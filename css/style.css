@@ -6892,3 +6892,157 @@ body {
 .album {
   min-width: 0;
 }
+
+/* ==========================================================================
+   MAP v3 — illustrated worlds, real-pixel road, off-screen worlds skipped
+   ========================================================================== */
+.view-map .scenery {
+  display: none;
+}
+.map-scroll {
+  padding-bottom: 0;
+}
+.world {
+  position: relative;
+  margin: 0 -16px;
+  padding: 10px 16px 0;
+  background: linear-gradient(to bottom, var(--prev) 0, var(--g0) 160px, var(--g1) 100%);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2100px;
+}
+.world + .world {
+  margin-top: 0;
+}
+.world-head {
+  position: sticky;
+  top: 8px;
+}
+.world-path {
+  margin: 64px -16px 0;
+}
+.map-scene {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+/* the old CSS-shape decor and dashed polyline are gone */
+.world-land,
+.deco,
+.path-svg {
+  display: none;
+}
+/* road */
+.map-scene path[class^='road'] {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.road-edge {
+  stroke: rgba(30, 20, 40, 0.35);
+  stroke-width: 34;
+}
+.road-fill {
+  stroke: var(--road);
+  stroke-width: 26;
+  opacity: 0.9;
+}
+.road-lit-edge {
+  stroke: #b8740c;
+  stroke-width: 34;
+}
+.road-lit {
+  stroke: #ffd35a;
+  stroke-width: 26;
+}
+.road-dots {
+  stroke: #fff6cf;
+  stroke-width: 5;
+  stroke-dasharray: 0.1 16;
+}
+/* props (only a few, cheap, animations — and none at all off-screen) */
+.mp .sway {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: mp-sway 3.6s ease-in-out infinite;
+}
+.mp .bob {
+  animation: mp-bob 2.4s ease-in-out infinite;
+}
+.mp .blink {
+  animation: mp-blink 1.8s steps(1) infinite;
+}
+.mp .glow {
+  animation: mp-glow 1.6s ease-in-out infinite;
+}
+@keyframes mp-sway {
+  50% {
+    rotate: 4deg;
+  }
+}
+@keyframes mp-bob {
+  50% {
+    translate: 0 -5px;
+  }
+}
+@keyframes mp-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes mp-glow {
+  50% {
+    opacity: 0.6;
+  }
+}
+/* nodes: static (no per-node infinite animation), outlined like the art */
+.node.is-done,
+.view-map.is-active .node.is-done {
+  animation: node-in 0.45s var(--spring) both;
+  animation-delay: calc(var(--i, 0) * 22ms);
+}
+.node {
+  z-index: 3;
+}
+.node.is-done,
+.node.is-current,
+.node.is-locked {
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 3px rgba(43, 29, 46, 0.55), 0 6px 0 rgba(43, 29, 46, 0.35);
+}
+.node.is-locked {
+  background: radial-gradient(circle at 40% 30%, #b9b6c9, #858199);
+  color: #f3f1fa;
+}
+.chest-node {
+  z-index: 3;
+}
+.chest-node .chest-svg {
+  filter: drop-shadow(0 4px 0 rgba(43, 29, 46, 0.3));
+}
+.you-are-here {
+  z-index: 6;
+}
+/* locked preview world: no backdrop blur (expensive), just a veil */
+.world-fog {
+  inset: -64px 0 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: linear-gradient(to bottom, rgba(20, 16, 50, 0.35), rgba(20, 16, 50, 0.75) 25%, rgba(12, 10, 30, 0.9));
+}
+.world.is-locked .map-scene {
+  filter: grayscale(0.6);
+}
+.world-fog span {
+  animation: here-bob 3s ease-in-out infinite;
+}
+.world-head {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--hue) 45%, #241f4d), #1e1a44) !important;
+  color: #fff;
+}
+.world-head .wh-text small {
+  color: color-mix(in srgb, var(--hue) 70%, #fff);
+}
