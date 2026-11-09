@@ -79,7 +79,9 @@ export const sfx = {
     tone({ freq: 140, to: 70, dur: 0.12, type: 'sine', gain: 0.25 });
   },
   drop(pitchIndex = 0) {
-    const base = [523.25, 659.25, 783.99, 987.77][pitchIndex % 4];
+    // Rising major arpeggio: each marble dropped in a level sounds a step higher.
+    const steps = [0, 4, 7, 12, 16, 19, 24];
+    const base = 523.25 * Math.pow(2, steps[Math.min(pitchIndex, steps.length - 1)] / 12);
     tone({ freq: base * 1.5, to: base * 0.5, dur: 0.22, type: 'sine', gain: 0.22 });
     tone({ freq: base, dur: 0.35, type: 'triangle', gain: 0.12, delay: 0.08 });
   },

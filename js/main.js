@@ -480,6 +480,7 @@ function startGame(opts) {
     moves: 0,
     hintUsed: false,
     done: false,
+    drops: 0,
   };
   if (opts.restore) {
     for (const d of opts.restore.path || []) {
@@ -736,7 +737,9 @@ function move(dir) {
         void hole.offsetWidth;
         hole.classList.add('pulse', 'filled');
         sparks(m.to, piece.color);
-        sfx.drop(order);
+        game.drops = (game.drops || 0) + 1;
+        sfx.drop(order + game.drops - 1);
+        replay(els.board, 'jolt');
         buzz([10, 30, 20]);
         setTimeout(() => el.classList.add('gone'), 340);
       } else {
@@ -898,6 +901,7 @@ function onSolved() {
   game.bonus = 0;
   els.board.classList.remove('intro');
   replay(els.board, 'won');
+  if (stars === 3) replay(els.board, 'par-flash');
   game.xpBefore = { ...store.data.player };
   buzz([20, 40, 20, 40, 60]);
 
@@ -988,7 +992,7 @@ function showResult() {
     const n = game.n;
     actions.push({ label: t('map'), onClick: () => iris(openMap, worldHue(n)) });
     if (stars < 3) actions.push({ label: t('retry'), onClick: () => iris(() => startLevel(n), worldHue(n)) });
-    actions.push({ label: t('nextLevel'), primary: true, onClick: () => iris(() => startLevel(n + 1), worldHue(n + 1)), wide: true });
+    actions.push({ label: t('nextLevel'), primary: true, icon: 'i-play', iconAfter: true, onClick: () => iris(() => startLevel(n + 1), worldHue(n + 1)), wide: true });
   }
   showResultCard({ stars, title, line, sub, actions, reward: (game.reward || 0) + (game.bonus || 0) });
 }
@@ -1060,8 +1064,13 @@ function showResultCard({ stars, title, line, sub, actions, reward = 0 }) {
     s.innerHTML = '<svg><use href="#i-star"/></svg>';
     if (i < stars) {
       s.className = 'on';
-      s.style.animationDelay = `${0.15 + i * 0.16}s`;
-      setTimeout(() => sfx.star(i), 150 + i * 160);
+      s.style.animationDelay = `${0.25 + i * 0.28}s`;
+      setTimeout(() => {
+        sfx.star(i);
+        buzz(18);
+        burst(s, 50, 50, { count: 12, colors: ['var(--accent)', '#fff'], dist: 60 });
+        replay($('#modal-result .modal-card'), 'slam');
+      }, 520 + i * 280);
     }
     starsEl.appendChild(s);
   }
@@ -1073,7 +1082,9 @@ function showResultCard({ stars, title, line, sub, actions, reward = 0 }) {
   for (const a of actions) {
     const b = document.createElement('button');
     b.className = `btn ${a.primary ? 'btn-primary' : 'btn-ghost'} ${a.wide ? 'btn-full' : ''}`;
-    b.innerHTML = (a.icon ? `<svg><use href="#${a.icon}"/></svg>` : '') + `<span>${a.label}</span>`;
+    b.innerHTML = a.iconAfter
+      ? `<span>${a.label}</span><svg class="next-arrow"><use href="#${a.icon}"/></svg>`
+      : (a.icon ? `<svg><use href="#${a.icon}"/></svg>` : '') + `<span>${a.label}</span>`;
     b.addEventListener('click', () => {
       if (!a.keepOpen) closeModal('modal-result');
       a.onClick();
@@ -2072,6 +2083,10 @@ const KEYMAP = {
   D: 'right',
 };
 window.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && $('#modal-result').open) {
+    $('#result-actions .btn-primary')?.click();
+    return;
+  }
   if (anyModalOpen() || !els.game.classList.contains('is-active') || e.metaKey || e.ctrlKey || e.altKey) return;
   if (KEYMAP[e.key]) {
     e.preventDefault();
