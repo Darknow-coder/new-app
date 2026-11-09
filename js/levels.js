@@ -55,7 +55,10 @@ const WORLD_FEATURES = [
   { sand: [1, 2], gates: [1, 1] }, // 5 Violet Peaks
   { portals: 1, sand: [1, 2] }, // 6 Glacier Bay
   { gates: [1, 2], portals: 1 }, // 7 Mossy Woods
-  { sand: [1, 2], gates: [1, 1], portals: 1 }, // 8+ Neon City and beyond
+  { sand: [1, 2], gates: [1, 1], portals: 1 }, // 8 Neon City
+  { arrows: [1, 2] }, // 9 — arrow tiles
+  { arrows: [1, 2], sand: [1, 2] }, // 10
+  { arrows: [1, 2], gates: [1, 1], portals: 1 }, // 11+
 ];
 
 /** Hand-made first level of a world, so each new mechanic is discovered in a calm, obvious setting. */
@@ -63,6 +66,7 @@ export const MECHANIC_INTROS = {
   21: { mech: 'sand', rows: ['.....', '..a..', '.....', 'A.~..', '.....'] },
   41: { mech: 'gates', rows: ['.....', 'A.v.a', '.....', 'B.v..', '....b'] },
   61: { mech: 'portals', rows: ['.....', 'A.@..', '#####', '..@.a', '.....'] },
+  161: { mech: 'arrows', rows: ['A...,', '.....', '....a', '.....', '#....'] },
 };
 
 export function featuresFor(n) {

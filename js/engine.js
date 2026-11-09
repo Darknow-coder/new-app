@@ -10,6 +10,7 @@ export const DIRS = {
   right: { dx: 1, dy: 0, arrow: '➡️', key: 'R' },
 };
 export const DIR_NAMES = ['up', 'right', 'down', 'left'];
+const ARROW_DIRS = [DIRS.up, DIRS.right, DIRS.down, DIRS.left];
 export const COLORS = ['coral', 'teal', 'gold', 'violet'];
 
 /* ---------- deterministic RNG ---------- */
@@ -62,6 +63,7 @@ export function isSolved(level, state) {
  *   portal: Int16Array — portal[c] is the paired cell; a piece entering c reappears there and keeps
  *           rolling (at most one teleport per tilt, so moves stay readable).
  *   gates:  Int8Array  — a crystal gate of colour k only lets marbles of colour k through.
+ *   arrows: Int8Array  — an arrow tile (0 up, 1 right, 2 down, 3 left) turns a piece rolling onto it.
  */
 export function tilt(level, state, dirName) {
   const { dx, dy } = DIRS[dirName];
@@ -69,6 +71,7 @@ export function tilt(level, state, dirName) {
   const sand = level.sand || null;
   const portal = level.portal || null;
   const gates = level.gates || null;
+  const arrows = level.arrows || null;
   const next = state.slice();
   const moves = new Array(pieces.length).fill(null);
 
@@ -98,9 +101,13 @@ export function tilt(level, state, dirName) {
     let segDist = 0;
     let hops = 0;
     const segs = [];
+    let mx = dx;
+    let my = dy;
+    let guard = w * h * 4;
     for (;;) {
-      const nx = x + dx;
-      const ny = y + dy;
+      if (--guard < 0) break;
+      const nx = x + mx;
+      const ny = y + my;
       if (nx < 0 || ny < 0 || nx >= w || ny >= h) break;
       const nc = ny * w + nx;
       if (walls[nc] || occupied[nc] !== -1) break;
@@ -126,6 +133,16 @@ export function tilt(level, state, dirName) {
         }
       }
       if (sand && sand[nc]) break;
+      if (arrows && arrows[nc] >= 0) {
+        const a = ARROW_DIRS[arrows[nc]];
+        if (a.dx !== mx || a.dy !== my) {
+          segs.push({ from: segStart, to: nc, dist: segDist, turn: true });
+          segStart = nc;
+          segDist = 0;
+          mx = a.dx;
+          my = a.dy;
+        }
+      }
     }
     const to = y * w + x;
     segs.push({ from: segStart, to, dist: segDist });
@@ -223,7 +240,7 @@ function buildCandidate(rng, p) {
     pieces.push({ kind: 'stone', color: -1 });
     start.push(cells[k++]);
   }
-  const level = { w, h, walls, holes, pieces, start, sand: null, portal: null, gates: null };
+  const level = { w, h, walls, holes, pieces, start, sand: null, portal: null, gates: null, arrows: null };
   if (f) {
     if (f.sand) {
       level.sand = new Uint8Array(n);
@@ -237,6 +254,11 @@ function buildCandidate(rng, p) {
       level.portal[a] = b;
       level.portal[b] = a;
     }
+    if (f.arrows) {
+      level.arrows = new Int8Array(n).fill(-1);
+      const count = f.arrows[0] + randInt(rng, f.arrows[1] - f.arrows[0] + 1);
+      for (let i = 0; i < count; i++) level.arrows[cells[k++]] = randInt(rng, 4);
+    }
     if (f.gates) {
       level.gates = new Int8Array(n).fill(-1);
       const count = f.gates[0] + randInt(rng, f.gates[1] - f.gates[0] + 1);
@@ -247,13 +269,13 @@ function buildCandidate(rng, p) {
 }
 
 export function hasFeatures(level) {
-  return !!(level.sand || level.portal || level.gates);
+  return !!(level.sand || level.portal || level.gates || level.arrows);
 }
 
 /** True when the special tiles actually change the optimal solution (so they are not decoration). */
 function featuresMatter(level, par, maxDepth) {
   if (!hasFeatures(level)) return true;
-  const plain = { ...level, sand: null, portal: null, gates: null };
+  const plain = { ...level, sand: null, portal: null, gates: null, arrows: null };
   const sol = solve(plain, plain.start, { maxDepth, maxStates: 120000 });
   return !sol || sol.par !== par;
 }
@@ -318,6 +340,9 @@ export function starsFor(moves, par) {
  * 'A'-'D' marble of colour 0-3, 'S' stone, '~' sand, '@' portal (exactly two),
  * 'v' 'w' 'x' 'y' crystal gate of colour 0-3.
  */
+// Arrow tiles in level strings: ^ up, > right, , down, < left.
+const ARROW_CH = ['^', '>', ',', '<'];
+
 /** Inverse of parseLevel: ASCII rows for a level (every special cell is distinct, so one char per cell). */
 export function encodeLevel(level) {
   const { w, h } = level;
@@ -328,6 +353,7 @@ export function encodeLevel(level) {
     else if (level.sand?.[c]) grid[c] = '~';
     else if (level.portal && level.portal[c] >= 0) grid[c] = '@';
     else if (level.gates && level.gates[c] >= 0) grid[c] = String.fromCharCode(118 + level.gates[c]);
+    else if (level.arrows && level.arrows[c] >= 0) grid[c] = ARROW_CH[level.arrows[c]];
   }
   level.pieces.forEach((p, i) => {
     grid[level.start[i]] = p.kind === 'stone' ? 'S' : String.fromCharCode(65 + p.color);
@@ -347,6 +373,7 @@ export function parseLevel(rows, known = null) {
   const start = [];
   let sand = null;
   let gates = null;
+  let arrows = null;
   const portals = [];
   rows.forEach((row, y) => {
     if (row.length !== w) throw new Error('Ragged level row ' + y);
@@ -368,6 +395,9 @@ export function parseLevel(rows, known = null) {
       } else if (ch >= 'v' && ch <= 'y') {
         gates = gates || new Int8Array(w * h).fill(-1);
         gates[c] = ch.charCodeAt(0) - 118;
+      } else if (ARROW_CH.includes(ch)) {
+        arrows = arrows || new Int8Array(w * h).fill(-1);
+        arrows[c] = ARROW_CH.indexOf(ch);
       } else if (ch !== '.') throw new Error('Unknown tile ' + ch);
     });
   });
@@ -378,7 +408,7 @@ export function parseLevel(rows, known = null) {
     portal[portals[0]] = portals[1];
     portal[portals[1]] = portals[0];
   }
-  const level = { w, h, walls, holes, pieces, start, sand, portal, gates };
+  const level = { w, h, walls, holes, pieces, start, sand, portal, gates, arrows };
   if (known) {
     level.par = known.par;
     level.solution = known.solution;

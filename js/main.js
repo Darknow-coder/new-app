@@ -674,6 +674,13 @@ function buildBoard() {
       w.className = 'cell wall';
       setPos(w, c);
       frag.appendChild(w);
+    } else if (level.arrows && level.arrows[c] >= 0) {
+      const a = document.createElement('div');
+      a.className = 'cell arrow';
+      a.dataset.c = c;
+      a.style.setProperty('--rot', `${level.arrows[c] * 90}deg`);
+      setPos(a, c);
+      frag.appendChild(a);
     } else if (level.sand?.[c] || (level.portal && level.portal[c] >= 0) || (level.gates && level.gates[c] >= 0)) {
       const t = document.createElement('div');
       if (level.sand?.[c]) t.className = 'cell sand';
@@ -819,7 +826,7 @@ function move(dir) {
   const WARP_GAP = 110;
   const moveMs = (m) => {
     const segs = m.segs || [m];
-    return segs.reduce((acc, sg, k) => acc + (sg.dist ? rollMs(sg.dist) : 0) + (k > 0 ? WARP_GAP : 0), 0);
+    return segs.reduce((acc, sg, k) => acc + (sg.dist ? rollMs(sg.dist) : 0) + (k > 0 && !segs[k - 1].turn ? WARP_GAP : 0), 0);
   };
   moves.forEach((m, i) => {
     if (!m || m.dist === 0) return;
@@ -832,8 +839,14 @@ function move(dir) {
     let t = 0;
     segs.forEach((sg, k) => {
       const segMs = sg.dist ? rollMs(sg.dist) : 0;
+      const warp = k > 0 && !segs[k - 1].turn;
       const run = () => {
-        if (k > 0) {
+        if (k > 0 && segs[k - 1].turn) {
+          const ar = els.layer.querySelector(`.arrow[data-c="${sg.from}"]`);
+          if (ar) replay(ar, 'pulse');
+          sfx.tick();
+        }
+        if (warp) {
           el.style.transition = 'none';
           setPos(el, sg.from);
           void el.offsetWidth;
@@ -842,13 +855,13 @@ function move(dir) {
           sfx.warp();
           buzz(12);
         }
-        el.style.transition = `transform ${segMs}ms cubic-bezier(0.45, 0, 0.9, 0.65)`;
+        el.style.transition = `transform ${segMs}ms ${k > 0 && segs[k - 1].turn ? 'linear' : 'cubic-bezier(0.45, 0, 0.9, 0.65)'}`;
         setPos(el, sg.to);
         if (sg.dist >= 2 && game.level.pieces[i].kind === 'marble') trail(sg, game.level.pieces[i].color, dir, segMs);
       };
       if (k === 0) run();
-      else setTimeout(run, t + WARP_GAP);
-      t += segMs + (k > 0 ? WARP_GAP : 0);
+      else setTimeout(run, t + (warp ? WARP_GAP : 0));
+      t += segMs + (warp ? WARP_GAP : 0);
     });
     const piece = game.level.pieces[i];
     const order = dropIndex;
@@ -1560,6 +1573,7 @@ function showLevelPreview(n) {
   if (level.sand) chips.push(`<span class="lp-chip"><i class="lp-ico ico-sand"></i>${t('mech_sand_title')}</span>`);
   if (level.gates) chips.push(`<span class="lp-chip"><i class="lp-ico ico-gate"></i>${t('mech_gates_title')}</span>`);
   if (level.portal) chips.push(`<span class="lp-chip"><i class="lp-ico ico-portal"></i>${t('mech_portals_title')}</span>`);
+  if (level.arrows) chips.push(`<span class="lp-chip"><i class="lp-ico ico-arrow"></i>${t('mech_arrows_title')}</span>`);
   $('#lp-chips').innerHTML = chips.join('');
   $('#lp-best').textContent = best === 3 ? t('perfect') : best ? t('lpImprove', { n: 3 - best }) : t('lpGoal');
   $('#lp-play').onclick = () => {

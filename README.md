@@ -29,10 +29,12 @@ Marbl #7 🔥4
   never the gameplay colour.
 - **Content** — 240 pre-computed levels (12 worlds), each verified solvable with an optimal par by the
   test suite; the generator keeps going beyond that.
-- **Mechanics** — sand traps (World 2), crystal gates (World 3), portals (World 4), then remixes. Each is
+- **Mechanics** — sand traps (World 2), crystal gates (World 3), portals (World 4), arrows (World 9), then remixes. Each is
   introduced by a hand-made level and a discovery card; generated levels must genuinely need their tiles.
 - **Progression** — player level & XP (level-up chests), 3 daily quests with a bonus chest, 20 achievements,
   a 7-day escalating login gift, combos (DOUBLE!/TRIPLE!) flagged on levels where one is reachable.
+- **Season pass** — free 28-day pass: season points from stars, dailies and quests unlock 30 reward tiers.
+- **Challenge a friend** — share a link with a level and the score to beat, plus a generated result image.
 - **Feel** — marble trails, portal warps, procedural per-world ambient music (toggle in settings).
 - **Living scenery** — each world has its own animated background (bubbles, embers, snow, leaves, neon…),
   iris transitions between screens, level intro/outro, and a marble that rolls to the next level on the map.
