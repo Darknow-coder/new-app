@@ -121,6 +121,15 @@ export const sfx = {
     tone({ freq: 1320, dur: 0.3, type: 'triangle', gain: 0.12, delay: 0.08 });
     noise({ dur: 0.2, freq: 4000, q: 2, gain: 0.06, delay: 0.05 });
   },
+  /** Rising hum while the chest charges up (duration in seconds). */
+  charge(dur = 1) {
+    tone({ freq: 140, to: 620, dur, type: 'sawtooth', gain: 0.035 });
+    tone({ freq: 280, to: 1240, dur, type: 'sine', gain: 0.05 });
+  },
+  land() {
+    tone({ freq: 120, to: 55, dur: 0.22, type: 'sine', gain: 0.3 });
+    noise({ dur: 0.18, freq: 500, q: 0.8, gain: 0.12 });
+  },
   upgrade() {
     [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((f, i) =>
       tone({ freq: f, dur: 0.18, type: 'square', gain: 0.045, delay: i * 0.05 }),

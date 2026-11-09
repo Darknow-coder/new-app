@@ -1,17 +1,22 @@
-// Chests: definitions, reward rolls and the opening ceremony.
+// Chests: definitions, reward rolls, artwork and the opening ceremony.
+//
+// The ceremony is one continuous, script-driven sequence (Web Animations API +
+// a particle canvas). Only transform/opacity are animated, so it stays smooth
+// on phones:  drop → idle float → [tap] → charge & shake → burst open →
+// rewards fly out of the chest → [collect] → coins fly to the balance → fade out.
 import { store, save } from './storage.js';
 import { sfx, haptic } from './audio.js';
 import { t } from './i18n.js';
-import { burst, flyIcons, countTo, replay, reducedMotion } from './fx.js';
+import { flyIcons, countTo, reducedMotion } from './fx.js';
 import { pickSkin, grantSkin, marbleHTML } from './skins.js';
 
 export const TIERS = {
-  wood: { body: '#9a5a2a', lid: '#b56d34', dark: '#6e3d19', metal: '#f0b240', glow: '#ffcf6b', gem: null },
-  silver: { body: '#5864a8', lid: '#6b78c2', dark: '#3c4580', metal: '#e4e9ff', glow: '#bcd0ff', gem: '#4ad0ff' },
-  gold: { body: '#e39a12', lid: '#f7b928', dark: '#a8650a', metal: '#fff3c4', glow: '#fff1a8', gem: '#ff3d6e' },
+  wood: { body: '#b5692f', bodyD: '#7a3f17', lid: '#d18646', lidD: '#94501f', metal: '#ffd46e', metalD: '#c98a1c', out: '#43200a', gem: null, glow: '#ffcf6b' },
+  silver: { body: '#5d6fcc', bodyD: '#36428a', lid: '#7d8de6', lidD: '#4653a3', metal: '#f2f5ff', metalD: '#a3aed6', out: '#1f2656', gem: '#41d5ff', glow: '#bfe0ff' },
+  gold: { body: '#f2a51a', bodyD: '#b8670a', lid: '#ffc845', lidD: '#d5850d', metal: '#fff7d6', metalD: '#e0ad48', out: '#5e3300', gem: '#ff3d6e', glow: '#fff0a0' },
 };
 const NEXT_TIER = { wood: 'silver', silver: 'gold' };
-// Chance that a chest upgrades itself while being shaken.
+// Chance that a chest upgrades itself while it charges up.
 const UPGRADE_CHANCE = { wood: 0.18, silver: 0.12 };
 
 // Three star chests per world, placed on the map path.
@@ -52,306 +57,492 @@ export function rollChest(tier) {
   return r;
 }
 
-/* ---------- artwork ---------- */
+/* ==========================================================================
+   Artwork — cartoon chest with outline, gradients, bands, rivets and gem.
+   The lid is its own group (hinged at the bottom) so it can open.
+   ========================================================================== */
+let svgSeq = 0;
 function sparkle(x, y, s, d) {
   return `<path class="chest-sparkle" style="animation-delay:${d}s" transform="translate(${x} ${y}) scale(${s})" d="M0-6L1.5-1.5 6 0 1.5 1.5 0 6-1.5 1.5-6 0-1.5-1.5z" fill="#fff"/>`;
 }
 
-/** SVG chest. Lid, seam light and body are separate so they can be animated. */
-let svgSeq = 0;
 export function chestSVG(tier, cls = '') {
   const c = TIERS[tier];
-  const gid = `chest-glow-${++svgSeq}`;
+  const u = `cx${++svgSeq}`;
   const wood = tier === 'wood';
-  const rivets = (y) =>
-    [26.5, 93.5].map((x) => `<circle cx="${x}" cy="${y}" r="1.8" fill="${c.dark}" opacity=".55"/>`).join('');
+  const rivet = (x, y) => `<circle cx="${x}" cy="${y}" r="2" fill="${c.metalD}" stroke="${c.out}" stroke-width="1"/>`;
   return `
   <svg class="chest-svg tier-${tier} ${cls}" viewBox="0 0 120 112" aria-hidden="true">
-    <ellipse class="chest-shadow" cx="60" cy="104" rx="46" ry="6" fill="rgba(0,0,0,.28)"/>
     <defs>
-      <radialGradient id="${gid}" cx="50%" cy="50%" r="50%">
-        <stop offset="0" stop-color="#fff"/>
-        <stop offset=".35" stop-color="#fff" stop-opacity=".95"/>
-        <stop offset=".7" stop-color="${c.glow}" stop-opacity=".85"/>
-        <stop offset="1" stop-color="${c.glow}" stop-opacity="0"/>
+      <linearGradient id="${u}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.body}"/><stop offset="1" stop-color="${c.bodyD}"/></linearGradient>
+      <linearGradient id="${u}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.lid}"/><stop offset="1" stop-color="${c.lidD}"/></linearGradient>
+      <linearGradient id="${u}m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.metal}"/><stop offset="1" stop-color="${c.metalD}"/></linearGradient>
+      <radialGradient id="${u}g" cx="50%" cy="50%" r="50%">
+        <stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#fff" stop-opacity=".95"/>
+        <stop offset=".75" stop-color="${c.glow}" stop-opacity=".8"/><stop offset="1" stop-color="${c.glow}" stop-opacity="0"/>
       </radialGradient>
     </defs>
-    <g class="chest-inner">
-      <ellipse cx="60" cy="52" rx="48" ry="12" fill="url(#${gid})"/>
-    </g>
+    <ellipse class="chest-shadow" cx="60" cy="104" rx="44" ry="6" fill="rgba(0,0,0,.3)"/>
+    <g class="chest-inner"><ellipse cx="60" cy="53" rx="47" ry="11" fill="url(#${u}g)"/></g>
     <g class="chest-body">
-      <rect x="10" y="50" width="100" height="50" rx="9" fill="${c.body}"/>
-      ${wood ? `<path d="M12 67h96M12 84h96" stroke="${c.dark}" stroke-width="1.6" opacity=".55"/>` : ''}
-      <rect x="10" y="84" width="100" height="16" rx="8" fill="${c.dark}" opacity=".4"/>
-      <rect x="10" y="50" width="100" height="9" fill="${c.metal}"/>
-      <rect x="22" y="50" width="9" height="50" fill="${c.metal}" opacity=".92"/>
-      <rect x="89" y="50" width="9" height="50" fill="${c.metal}" opacity=".92"/>
-      ${rivets(66)}${rivets(90)}
-      <rect x="49" y="55" width="22" height="25" rx="5" fill="${c.metal}"/>
-      <rect x="49" y="55" width="22" height="25" rx="5" fill="none" stroke="${c.dark}" stroke-opacity=".35" stroke-width="1.5"/>
-      <circle cx="60" cy="64" r="3.4" fill="${c.dark}"/>
-      <rect x="58.6" y="65" width="2.8" height="7" rx="1.4" fill="${c.dark}"/>
+      <path d="M12 54H108V92Q108 102 98 102H22Q12 102 12 92Z" fill="url(#${u}b)" stroke="${c.out}" stroke-width="3" stroke-linejoin="round"/>
+      ${wood ? `<path d="M14 70H106M14 86H106" stroke="${c.bodyD}" stroke-width="2" opacity=".7"/>` : ''}
+      <path d="M14 90V92Q14 100 22 100H98Q106 100 106 92V90Z" fill="#000" opacity=".14"/>
+      <path d="M18 64V92" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".22"/>
+      <rect x="24" y="54" width="10" height="47" fill="url(#${u}m)" stroke="${c.out}" stroke-width="2"/>
+      <rect x="86" y="54" width="10" height="47" fill="url(#${u}m)" stroke="${c.out}" stroke-width="2"/>
+      ${rivet(29, 72)}${rivet(29, 90)}${rivet(91, 72)}${rivet(91, 90)}
+      <rect x="11" y="52" width="98" height="9" rx="3" fill="url(#${u}m)" stroke="${c.out}" stroke-width="2.5"/>
+      <rect x="48" y="58" width="24" height="27" rx="7" fill="url(#${u}m)" stroke="${c.out}" stroke-width="2.5"/>
+      <circle cx="60" cy="68" r="3.6" fill="${c.out}"/>
+      <path d="M58.4 69H61.6L62.6 77H57.4Z" fill="${c.out}"/>
     </g>
-    <rect class="chest-seam" x="12" y="46" width="96" height="8" rx="4" fill="${c.glow}"/>
+    <rect class="chest-seam" x="13" y="49" width="94" height="6" rx="3" fill="${c.glow}"/>
     <g class="chest-lid">
-      <path d="M10 54V38c0-14 22-22 50-22s50 8 50 22v16z" fill="${c.lid}"/>
-      ${wood ? `<path d="M11 40h98M14 29h92" stroke="${c.dark}" stroke-width="1.6" opacity=".45"/>` : ''}
-      <path d="M10 54V46h100v8z" fill="${c.metal}"/>
-      <path d="M22 54V22.5a60 30 0 019-3.2V54z" fill="${c.metal}" opacity=".92"/>
-      <path d="M89 54V19.3a60 30 0 019 3.2V54z" fill="${c.metal}" opacity=".92"/>
-      ${rivets(30)}${rivets(42)}
-      ${c.gem ? `<path d="M60 24l7 7-7 9-7-9z" fill="${c.gem}" stroke="${c.metal}" stroke-width="2"/><path d="M57 29l3-3 2 2" stroke="#fff" stroke-width="1.4" fill="none" opacity=".8"/>` : ''}
-      <path d="M24 30c10-6 22-8 36-8" stroke="#fff" stroke-opacity=".35" stroke-width="4" stroke-linecap="round" fill="none"/>
+      <path d="M11 54V40C11 22 33 13 60 13S109 22 109 40V54Z" fill="url(#${u}l)" stroke="${c.out}" stroke-width="3" stroke-linejoin="round"/>
+      ${wood ? `<path d="M13 40H107M17 27H103" stroke="${c.lidD}" stroke-width="2" opacity=".75"/>` : ''}
+      <path d="M24 54V20.6Q29 18.6 34 17.7V54Z" fill="url(#${u}m)" stroke="${c.out}" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M86 54V17.7Q91 18.6 96 20.6V54Z" fill="url(#${u}m)" stroke="${c.out}" stroke-width="2" stroke-linejoin="round"/>
+      ${rivet(29, 30)}${rivet(91, 30)}
+      <rect x="11" y="46" width="98" height="9" rx="3" fill="url(#${u}m)" stroke="${c.out}" stroke-width="2.5"/>
+      <path d="M22 33C32 24 46 20 60 20" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none" opacity=".4"/>
+      ${c.gem ? `<path d="M60 21L69 30L60 41L51 30Z" fill="${c.gem}" stroke="${c.out}" stroke-width="2.2" stroke-linejoin="round"/><path d="M55 30L60 25L63 28" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".85"/>` : ''}
     </g>
-    ${tier !== 'wood' ? `<g class="chest-sparkles">${sparkle(8, 40, 0.9, 0)}${sparkle(112, 30, 0.7, 0.6)}${sparkle(100, 88, 0.6, 1.1)}${tier === 'gold' ? sparkle(16, 92, 0.7, 0.3) + sparkle(60, 6, 0.8, 0.9) : ''}</g>` : ''}
+    ${tier !== 'wood' ? `<g class="chest-sparkles">${sparkle(6, 38, 0.9, 0)}${sparkle(114, 28, 0.7, 0.6)}${sparkle(104, 90, 0.6, 1.1)}${tier === 'gold' ? sparkle(14, 92, 0.7, 0.3) + sparkle(60, 4, 0.8, 0.9) : ''}</g>` : ''}
   </svg>`;
 }
 
-/* ---------- opening ceremony ---------- */
+/* ==========================================================================
+   Particles (canvas): sparks, coins, dust and slow floating motes.
+   ========================================================================== */
+class ParticleFX {
+  constructor(canvas) {
+    this.c = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.parts = [];
+    this.running = false;
+    this.motes = false;
+    this.color = '#fff';
+  }
+  resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.w = window.innerWidth;
+    this.h = window.innerHeight;
+    this.c.width = this.w * dpr;
+    this.c.height = this.h * dpr;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  start() {
+    this.resize();
+    this.parts = [];
+    this.running = true;
+    this.last = performance.now();
+    const loop = (now) => {
+      if (!this.running) return;
+      const dt = Math.min(0.05, (now - this.last) / 1000);
+      this.last = now;
+      this.step(dt);
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
+  stop() {
+    this.running = false;
+    this.motes = false;
+    this.ctx.clearRect(0, 0, this.w, this.h);
+  }
+  burst(x, y, { sparks = 36, coins = 14, color = '#fff' } = {}) {
+    if (reducedMotion()) return;
+    for (let i = 0; i < sparks; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const v = 220 + Math.random() * 420;
+      this.parts.push({ k: 'spark', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 120, life: 0.7 + Math.random() * 0.5, age: 0, r: 2 + Math.random() * 3, col: Math.random() < 0.5 ? color : '#fff', g: 380, drag: 2.2 });
+    }
+    for (let i = 0; i < coins; i++) {
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.6;
+      const v = 380 + Math.random() * 300;
+      this.parts.push({ k: 'coin', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1.6, age: 0, r: 9 + Math.random() * 4, spin: Math.random() * 6, g: 1100, drag: 0.4 });
+    }
+  }
+  dust(x, y) {
+    if (reducedMotion()) return;
+    for (let i = 0; i < 18; i++) {
+      const dir = i % 2 ? 1 : -1;
+      this.parts.push({ k: 'dust', x: x + dir * Math.random() * 40, y, vx: dir * (60 + Math.random() * 160), vy: -20 - Math.random() * 50, life: 0.6 + Math.random() * 0.3, age: 0, r: 6 + Math.random() * 8, g: 60, drag: 3 });
+    }
+  }
+  step(dt) {
+    const { ctx } = this;
+    ctx.clearRect(0, 0, this.w, this.h);
+    if (this.motes && !reducedMotion() && Math.random() < 0.35) {
+      this.parts.push({ k: 'mote', x: Math.random() * this.w, y: this.h + 10, vx: (Math.random() - 0.5) * 20, vy: -40 - Math.random() * 60, life: 6, age: 0, r: 1.5 + Math.random() * 2.5, g: 0, drag: 0 });
+    }
+    const keep = [];
+    for (const p of this.parts) {
+      p.age += dt;
+      if (p.age >= p.life) continue;
+      p.vx -= p.vx * p.drag * dt;
+      p.vy += p.g * dt - p.vy * p.drag * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      const k = 1 - p.age / p.life;
+      if (p.k === 'spark') {
+        ctx.globalAlpha = k;
+        ctx.fillStyle = p.col;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * (0.4 + k * 0.6), 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.k === 'coin') {
+        p.spin += dt * 9;
+        const sx = Math.abs(Math.cos(p.spin));
+        ctx.globalAlpha = Math.min(1, k * 2);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.scale(Math.max(0.15, sx), 1);
+        ctx.fillStyle = '#d48a0c';
+        ctx.beginPath();
+        ctx.arc(0, 1.5, p.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffc23d';
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffe7a3';
+        ctx.beginPath();
+        ctx.arc(-p.r * 0.3, -p.r * 0.3, p.r * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (p.k === 'dust') {
+        ctx.globalAlpha = k * 0.35;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * (1.6 - k * 0.6), 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.globalAlpha = Math.min(1, p.age * 2) * k * 0.8;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(p.x + Math.sin(p.age * 2 + p.r) * 8, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      keep.push(p);
+    }
+    ctx.globalAlpha = 1;
+    this.parts = keep;
+  }
+}
+
+/* ==========================================================================
+   Ceremony
+   ========================================================================== */
 const $ = (s) => document.querySelector(s);
 const buzz = (p) => store.setting('haptics') && haptic(p);
-const TAPS = 3;
+const wait = (ms) => new Promise((r) => setTimeout(r, reducedMotion() ? 0 : ms));
+let fx = null;
 let busy = false;
 
-/** Anchor the light effects on the chest's mouth (where the lid meets the body). */
-function placeLight() {
-  const stage = $('#chest-stage');
-  const wrap = $('#chest-wrap');
-  const light = stage.querySelector('.chest-light');
-  if (!light || !wrap) return;
-  const s = stage.getBoundingClientRect();
-  const w = wrap.getBoundingClientRect();
-  light.style.left = `${w.left - s.left + w.width / 2}px`;
-  light.style.top = `${w.top - s.top + w.height * (50 / 112)}px`;
-  light.style.setProperty('--k', (w.width / 240).toFixed(3));
+/** Animate with the Web Animations API; resolves when finished. Keeps the final frame. */
+function anim(el, frames, opts) {
+  if (!el) return Promise.resolve();
+  const a = el.animate(frames, { fill: 'forwards', ...opts, duration: reducedMotion() ? 1 : opts.duration });
+  return a.finished.catch(() => {});
 }
 
-function setTier(stage, tier, title) {
-  stage.dataset.tier = tier;
-  stage.style.setProperty('--glow', TIERS[tier].glow);
-  $('#chest-title').textContent = title || t(`chest_${tier}`);
+/** Centre of the chest mouth (where the lid meets the body), in viewport pixels. */
+function mouth() {
+  const r = $('#chest-wrap').getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height * (52 / 112) };
 }
 
-/** Coins that pop out of the chest and rain down. */
-function coinShower(layer, fromEl, count = 16) {
-  if (reducedMotion() || !fromEl) return;
-  const r = fromEl.getBoundingClientRect();
-  const x0 = r.left + r.width / 2;
-  const y0 = r.top + r.height * 0.42;
-  for (let i = 0; i < count; i++) {
-    const c = document.createElement('span');
-    c.className = 'fly-icon coin-drop';
-    c.innerHTML = '<svg><use href="#i-coin"/></svg>';
-    c.style.left = `${x0}px`;
-    c.style.top = `${y0}px`;
-    layer.appendChild(c);
-    const vx = (Math.random() - 0.5) * 320;
-    const up = 180 + Math.random() * 160;
-    const fall = window.innerHeight * 0.75;
-    const frames = [];
-    for (let k = 0; k <= 8; k++) {
-      const p = k / 8;
-      const y = -up * 4 * p * (1 - p) + fall * p * p; // parabola: rise then fall off-screen
-      frames.push({
-        transform: `translate(calc(-50% + ${vx * p}px), calc(-50% + ${y}px)) rotate(${p * 540 * Math.sign(vx)}deg) scale(${0.6 + 0.5 * Math.min(1, p * 3)})`,
-        opacity: p > 0.85 ? 0 : 1,
-      });
-    }
-    const a = c.animate(frames, { duration: 1100 + Math.random() * 500, delay: i * 30, easing: 'linear', fill: 'both' });
-    a.onfinish = () => c.remove();
+/** Escalating shake keyframes for the charge-up. */
+function shakeFrames(steps, from, to) {
+  const f = [];
+  for (let i = 0; i <= steps; i++) {
+    const p = i / steps;
+    const amp = from + (to - from) * p;
+    const dir = i % 2 ? 1 : -1;
+    const sc = 1 + 0.12 * p;
+    f.push({ transform: `translate(${dir * amp * 0.8}px, ${-amp * 0.3}px) rotate(${dir * amp}deg) scale(${sc}, ${sc * (1 - 0.04 * p)})` });
   }
+  return f;
+}
+
+function rewardItems(reward) {
+  const items = [{ kind: 'coins', icon: 'i-coin', amount: reward.coins + reward.dupe, label: t('coins'), rarity: 'common' }];
+  if (reward.hint) items.push({ kind: 'hint', icon: 'i-hint', amount: reward.hint, label: t('hintName'), rarity: 'common' });
+  if (reward.rewind) items.push({ kind: 'rewind', icon: 'i-rewind', amount: reward.rewind, label: t('rewindName'), rarity: 'common' });
+  if (reward.skin) items.push({ kind: 'skin', skin: reward.skin.id, rarity: reward.skin.rarity, label: t(`skin_${reward.skin.id}`) });
+  return items;
 }
 
 /**
  * Open a chest: grants the rewards and plays the ceremony.
- * Resolves with the rewards when the player taps "Collect".
+ * Resolves with the rewards once the player has collected them.
  */
 export function openChest({ id, tier: startTier, title }) {
   if (busy || (id && isOpened(id))) return Promise.resolve(null);
   busy = true;
-  let tier = startTier;
   if (id) {
     store.data.chests.opened[id] = true;
     save();
   }
+  let tier = startTier;
   const before = store.data.coins;
-
   const dlg = $('#modal-chest');
-  const stage = $('#chest-stage');
-  setTier(stage, tier, title);
-  stage.style.setProperty('--crack', 0);
-  $('#chest-wrap').innerHTML = chestSVG(tier);
-  $('#chest-rewards').innerHTML = '';
-  $('#chest-balance').textContent = before;
-  $('#chest-upgrade').classList.remove('show');
-  const tapsLeft = $('#chest-taps');
+  const root = $('#chest-stage');
+  const chest = $('#chest-wrap');
+  const stage = $('#cx-stage');
+  const rays = $('#cx-rays');
+  const glow = $('#cx-glow');
+  const hint = $('#cx-hint');
   const collect = $('#chest-collect');
+  const box = $('#chest-rewards');
+  const setTier = (tr) => {
+    root.className = `cx tier-${tr}`;
+    root.style.setProperty('--glow', TIERS[tr].glow);
+    $('#chest-title').textContent = title && tr === startTier ? title : t(`chest_${tr}`);
+    chest.innerHTML = chestSVG(tr);
+  };
+
+  // Reset the scene.
+  for (const el of [root, chest, stage, rays, glow, hint, collect, box, $('#chest-title'), $('#cx-flash'), $('#chest-upgrade')]) {
+    el.getAnimations().forEach((a) => a.cancel());
+  }
+  setTier(tier);
+  box.innerHTML = '';
   collect.hidden = true;
-  stage.dataset.stage = 'drop';
+  $('#chest-balance').textContent = before;
+  root.dataset.stage = 'drop';
   dlg.showModal();
-  sfx.whoosh();
+  fx = fx || new ParticleFX($('#cx-fx'));
+  fx.start();
+  fx.color = TIERS[tier].glow;
 
   return new Promise((resolve) => {
-    let taps = 0;
-    let reward = null;
-    let canTap = false;
-    const renderTaps = () => {
-      tapsLeft.innerHTML = Array.from({ length: TAPS }, (_, i) => `<i class="${i < taps ? 'on' : ''}"></i>`).join('');
-    };
-    renderTaps();
-    const toIdle = setTimeout(
-      () => {
-        stage.dataset.stage = 'idle';
-        canTap = true;
-      },
-      reducedMotion() ? 0 : 650,
-    );
-    // Dust puff and a little thud when the chest lands.
-    placeLight();
-    setTimeout(() => {
-      placeLight();
-      replay($('#chest-wrap'), 'landed');
-      sfx.chestShake(0);
-    }, reducedMotion() ? 0 : 430);
+    let onTap = null;
+    let floatAnim = null;
+    let glowAnim = null;
 
-    const onTap = () => {
-      if (!canTap || stage.dataset.stage === 'open' || stage.dataset.stage === 'done') return;
-      clearTimeout(toIdle);
-      taps++;
-      renderTaps();
-      stage.dataset.stage = 'idle';
-      stage.style.setProperty('--crack', taps / TAPS);
-      const wrap = $('#chest-wrap');
-      wrap.style.setProperty('--amp', taps);
-      replay(wrap, 'hit');
-      sfx.chestShake(taps - 1);
-      buzz(15 + taps * 15);
-      burst(wrap, 50, 46, { count: 4 + taps * 3, colors: [TIERS[tier].glow, '#fff'], dist: 40 + taps * 25 });
+    const run = async () => {
+      // 1. Entrance: backdrop, title, chest drop with squash & bounce.
+      anim(root.querySelector('.cx-bg'), [{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: 'ease-out' });
+      anim($('#chest-title'), [{ opacity: 0, transform: 'translateY(-20px) scale(.8)' }, { opacity: 1, transform: 'none' }], { duration: 450, delay: 150, easing: 'cubic-bezier(.3,1.5,.5,1)' });
+      sfx.whoosh();
+      await anim(
+        chest,
+        [
+          { transform: 'translateY(-110vh) scale(.7) rotate(-8deg)', easing: 'cubic-bezier(.55,0,1,.45)' },
+          { transform: 'translateY(0) scale(1.14,.82)', offset: 0.62, easing: 'cubic-bezier(.2,.8,.3,1)' },
+          { transform: 'translateY(-18px) scale(.95,1.06)', offset: 0.8, easing: 'cubic-bezier(.5,0,.8,.5)' },
+          { transform: 'translateY(0) scale(1.03,.97)', offset: 0.92 },
+          { transform: 'none' },
+        ],
+        { duration: 900 },
+      );
+      // Landing hits at 62% of the drop: play the thud a bit before the end.
+      const m = mouth();
+      fx.dust(m.x, m.y + chest.getBoundingClientRect().height * 0.45);
+      sfx.land();
+      buzz(25);
 
-      // A lucky shake can upgrade the chest before it opens.
-      if (taps < TAPS && NEXT_TIER[tier] && Math.random() < UPGRADE_CHANCE[tier]) {
-        canTap = false;
-        setTimeout(() => {
-          tier = NEXT_TIER[tier];
-          setTier(stage, tier, title && tier !== startTier ? `${title} · ${t(`tier_${tier}`)}` : title);
-          wrap.innerHTML = chestSVG(tier);
-          replay($('#chest-flash'), 'flash');
-          replay($('#chest-upgrade'), 'show');
-          replay(wrap, 'upgraded');
-          sfx.upgrade();
-          buzz([30, 30, 60]);
-          setTimeout(() => (canTap = true), 700);
-        }, 280);
-        return;
+      // 2. Idle: gentle float + breathing glow, wait for the tap.
+      root.dataset.stage = 'idle';
+      floatAnim = chest.animate(
+        [{ transform: 'translateY(0)' }, { transform: 'translateY(-10px)' }, { transform: 'translateY(0)' }],
+        { duration: 1800, iterations: Infinity, easing: 'ease-in-out' },
+      );
+      glowAnim = glow.animate([{ opacity: 0.25, transform: 'scale(.7)' }, { opacity: 0.45, transform: 'scale(.8)' }, { opacity: 0.25, transform: 'scale(.7)' }], {
+        duration: 1800,
+        iterations: Infinity,
+        easing: 'ease-in-out',
+      });
+      anim(hint, [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 300 });
+      await new Promise((r) => (onTap = r));
+      onTap = null;
+
+      // 3. Charge-up: escalating shake, growing glow, light leaking from the seam.
+      root.dataset.stage = 'charge';
+      anim(hint, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
+      floatAnim.cancel();
+      glowAnim.cancel();
+      const seam = () => chest.querySelector('.chest-seam');
+      const charge = async (ms, from, to) => {
+        sfx.charge(ms / 1000);
+        const steps = Math.max(8, Math.round(ms / 45));
+        anim(seam(), [{ opacity: from / 10 }, { opacity: 1 }], { duration: ms });
+        anim(glow, [{ opacity: 0.3 + from / 20, transform: `scale(${0.7 + from / 30})` }, { opacity: 0.85, transform: 'scale(1.1)' }], { duration: ms, easing: 'ease-in' });
+        buzz(20);
+        setTimeout(() => buzz(30), ms * 0.5);
+        await anim(chest, shakeFrames(steps, from, to), { duration: ms, easing: 'linear' });
+      };
+      await charge(700, 1, 5);
+      if (NEXT_TIER[tier] && Math.random() < UPGRADE_CHANCE[tier]) {
+        // Lucky! Flash, swap to the next tier, banner, then charge a little more.
+        anim($('#cx-flash'), [{ opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 0 }], { duration: 600 });
+        await wait(140);
+        tier = NEXT_TIER[tier];
+        setTier(tier);
+        fx.color = TIERS[tier].glow;
+        sfx.upgrade();
+        buzz([30, 30, 60]);
+        anim(
+          $('#chest-upgrade'),
+          [
+            { opacity: 0, transform: 'translate(-50%,0) scale(.4) rotate(-6deg)' },
+            { opacity: 1, transform: 'translate(-50%,0) scale(1.15) rotate(-3deg)', offset: 0.2 },
+            { opacity: 1, transform: 'translate(-50%,0) scale(1) rotate(-3deg)', offset: 0.75 },
+            { opacity: 0, transform: 'translate(-50%,-30px) scale(.9) rotate(-3deg)' },
+          ],
+          { duration: 1500 },
+        );
+        await charge(600, 3, 7);
+      } else {
+        await charge(350, 5, 8);
       }
-      if (taps >= TAPS) {
-        canTap = false;
-        setTimeout(reveal, reducedMotion() ? 0 : 320);
-      }
-    };
 
-    const reveal = () => {
-      reward = rollChest(tier);
+      // 4. Burst: the lid swings open on its hinge, flash, rays, sparks & coins.
+      const reward = rollChest(tier);
       store.data.coins += reward.coins + reward.dupe;
       store.data.boosters.hint += reward.hint;
       store.data.boosters.rewind += reward.rewind;
       if (reward.skin) grantSkin(reward.skin.id);
       save();
 
-      stage.dataset.stage = 'open';
-      // The chest shrinks once open: keep the light glued to its mouth while it does.
-      const follow = setInterval(placeLight, 50);
-      setTimeout(() => clearInterval(follow), 700);
-      replay($('#chest-flash'), 'flash');
+      root.dataset.stage = 'open';
       sfx.chestOpen();
-      buzz([30, 40, 60]);
-      const wrap = $('#chest-wrap');
-      burst(wrap, 50, 45, { count: 28, colors: [TIERS[tier].glow, '#fff', 'var(--c2)', 'var(--c1)'], dist: 160 });
-      coinShower(dlg, wrap, tier === 'gold' ? 24 : tier === 'silver' ? 18 : 12);
-      setTimeout(() => sfx.coinRain(), 200);
-
-      const items = [{ icon: 'i-coin', label: t('coins'), kind: 'coins', rarity: 'common', amount: reward.coins + reward.dupe }];
-      if (reward.hint) items.push({ icon: 'i-hint', amount: reward.hint, label: t('hintName'), kind: 'hint', rarity: 'common' });
-      if (reward.rewind) items.push({ icon: 'i-rewind', amount: reward.rewind, label: t('rewindName'), kind: 'rewind', rarity: 'common' });
-      if (reward.skin) items.push({ kind: 'skin', skin: reward.skin.id, rarity: reward.skin.rarity, label: t(`skin_${reward.skin.id}`) });
-
-      const box = $('#chest-rewards');
-      const step = 420;
-      items.forEach((it, i) => {
-        setTimeout(() => {
-          const card = document.createElement('div');
-          card.className = `reward-card rc-${it.kind} r-${it.rarity}`;
-          const face =
-            it.kind === 'skin'
-              ? `${marbleHTML(it.skin, (i + 1) % 4)}<b>${it.label}</b><small>${t(`rarity_${it.rarity}`)}</small><em class="rc-new">${t('newTag')}</em>`
-              : `<svg><use href="#${it.icon}"/></svg><b>${it.kind === 'coins' ? '+0' : `×${it.amount}`}</b><small>${it.label}</small>`;
-          card.innerHTML = `<div class="rc-inner"><div class="rc-back"><span>?</span></div><div class="rc-front">${face}</div></div>`;
-          box.appendChild(card);
-          sfx.pop(i);
-          setTimeout(() => {
-            card.classList.add('flipped');
-            sfx.flip(i);
-            buzz(12);
-            if (it.kind === 'coins') countTo(card.querySelector('b'), 0, it.amount, 700, (v) => `+${v}`);
-            if (it.kind === 'skin') {
-              sfx.epic();
-              buzz([20, 40, 20, 40, 80]);
-              burst(card, 50, 40, { count: 22, colors: ['var(--c3)', 'var(--c2)', '#fff', 'var(--c1)'], dist: 110 });
-            }
-          }, 260);
-        }, 500 + i * step);
-      });
-      setTimeout(
-        () => {
-          stage.dataset.stage = 'done';
-          collect.hidden = false;
-          collect.focus();
-        },
-        800 + items.length * step + (reward.skin ? 400 : 0),
+      setTimeout(() => sfx.coinRain(), 220);
+      buzz([40, 30, 80]);
+      anim($('#cx-flash'), [{ opacity: 0 }, { opacity: 0.95, offset: 0.15 }, { opacity: 0 }], { duration: 650, easing: 'ease-out' });
+      anim(chest, [{ transform: 'scale(1.12,.88)' }, { transform: 'scale(.94,1.08)', offset: 0.4 }, { transform: 'none' }], { duration: 500, easing: 'cubic-bezier(.3,1.4,.5,1)' });
+      anim(
+        chest.querySelector('.chest-lid'),
+        [
+          { transform: 'none' },
+          { transform: 'translateY(-22px) scaleY(1.06) rotate(-3deg)', offset: 0.35 },
+          { transform: 'translateY(-11px) scaleY(.5)' },
+        ],
+        { duration: 520, easing: 'cubic-bezier(.2,1.2,.4,1)' },
       );
-    };
+      anim(chest.querySelector('.chest-inner'), [{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
+      anim(seam(), [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
+      anim(glow, [{ opacity: 0.85, transform: 'scale(1.1)' }, { opacity: 1, transform: 'scale(1.5)' }], { duration: 500, easing: 'ease-out' }).then(() => {
+        glowAnim = glow.animate([{ transform: 'scale(1.5)' }, { transform: 'scale(1.62)' }, { transform: 'scale(1.5)' }], { duration: 2400, iterations: Infinity, easing: 'ease-in-out' });
+      });
+      anim(rays, [{ opacity: 0, transform: 'scale(.3)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 600, easing: 'cubic-bezier(.2,1.2,.4,1)' }).then(() => {
+        rays.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], { duration: 22000, iterations: Infinity });
+      });
+      const m2 = mouth();
+      fx.burst(m2.x, m2.y, { color: TIERS[tier].glow, coins: tier === 'gold' ? 20 : tier === 'silver' ? 15 : 10 });
+      fx.motes = true;
 
-    const onCollect = (e) => {
-      e?.stopPropagation();
+      // 5. The chest lifts up to make room; rewards fly out of it one by one.
+      await wait(450);
+      anim(stage, [{ transform: 'none' }, { transform: 'translateY(-24px) scale(.86)' }], { duration: 600, easing: 'cubic-bezier(.3,1.1,.4,1)' });
+      await wait(250);
+      const items = rewardItems(reward);
+      box.innerHTML = items
+        .map(
+          (it) => `<div class="cx-reward rc-${it.kind} r-${it.rarity}">
+            ${it.kind === 'skin' ? `<em class="cx-new">${t('newTag')}</em>${marbleHTML(it.skin, 3)}` : `<svg><use href="#${it.icon}"/></svg>`}
+            <b>${it.kind === 'coins' ? '+0' : it.kind === 'skin' ? it.label : `×${it.amount}`}</b>
+            <small>${it.kind === 'skin' ? t(`rarity_${it.rarity}`) : it.label}</small>
+          </div>`,
+        )
+        .join('');
+      const cards = [...box.children];
+      cards.forEach((c) => (c.style.opacity = '0'));
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        const it = items[i];
+        const r = card.getBoundingClientRect();
+        const m3 = mouth();
+        const dx = m3.x - (r.left + r.width / 2);
+        const dy = m3.y - (r.top + r.height / 2);
+        card.style.opacity = '';
+        sfx.pop(i);
+        buzz(15);
+        anim(
+          card,
+          [
+            { opacity: 0, transform: `translate(${dx}px, ${dy}px) scale(.2)` },
+            { opacity: 1, transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 90}px) scale(1.15)`, offset: 0.55 },
+            { opacity: 1, transform: 'none' },
+          ],
+          { duration: 620, easing: 'cubic-bezier(.3,.7,.4,1)' },
+        ).then(() => {
+          card.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-5px)' }, { transform: 'translateY(0)' }], {
+            duration: 2600,
+            delay: i * 300,
+            iterations: Infinity,
+            easing: 'ease-in-out',
+          });
+          if (it.kind === 'coins') countTo(card.querySelector('b'), 0, it.amount, 700, (v) => `+${v}`);
+          if (it.kind === 'skin') {
+            sfx.epic();
+            buzz([20, 40, 20, 40, 80]);
+            const cr = card.getBoundingClientRect();
+            fx.burst(cr.left + cr.width / 2, cr.top + cr.height / 2, { sparks: 30, coins: 0, color: '#c58bff' });
+          }
+        });
+        await wait(it.kind === 'skin' ? 700 : 380);
+      }
+      await wait(450);
+
+      // 6. Collect.
+      root.dataset.stage = 'done';
+      collect.hidden = false;
+      anim(collect, [{ opacity: 0, transform: 'translateY(20px) scale(.8)' }, { opacity: 1, transform: 'none' }], { duration: 400, easing: 'cubic-bezier(.3,1.5,.5,1)' });
+      collect.focus();
+      await new Promise((r) => (onTap = r));
+      onTap = null;
       collect.hidden = true;
       sfx.coin();
-      const coinCard = $('#chest-rewards .rc-coins');
-      const bal = $('#chest-balance');
-      flyIcons(coinCard, bal.parentElement, {
+      const coinCard = box.querySelector('.rc-coins');
+      const pill = $('#cx-coins');
+      flyIcons(coinCard, pill, {
         count: 10,
         layer: dlg,
         onArrive: (i) => {
-          if (i === 0) countTo(bal, before, store.data.coins, 600);
+          if (i === 0) countTo($('#chest-balance'), before, store.data.coins, 500);
           if (i % 2 === 0) sfx.tick();
-          if (i === 9) replay(bal.parentElement, 'bump');
+          if (i === 9) anim(pill, [{ transform: 'scale(1)' }, { transform: 'scale(1.25)' }, { transform: 'scale(1)' }], { duration: 300 });
         },
       });
-      setTimeout(finish, reducedMotion() ? 0 : 1150);
+      cards.forEach((c, i) => anim(c, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-24px) scale(.7)' }], { duration: 350, delay: 250 + i * 60, easing: 'ease-in' }));
+      await wait(1100);
+
+      // 7. Exit.
+      await anim(root, [{ opacity: 1 }, { opacity: 0, transform: 'scale(1.04)' }], { duration: 300, easing: 'ease-in' });
+      fx.stop();
+      dlg.close();
+      root.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+      busy = false;
+      cleanup();
+      resolve(reward);
     };
 
-    const finish = () => {
-      stage.removeEventListener('click', onTap);
-      collect.removeEventListener('click', onCollect);
-      dlg.removeEventListener('cancel', onCancel);
-      stage.dataset.stage = 'leaving';
-      setTimeout(
-        () => {
-          dlg.close();
-          busy = false;
-          resolve(reward);
-        },
-        reducedMotion() ? 0 : 320,
-      );
+    const tap = (e) => {
+      if (onTap && (root.dataset.stage === 'idle' || (root.dataset.stage === 'done' && e?.type !== 'click-stage'))) onTap();
+    };
+    const onStageClick = (e) => {
+      if (root.dataset.stage === 'idle') tap(e);
+    };
+    const onCollect = (e) => {
+      e.stopPropagation();
+      if (root.dataset.stage === 'done') tap(e);
     };
     const onCancel = (e) => {
       e.preventDefault();
-      if (stage.dataset.stage === 'done') onCollect();
-      else onTap();
+      tap(e);
     };
-
-    stage.addEventListener('click', onTap);
+    const cleanup = () => {
+      root.removeEventListener('click', onStageClick);
+      collect.removeEventListener('click', onCollect);
+      dlg.removeEventListener('cancel', onCancel);
+    };
+    root.addEventListener('click', onStageClick);
     collect.addEventListener('click', onCollect);
     dlg.addEventListener('cancel', onCancel);
+    run();
   });
 }
-
