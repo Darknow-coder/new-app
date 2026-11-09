@@ -13,7 +13,7 @@ const defaults = () => ({
   giftDay: null,
   rewardedDays: {}, // days whose completion bonus was paid
   chests: { opened: {} },
-  skins: { owned: ['classic'], equipped: 'classic' },
+  skins: { owned: ['classic'], equipped: 'classic', seen: ['classic'] },
   seenMech: {},
   player: { level: 1, xp: 0 },
   inbox: [], // chests waiting to be opened: { id, tier, reason, n? }
@@ -39,7 +39,7 @@ function load() {
       levels: { ...d.levels, ...(parsed.levels || {}) },
       boosters: { ...d.boosters, ...(parsed.boosters || {}) },
       chests: { opened: { ...((parsed.chests || {}).opened || {}) } },
-      skins: { ...d.skins, ...(parsed.skins || {}) },
+      skins: { ...d.skins, ...(parsed.skins || {}), seen: (parsed.skins || {}).seen || [...((parsed.skins || {}).owned || ['classic'])] },
       seenMech: { ...(parsed.seenMech || {}) },
       player: { ...d.player, ...(parsed.player || {}) },
       quests: { ...d.quests, ...(parsed.quests || {}) },

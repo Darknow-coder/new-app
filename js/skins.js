@@ -1,45 +1,301 @@
-// Collectible marble skins. A skin only changes the *pattern*: every marble keeps its
-// gameplay colour (var(--col)), so the puzzle stays readable whatever the skin.
-import { store, save } from './storage.js';
+// Marble collection: 53 skins in 10 series that follow the player through the game.
+//
+// A skin only changes the *pattern* of a marble: every design is painted over the
+// gameplay colour (var(--col) / var(--cold)), so puzzles stay readable whatever the skin.
+// Designs are data: each new skin is a list of CSS background layers (+ optional extras)
+// turned into a stylesheet at start-up.
+import { store, save, computeStats } from './storage.js';
+import { LANG } from './i18n.js';
+import { worldOf } from './levels.js';
+import { dateKey } from './daily.js';
 
-export const SKINS = [
-  { id: 'classic', rarity: 'common' },
-  { id: 'stripes', rarity: 'common' },
-  { id: 'dots', rarity: 'common' },
-  { id: 'glass', rarity: 'rare' },
-  { id: 'swirl', rarity: 'rare' },
-  { id: 'metal', rarity: 'rare' },
-  { id: 'galaxy', rarity: 'epic' },
-  { id: 'neon', rarity: 'epic' },
-  { id: 'gem', rarity: 'epic' },
+/* ---------- reusable layers ---------- */
+const HL = 'radial-gradient(circle at 34% 28%, #fff 0 6%, transparent 14%)';
+const SHADE = 'radial-gradient(circle at 50% 45%, transparent 55%, rgba(0,0,0,.28) 100%)';
+const BASE = 'radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--col) 72%, #fff), var(--col) 50%, var(--cold))';
+const W = (a) => `rgba(255,255,255,${a})`;
+const K = (a) => `rgba(0,0,0,${a})`;
+const L = (...layers) => [HL, ...layers, SHADE, BASE].join(',');
+
+/* ---------- series ---------- */
+export const SETS = [
+  { id: 'classic', world: -1 },
+  ...Array.from({ length: 8 }, (_, w) => ({ id: `w${w}`, world: w })),
+  { id: 'cute', world: -2 },
 ];
+export const LEGEND_BONUS = 300;
 
+/**
+ * Skins. `bg` = background layers, `css` = extra declarations on .ball,
+ * `before` / `after` = pseudo-element declarations, `fx` = extra class on the preview wrapper.
+ * Classic skins keep their hand-written CSS (bg omitted).
+ */
+export const SKINS = [
+  // ── Classiques (starter series) ─────────────────────────────────────────
+  { id: 'classic', set: 'classic', rarity: 'common', n: ['Classic', 'Classique'] },
+  { id: 'stripes', set: 'classic', rarity: 'common', n: ['Striped', 'Rayée'] },
+  { id: 'dots', set: 'classic', rarity: 'common', n: ['Polka', 'À pois'] },
+  { id: 'glass', set: 'classic', rarity: 'rare', n: ['Glass', 'Verre'] },
+  { id: 'swirl', set: 'classic', rarity: 'rare', n: ['Swirl', 'Tourbillon'] },
+  { id: 'metal', set: 'classic', rarity: 'rare', n: ['Chrome', 'Chrome'] },
+  { id: 'galaxy', set: 'classic', rarity: 'epic', n: ['Galaxy', 'Galaxie'] },
+  { id: 'neon', set: 'classic', rarity: 'epic', n: ['Neon', 'Néon'] },
+  { id: 'gem', set: 'classic', rarity: 'epic', n: ['Diamond', 'Diamant'] },
+
+  // ── Monde 1 · Plage aux galets ───────────────────────────────────────────
+  { id: 'w0-sand', set: 'w0', rarity: 'common', n: ['Sandy', 'Sablée'],
+    bg: L(`radial-gradient(circle, ${W(0.6)} 0 7%, transparent 9%) 0 0/22% 22%`, `radial-gradient(circle, ${K(0.18)} 0 6%, transparent 8%) 11% 13%/27% 27%`) },
+  { id: 'w0-wave', set: 'w0', rarity: 'common', n: ['Wave', 'Vague'],
+    bg: L(`repeating-radial-gradient(circle at 50% 135%, transparent 0 9%, ${W(0.5)} 9% 13%)`) },
+  { id: 'w0-shell', set: 'w0', rarity: 'rare', n: ['Seashell', 'Coquillage'],
+    bg: L(`repeating-conic-gradient(from 270deg at 50% 100%, ${W(0.45)} 0 6deg, transparent 6deg 15deg)`) },
+  { id: 'w0-ball', set: 'w0', rarity: 'epic', n: ['Beach ball', 'Ballon de plage'],
+    bg: [HL, `radial-gradient(circle, #fff 0 9%, transparent 10%)`, SHADE, `conic-gradient(var(--col) 0 60deg, #fff 0 120deg, var(--col) 0 180deg, #fff 0 240deg, var(--col) 0 300deg, #fff 0)`].join(',') },
+  { id: 'w0-legend', set: 'w0', rarity: 'legendary', n: ['Tide Pearl', 'Perle des marées'],
+    bg: L(`linear-gradient(115deg, transparent 30%, ${W(0.75)} 45%, transparent 60%) 0 0/300% 100%`, `radial-gradient(circle at 60% 70%, ${W(0.35)}, transparent 50%)`),
+    css: 'animation: sk-sheen 2.8s linear infinite;' },
+
+  // ── Monde 2 · Dunes dorées ───────────────────────────────────────────────
+  { id: 'w1-strata', set: 'w1', rarity: 'common', n: ['Sandstone', 'Grès'],
+    bg: L(`repeating-linear-gradient(170deg, ${W(0.3)} 0 7%, transparent 7% 16%, ${K(0.14)} 16% 20%, transparent 20% 28%)`) },
+  { id: 'w1-cactus', set: 'w1', rarity: 'common', n: ['Cactus', 'Cactus'],
+    bg: L(`radial-gradient(circle, #fff 0 9%, transparent 11%) 0 0/25% 25%`, `repeating-linear-gradient(90deg, ${K(0.16)} 0 4%, transparent 4% 16%)`) },
+  { id: 'w1-sun', set: 'w1', rarity: 'rare', n: ['Sunburst', 'Soleil'],
+    bg: L(`radial-gradient(circle, ${W(0.8)} 0 15%, transparent 17%)`, `repeating-conic-gradient(${W(0.5)} 0 5deg, transparent 5deg 22deg)`) },
+  { id: 'w1-scarab', set: 'w1', rarity: 'epic', n: ['Scarab', 'Scarabée'],
+    bg: [HL, `linear-gradient(135deg, transparent 15%, rgba(60,255,190,.45) 38%, rgba(140,90,255,.45) 62%, transparent 85%)`, `linear-gradient(165deg, color-mix(in srgb, var(--col) 30%, #fff), var(--col) 35%, var(--cold) 55%, var(--col) 75%)`].join(','),
+    css: 'box-shadow: inset 0 0 0 2px rgba(255,255,255,.4), 0 5px 10px rgba(0,0,0,.35);' },
+  { id: 'w1-legend', set: 'w1', rarity: 'legendary', n: ['Mirage', 'Mirage'],
+    bg: L(`repeating-linear-gradient(0deg, ${W(0.32)} 0 3%, transparent 3% 9%) 0 0/100% 200%`),
+    css: 'animation: sk-rise 1.6s linear infinite;' },
+
+  // ── Monde 3 · Canyon de braise ───────────────────────────────────────────
+  { id: 'w2-ash', set: 'w2', rarity: 'common', n: ['Ash', 'Cendre'],
+    bg: L(`radial-gradient(circle, ${K(0.35)} 0 8%, transparent 10%) 0 0/20% 20%`, `radial-gradient(circle, ${W(0.35)} 0 5%, transparent 7%) 9% 9%/24% 24%`) },
+  { id: 'w2-strata', set: 'w2', rarity: 'common', n: ['Canyon', 'Canyon'],
+    bg: L(`repeating-linear-gradient(20deg, ${K(0.2)} 0 6%, transparent 6% 14%, ${W(0.25)} 14% 18%, transparent 18% 26%)`) },
+  { id: 'w2-obsidian', set: 'w2', rarity: 'rare', n: ['Obsidian', 'Obsidienne'],
+    bg: [HL, `radial-gradient(circle at 65% 70%, color-mix(in srgb, var(--col) 70%, transparent) 0 12%, transparent 30%)`, `radial-gradient(circle at 40% 35%, #43384f, #120e1a 70%)`].join(','),
+    css: 'box-shadow: inset 0 0 0 3px var(--col), 0 0 10px color-mix(in srgb, var(--col) 60%, transparent), 0 5px 10px rgba(0,0,0,.35);' },
+  { id: 'w2-lava', set: 'w2', rarity: 'epic', n: ['Lava', 'Lave'],
+    bg: [HL, `repeating-conic-gradient(from 10deg, rgba(255,235,140,.85) 0 2.5deg, transparent 2.5deg 38deg)`, `radial-gradient(circle, rgba(255,220,120,.55), transparent 60%)`, `radial-gradient(circle at 40% 35%, var(--col), var(--cold) 60%, #2a0d05)`].join(','),
+    css: 'animation: sk-glow 1.4s ease-in-out infinite;' },
+  { id: 'w2-legend', set: 'w2', rarity: 'legendary', n: ['Ember Heart', 'Cœur de braise'],
+    bg: L(`radial-gradient(circle at 50% 55%, rgba(255,240,170,.9) 0 12%, rgba(255,150,60,.6) 25%, transparent 45%)`),
+    css: 'animation: sk-flame 1s ease-in-out infinite;' },
+
+  // ── Monde 4 · Récif de corail ────────────────────────────────────────────
+  { id: 'w3-scales', set: 'w3', rarity: 'common', n: ['Scales', 'Écailles'],
+    bg: L(`radial-gradient(circle at 50% 0, transparent 40%, ${W(0.4)} 42% 50%, transparent 52%) 0 0/25% 22%`) },
+  { id: 'w3-bubbles', set: 'w3', rarity: 'common', n: ['Bubbles', 'Bulles'],
+    bg: L(`radial-gradient(circle at 30% 65%, transparent 8%, ${W(0.7)} 9% 11%, transparent 12%)`, `radial-gradient(circle at 62% 40%, transparent 5%, ${W(0.7)} 6% 8%, transparent 9%)`, `radial-gradient(circle at 70% 75%, transparent 3%, ${W(0.7)} 4% 6%, transparent 7%)`) },
+  { id: 'w3-coral', set: 'w3', rarity: 'rare', n: ['Coral', 'Corail'],
+    bg: L(`radial-gradient(circle at 30% 70%, color-mix(in srgb, var(--col) 40%, #fff) 0 12%, transparent 14%)`, `radial-gradient(circle at 68% 60%, color-mix(in srgb, var(--col) 40%, #fff) 0 9%, transparent 11%)`, `radial-gradient(circle at 55% 30%, color-mix(in srgb, var(--col) 40%, #fff) 0 7%, transparent 9%)`) },
+  { id: 'w3-jelly', set: 'w3', rarity: 'epic', n: ['Jellyfish', 'Méduse'],
+    bg: [HL, `repeating-linear-gradient(90deg, transparent 0 9%, ${W(0.5)} 9% 11%) 0 60%/100% 45% no-repeat`, `radial-gradient(ellipse 60% 45% at 50% 35%, ${W(0.45)}, transparent 70%)`, `radial-gradient(circle, color-mix(in srgb, var(--col) 50%, transparent) 30%, var(--col) 75%)`].join(','),
+    css: 'animation: sk-glow 2.4s ease-in-out infinite;' },
+  { id: 'w3-legend', set: 'w3', rarity: 'legendary', n: ['Abyss Treasure', 'Trésor des abysses'],
+    bg: L(`radial-gradient(circle at 50% 50%, #fff 0 10%, color-mix(in srgb, var(--col) 30%, #fff) 14%, transparent 26%)`, `repeating-radial-gradient(circle, transparent 0 18%, ${W(0.3)} 18% 21%)`),
+    css: 'animation: sk-pulse 1.8s ease-in-out infinite;' },
+
+  // ── Monde 5 · Pics violets ───────────────────────────────────────────────
+  { id: 'w4-snow', set: 'w4', rarity: 'common', n: ['Snowcap', 'Sommet enneigé'],
+    bg: L(`linear-gradient(to bottom, ${W(0.85)} 0 26%, transparent 32%)`) },
+  { id: 'w4-ridge', set: 'w4', rarity: 'common', n: ['Ridges', 'Crêtes'],
+    bg: L(`repeating-linear-gradient(45deg, ${W(0.3)} 0 5%, transparent 5% 14%)`, `repeating-linear-gradient(-45deg, ${K(0.12)} 0 5%, transparent 5% 14%)`) },
+  { id: 'w4-amethyst', set: 'w4', rarity: 'rare', n: ['Amethyst', 'Améthyste'],
+    bg: [HL, `conic-gradient(from 30deg, ${W(0.5)} 0 15%, transparent 0 30%, ${K(0.15)} 0 45%, transparent 0 60%, ${W(0.35)} 0 75%, ${K(0.1)} 0 90%, transparent 0)`, BASE].join(','),
+    css: 'box-shadow: inset 0 0 0 2px rgba(255,255,255,.55), 0 5px 10px rgba(0,0,0,.3);' },
+  { id: 'w4-aurora', set: 'w4', rarity: 'epic', n: ['Aurora', 'Aurore'],
+    bg: L(`linear-gradient(160deg, transparent 20%, rgba(120,255,200,.55) 35%, transparent 45%, rgba(170,120,255,.5) 60%, transparent 72%) 0 0/250% 250%`),
+    css: 'animation: sk-aurora 4s ease-in-out infinite alternate;' },
+  { id: 'w4-legend', set: 'w4', rarity: 'legendary', n: ['Peak Crown', 'Couronne des cimes'],
+    bg: L(`conic-gradient(from 180deg at 50% 38%, transparent 0 140deg, #ffd34d 140deg 150deg, transparent 150deg 175deg, #ffd34d 175deg 185deg, transparent 185deg 210deg, #ffd34d 210deg 220deg, transparent 220deg)`),
+    css: 'animation: sk-pulse 2s ease-in-out infinite;' },
+
+  // ── Monde 6 · Baie des glaciers ──────────────────────────────────────────
+  { id: 'w5-frost', set: 'w5', rarity: 'common', n: ['Frost', 'Givre'],
+    bg: L(`radial-gradient(circle, transparent 48%, ${W(0.65)} 78%)`) },
+  { id: 'w5-crack', set: 'w5', rarity: 'common', n: ['Cracked ice', 'Glace fêlée'],
+    bg: L(`linear-gradient(32deg, transparent 47%, ${W(0.8)} 48% 50%, transparent 51%)`, `linear-gradient(115deg, transparent 58%, ${W(0.7)} 59% 61%, transparent 62%)`, `linear-gradient(75deg, transparent 30%, ${W(0.6)} 31% 32.5%, transparent 33.5%)`) },
+  { id: 'w5-flake', set: 'w5', rarity: 'rare', n: ['Snowflake', 'Flocon'],
+    bg: L(`radial-gradient(circle, transparent 0 8%, transparent 46%)`, `repeating-conic-gradient(${W(0.85)} 0 3deg, transparent 3deg 60deg)`),
+    css: '-webkit-mask: radial-gradient(circle, #000 69%, transparent 70%); mask: radial-gradient(circle, #000 69%, transparent 70%);' },
+  { id: 'w5-glacier', set: 'w5', rarity: 'epic', n: ['Glacier', 'Glacier'],
+    bg: [HL, `linear-gradient(130deg, transparent 40%, ${W(0.8)} 41% 43%, transparent 44%)`, `radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--col) 35%, transparent) 0 40%, var(--col) 80%)`, `linear-gradient(#dff4ff, #9fd6ff)`].join(','),
+    css: 'box-shadow: inset 0 0 0 2px #fff, 0 0 12px rgba(160,220,255,.7), 0 5px 10px rgba(0,0,0,.3); animation: sk-glow 3s ease-in-out infinite;' },
+  { id: 'w5-legend', set: 'w5', rarity: 'legendary', n: ['North Star', 'Étoile polaire'],
+    bg: L(`conic-gradient(from 45deg, transparent 0 40deg, ${W(0.95)} 44deg 46deg, transparent 50deg 130deg, ${W(0.95)} 134deg 136deg, transparent 140deg 220deg, ${W(0.95)} 224deg 226deg, transparent 230deg 310deg, ${W(0.95)} 314deg 316deg, transparent 320deg)`, `radial-gradient(circle, #fff 0 9%, transparent 14%)`),
+    css: 'animation: sk-twinkle 1.6s ease-in-out infinite;' },
+
+  // ── Monde 7 · Bois moussu ────────────────────────────────────────────────
+  { id: 'w6-grain', set: 'w6', rarity: 'common', n: ['Wood grain', 'Bois'],
+    bg: L(`repeating-radial-gradient(ellipse at 30% 40%, ${K(0.15)} 0 3%, transparent 3% 8%)`) },
+  { id: 'w6-leaf', set: 'w6', rarity: 'common', n: ['Leaf', 'Feuille'],
+    bg: L(`linear-gradient(135deg, transparent 49%, ${W(0.7)} 49.5% 51%, transparent 51.5%)`, `repeating-linear-gradient(45deg, transparent 0 12%, ${W(0.35)} 12% 13.5%)`) },
+  { id: 'w6-shroom', set: 'w6', rarity: 'rare', n: ['Toadstool', 'Champignon'],
+    bg: L(`radial-gradient(circle at 30% 35%, #fff 0 10%, transparent 11%)`, `radial-gradient(circle at 66% 28%, #fff 0 8%, transparent 9%)`, `radial-gradient(circle at 60% 62%, #fff 0 11%, transparent 12%)`, `radial-gradient(circle at 26% 70%, #fff 0 6%, transparent 7%)`) },
+  { id: 'w6-firefly', set: 'w6', rarity: 'epic', n: ['Fireflies', 'Lucioles'],
+    bg: [HL, `radial-gradient(circle at 30% 60%, #fff9b0 0 5%, transparent 12%)`, `radial-gradient(circle at 65% 35%, #fff9b0 0 4%, transparent 10%)`, `radial-gradient(circle at 70% 72%, #fff9b0 0 3%, transparent 9%)`, `radial-gradient(circle at 40% 35%, var(--col), var(--cold) 65%, #0d1f12)`].join(','),
+    css: 'animation: sk-twinkle 1.3s ease-in-out infinite;' },
+  { id: 'w6-legend', set: 'w6', rarity: 'legendary', n: ['Forest Spirit', 'Esprit de la forêt'],
+    bg: L(`radial-gradient(circle at 50% 50%, ${W(0.7)} 0 8%, transparent 30%)`, `repeating-conic-gradient(from 0deg, ${W(0.3)} 0 10deg, transparent 10deg 30deg)`),
+    css: 'animation: sk-aura 2.2s ease-in-out infinite;' },
+
+  // ── Monde 8 · Ville néon ─────────────────────────────────────────────────
+  { id: 'w7-grid', set: 'w7', rarity: 'common', n: ['Grid', 'Grille'],
+    bg: L(`linear-gradient(${W(0.45)} 1.5px, transparent 1.5px) 0 0/22% 22%`, `linear-gradient(90deg, ${W(0.45)} 1.5px, transparent 1.5px) 0 0/22% 22%`) },
+  { id: 'w7-pixel', set: 'w7', rarity: 'common', n: ['Pixel', 'Pixel'],
+    bg: L(`conic-gradient(${W(0.3)} 25%, transparent 0 50%, ${W(0.3)} 0 75%, transparent 0) 0 0/25% 25%`) },
+  { id: 'w7-circuit', set: 'w7', rarity: 'rare', n: ['Circuit', 'Circuit'],
+    bg: L(`radial-gradient(circle at 30% 40%, #fff 0 5%, transparent 6%)`, `radial-gradient(circle at 70% 65%, #fff 0 5%, transparent 6%)`, `linear-gradient(90deg, transparent 30%, ${W(0.7)} 30% 70%, transparent 70%) 0 40%/100% 4% no-repeat`, `linear-gradient(transparent 40%, ${W(0.7)} 40% 65%, transparent 65%) 70% 0/4% 100% no-repeat`) },
+  { id: 'w7-pulse', set: 'w7', rarity: 'epic', n: ['Pulse', 'Pulsation'],
+    bg: [HL, `radial-gradient(circle, #10122a 0 30%, var(--col) 36%, transparent 40%, transparent 52%, var(--col) 56%, transparent 60%)`, `radial-gradient(circle, #10122a 60%, var(--col) 72%)`].join(','),
+    css: 'animation: sk-neon 1.2s ease-in-out infinite;' },
+  { id: 'w7-legend', set: 'w7', rarity: 'legendary', n: ['Hologram', 'Hologramme'],
+    bg: L(`linear-gradient(120deg, rgba(255,80,200,.4), rgba(80,220,255,.4), rgba(255,240,80,.4), rgba(255,80,200,.4)) 0 0/300% 300%`, `repeating-linear-gradient(0deg, ${W(0.2)} 0 2%, transparent 2% 5%)`),
+    css: 'animation: sk-holo 3s linear infinite;' },
+
+  // ── Mignonnes (milestones) ───────────────────────────────────────────────
+  { id: 'cute-smile', set: 'cute', rarity: 'rare', n: ['Smiley', 'Souriante'], face: 'smile', req: 'reqPlayer5' },
+  { id: 'cute-wink', set: 'cute', rarity: 'rare', n: ['Winky', 'Clin d’œil'], face: 'wink', req: 'reqTriple' },
+  { id: 'cute-cool', set: 'cute', rarity: 'epic', n: ['Cool', 'Stylée'], face: 'cool', req: 'reqStreak7' },
+  { id: 'cute-cat', set: 'cute', rarity: 'epic', n: ['Kitty', 'Chaton'], face: 'cat', req: 'reqChests25' },
+];
+const BY_ID = new Map(SKINS.map((s) => [s.id, s]));
+export const skinById = (id) => BY_ID.get(id);
+export const skinName = (id) => {
+  const s = BY_ID.get(id);
+  return s ? s.n[LANG === 'fr' ? 1 : 0] : id;
+};
+export const setSkins = (setId) => SKINS.filter((s) => s.set === setId);
+
+/** Milestones that unlock the cute series. */
+export const CUTE_RULES = {
+  'cute-smile': () => store.data.player.level >= 5,
+  'cute-wink': () => (store.data.stats.maxCombo || 0) >= 3,
+  'cute-cool': () => computeStats(dateKey()).best >= 7,
+  'cute-cat': () => (store.data.stats.chestsOpened || 0) >= 25,
+};
+
+/* ---------- stylesheet generation ---------- */
+const FACES = {
+  smile: {
+    before: `background: radial-gradient(circle at 36% 45%, #1d1b2e 0 7%, transparent 8%), radial-gradient(circle at 64% 45%, #1d1b2e 0 7%, transparent 8%), radial-gradient(circle at 25% 60%, rgba(255,120,150,.6) 0 8%, transparent 10%), radial-gradient(circle at 75% 60%, rgba(255,120,150,.6) 0 8%, transparent 10%);`,
+    after: `inset: 52% 32% 22% 32%; border: 0 solid #1d1b2e; border-bottom-width: 3px; border-radius: 0 0 50% 50% / 0 0 100% 100%;`,
+  },
+  wink: {
+    before: `background: radial-gradient(circle at 36% 45%, #1d1b2e 0 7%, transparent 8%), linear-gradient(#1d1b2e, #1d1b2e) 58% 46%/16% 6% no-repeat, radial-gradient(circle at 25% 60%, rgba(255,120,150,.6) 0 8%, transparent 10%);`,
+    after: `inset: 54% 36% 24% 36%; border: 0 solid #1d1b2e; border-bottom-width: 3px; border-radius: 0 0 50% 50% / 0 0 100% 100%;`,
+  },
+  cool: {
+    before: `inset: 32% 14% 46% 14%; border-radius: 6px 6px 40% 40%; background: linear-gradient(160deg, #3a3a4a, #0d0d14 60%); box-shadow: inset 0 2px 0 rgba(255,255,255,.35);`,
+    after: `inset: 64% 36% 20% 36%; border: 0 solid #1d1b2e; border-bottom-width: 3px; border-radius: 0 0 50% 50% / 0 0 100% 100%;`,
+  },
+  cat: {
+    before: `background: radial-gradient(ellipse 7% 10% at 36% 45%, #1d1b2e 70%, transparent 75%), radial-gradient(ellipse 7% 10% at 64% 45%, #1d1b2e 70%, transparent 75%), radial-gradient(circle at 50% 60%, #ff7b9c 0 5%, transparent 6%), linear-gradient(#1d1b2e,#1d1b2e) 6% 62%/22% 3% no-repeat, linear-gradient(#1d1b2e,#1d1b2e) 94% 62%/22% 3% no-repeat;`,
+    after: `inset: 62% 42% 24% 42%; border: 0 solid #1d1b2e; border-bottom-width: 2.5px; border-radius: 0 0 50% 50% / 0 0 100% 100%;`,
+  },
+};
+
+export function installSkinStyles() {
+  if (typeof document === 'undefined' || document.getElementById('skin-styles')) return;
+  let css = '';
+  for (const s of SKINS) {
+    const sel = `:where(.skin-${s.id}) .ball`;
+    if (s.bg) css += `${sel}{background:${s.bg};${s.css || ''}}\n`;
+    else if (s.css) css += `${sel}{${s.css}}\n`;
+    if (s.face) {
+      const f = FACES[s.face];
+      css += `${sel}::before,${sel}::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none}\n`;
+      css += `${sel}::before{${f.before}}\n${sel}::after{${f.after}}\n`;
+    }
+    if (s.rarity === 'legendary') css += `:where(.skin-${s.id}) .ball{box-shadow: 0 0 14px color-mix(in srgb, var(--col) 70%, #fff), 0 5px 10px rgba(0,0,0,.35);}\n`;
+  }
+  const el = document.createElement('style');
+  el.id = 'skin-styles';
+  el.textContent = css;
+  document.head.appendChild(el);
+}
+
+/* ---------- ownership ---------- */
 export const owned = () => store.data.skins.owned;
 export const hasSkin = (id) => store.data.skins.owned.includes(id);
 export const equipped = () => store.data.skins.equipped;
+export const unseenCount = () => store.data.skins.owned.filter((id) => !store.data.skins.seen.includes(id)).length;
+export const isSeen = (id) => store.data.skins.seen.includes(id);
+
+export function markAllSeen() {
+  store.data.skins.seen = [...store.data.skins.owned];
+  save();
+}
 
 export function equip(id) {
   if (!hasSkin(id)) return false;
   store.data.skins.equipped = id;
+  if (!isSeen(id)) store.data.skins.seen.push(id);
   save();
   return true;
 }
 
+/** Fired as `granted` ({ id }) and `setComplete` ({ set, legend }) on this target. */
+export const skinEvents = typeof EventTarget !== 'undefined' ? new EventTarget() : null;
+const emit = (type, detail) => skinEvents?.dispatchEvent(Object.assign(new Event(type), { detail }));
+
+/** Give a skin; completing a world series also grants its legendary marble + coins. */
 export function grantSkin(id) {
-  if (hasSkin(id)) return false;
+  if (hasSkin(id) || !BY_ID.has(id)) return false;
   store.data.skins.owned.push(id);
   save();
+  emit('granted', { id });
+  const s = BY_ID.get(id);
+  if (s.set.startsWith('w') && s.rarity !== 'legendary') {
+    const set = setSkins(s.set);
+    const legend = set.find((x) => x.rarity === 'legendary');
+    if (legend && !hasSkin(legend.id) && set.filter((x) => x !== legend).every((x) => hasSkin(x.id))) {
+      store.data.skins.owned.push(legend.id);
+      store.data.coins += LEGEND_BONUS;
+      save();
+      emit('setComplete', { set: s.set, legend: legend.id });
+    }
+  }
   return true;
 }
 
-/** Pick an unowned skin among the allowed rarities, or null if all are owned. */
-export function pickSkin(rarities) {
-  const pool = SKINS.filter((s) => rarities.includes(s.rarity) && !hasSkin(s.id));
-  if (!pool.length) return null;
-  return pool[Math.floor(Math.random() * pool.length)];
+/** Series the player can currently find: classics + every world reached so far. */
+export function availableSets() {
+  const w = worldOf(store.data.levels.unlocked);
+  return ['classic', ...Array.from({ length: Math.min(w + 1, 8) }, (_, i) => `w${i}`)];
+}
+
+/**
+ * Pick an unowned skin for a reward. Prefers the given world's series, then any series
+ * the player has reached. Legendary and cute marbles are never dropped directly.
+ */
+export function pickSkin(rarities, world = null) {
+  const droppable = (s) => !hasSkin(s.id) && s.rarity !== 'legendary' && s.set !== 'cute';
+  const sets = availableSets();
+  const tries = [];
+  if (world != null && world >= 0 && world < 8) tries.push((s) => s.set === `w${world}` && rarities.includes(s.rarity));
+  tries.push((s) => sets.includes(s.set) && rarities.includes(s.rarity));
+  if (world != null && world >= 0 && world < 8) tries.push((s) => s.set === `w${world}`);
+  tries.push((s) => sets.includes(s.set));
+  for (const ok of tries) {
+    const pool = SKINS.filter((s) => droppable(s) && ok(s));
+    if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
+  }
+  return null;
+}
+
+/** Grant the cute marbles whose milestone has been reached. Returns the new ids. */
+export function checkCuteUnlocks() {
+  const got = [];
+  for (const [id, rule] of Object.entries(CUTE_RULES)) if (!hasSkin(id) && rule() && grantSkin(id)) got.push(id);
+  return got;
 }
 
 /** Markup for a preview marble with a given skin and colour index. */
 export function marbleHTML(skin, color = 0, extra = '') {
-  return `<span class="skin-${skin} marble-preview ${extra}"><span class="ball c${color}"></span></span>`;
+  const r = BY_ID.get(skin)?.rarity;
+  return `<span class="skin-${skin} marble-preview ${r === 'legendary' ? 'is-legend' : ''} ${extra}"><span class="ball c${color}"></span></span>`;
 }

@@ -6515,3 +6515,380 @@ body {
 .cx-collect {
   margin-top: 4px;
 }
+
+/* ==========================================================================
+   COLLECTION v2 — skin animations (background/filter/shadow only: the board
+   uses transform on marbles for its own squash & sink animations)
+   ========================================================================== */
+@keyframes sk-sheen { to { background-position: 0 0, -300% 0, 0 0, 0 0, 0 0; } }
+@keyframes sk-rise { to { background-position: 0 0, 0 -200%, 0 0, 0 0; } }
+@keyframes sk-glow { 50% { filter: brightness(1.25) saturate(1.2); } }
+@keyframes sk-flame {
+  0%, 100% { box-shadow: 0 0 10px #ff9a3d, 0 0 22px rgba(255, 120, 40, 0.6), 0 5px 10px rgba(0, 0, 0, 0.35); }
+  50% { box-shadow: 0 0 16px #ffd36b, 0 0 32px rgba(255, 120, 40, 0.8), 0 5px 10px rgba(0, 0, 0, 0.35); }
+}
+@keyframes sk-pulse {
+  50% { box-shadow: 0 0 22px color-mix(in srgb, var(--col) 80%, #fff), 0 5px 10px rgba(0, 0, 0, 0.35); filter: brightness(1.12); }
+}
+@keyframes sk-aurora { to { background-position: 0 0, 100% 100%, 0 0, 0 0; } }
+@keyframes sk-twinkle { 50% { filter: brightness(1.4) drop-shadow(0 0 4px #fff9b0); } }
+@keyframes sk-aura {
+  50% { box-shadow: 0 0 20px color-mix(in srgb, var(--col) 80%, #fff), 0 0 34px color-mix(in srgb, var(--col) 50%, transparent), 0 5px 10px rgba(0, 0, 0, 0.35); }
+}
+@keyframes sk-neon {
+  0%, 100% { box-shadow: 0 0 6px var(--col), 0 0 16px color-mix(in srgb, var(--col) 60%, transparent); }
+  50% { box-shadow: 0 0 12px var(--col), 0 0 30px var(--col); }
+}
+@keyframes sk-holo { to { background-position: 0 0, 300% 300%, 0 0, 0 0, 0 0; filter: hue-rotate(0deg); } }
+.marble-preview.is-legend::after {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 70%, rgba(255, 230, 120, 0.9) 85%, transparent 100%);
+  -webkit-mask: radial-gradient(circle, transparent 62%, #000 64% 70%, transparent 72%);
+  mask: radial-gradient(circle, transparent 62%, #000 64% 70%, transparent 72%);
+  animation: spin 2.4s linear infinite;
+  pointer-events: none;
+}
+.marble-preview.silhouette::after {
+  display: none;
+}
+
+/* ---------- album ---------- */
+.album-card {
+  padding: 20px 14px 14px;
+}
+.album-head {
+  margin: 0 44px 12px 4px;
+}
+.album-head h2 {
+  margin-bottom: 6px;
+}
+.album-total {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--muted);
+}
+.album-total .xp-bar {
+  flex: 1;
+  height: 10px;
+}
+.album-total .xp-bar i {
+  background: linear-gradient(90deg, var(--c2), var(--c0), var(--c3));
+}
+.album {
+  display: grid;
+  gap: 14px;
+}
+.al-set {
+  --hue: var(--c3);
+  padding: 12px;
+  border-radius: 20px;
+  background: linear-gradient(170deg, color-mix(in srgb, var(--hue) 22%, var(--surface-2)), var(--surface-2) 60%);
+  border: 2px solid color-mix(in srgb, var(--hue) 35%, transparent);
+  box-shadow: 0 5px 0 var(--edge);
+  animation: shop-in 0.45s var(--spring) both;
+}
+.al-set.is-far {
+  filter: saturate(0.4);
+  opacity: 0.75;
+}
+.al-set.is-done {
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 5px 0 var(--edge), 0 0 18px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.al-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.al-head strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--hue) 45%, var(--text));
+}
+.al-count {
+  font-weight: 700;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.al-bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+.al-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--hue);
+}
+.al-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.al-set:first-child .al-grid {
+  grid-template-columns: repeat(5, 1fr);
+}
+.al-tile {
+  --rc: rgba(255, 255, 255, 0.12);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 2px 7px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 2px solid var(--rc);
+  box-shadow: 0 3px 0 var(--edge);
+  animation: pop 0.35s var(--spring) both;
+  animation-delay: calc(var(--i) * 12ms);
+  transition: transform 0.12s;
+}
+.al-tile:active {
+  transform: translateY(2px) scale(0.96);
+}
+.al-tile.r-rare {
+  --rc: #4aa8ff;
+}
+.al-tile.r-epic {
+  --rc: #b26bff;
+}
+.al-tile.r-legendary {
+  --rc: #ffc23d;
+  background: linear-gradient(170deg, color-mix(in srgb, #ffc23d 22%, var(--surface)), var(--surface));
+}
+.al-tile.is-locked {
+  --rc: rgba(255, 255, 255, 0.06);
+}
+.al-tile.is-equipped {
+  border-color: var(--c1);
+  box-shadow: 0 3px 0 var(--edge), 0 0 0 2px color-mix(in srgb, var(--c1) 40%, transparent);
+}
+.al-tile .marble-preview {
+  width: 36px;
+  height: 36px;
+}
+.al-tile strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 0 2px;
+}
+.al-tile.is-locked strong {
+  color: var(--faint);
+  font-size: 13px;
+}
+.al-new {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 2;
+  padding: 0 5px;
+  border-radius: 99px;
+  background: var(--c0);
+  color: #fff;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 700;
+  border: 1.5px solid #fff;
+  animation: pop 0.4s var(--spring);
+}
+.al-eq {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  color: var(--c1);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 12px;
+}
+.al-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.al-note svg {
+  flex: none;
+  color: var(--accent);
+}
+@media (max-width: 380px) {
+  .al-tile .marble-preview {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+/* ---------- marble detail sheet ---------- */
+.skin-detail {
+  --hue: var(--c3);
+  text-align: center;
+  overflow: hidden;
+}
+.sd-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 150px;
+  margin: 4px 0 8px;
+}
+.sd-rays {
+  position: absolute;
+  inset: -40px;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--hue) 35%, transparent) 0 8deg, transparent 8deg 22deg);
+  -webkit-mask: radial-gradient(circle, #000 10%, transparent 55%);
+  mask: radial-gradient(circle, #000 10%, transparent 55%);
+  animation: spin 16s linear infinite;
+}
+.sd-stage .marble-preview {
+  width: 110px;
+  height: 110px;
+  animation: ball-bob 3s ease-in-out infinite;
+}
+.sd-rarity {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.skin-detail[data-rarity='rare'] .sd-rarity {
+  background: #4aa8ff;
+  color: #fff;
+}
+.skin-detail[data-rarity='epic'] .sd-rarity {
+  background: #b26bff;
+  color: #fff;
+}
+.skin-detail[data-rarity='legendary'] .sd-rarity {
+  background: linear-gradient(90deg, #ffd34d, #ff9a3d);
+  color: #4a2a00;
+}
+.skin-detail h2 {
+  margin: 6px 0 2px;
+}
+.sd-set {
+  color: color-mix(in srgb, var(--hue) 50%, var(--text));
+  font-weight: 700;
+  font-size: 14px;
+}
+.sd-src {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.sd-colors-title {
+  display: block;
+  margin-top: 14px;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.sd-colors {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.sd-colors .marble-preview {
+  width: 40px;
+  height: 40px;
+}
+
+/* ---------- boss reward in result card, map banner series chip ---------- */
+.result-skin {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 8px 16px 8px 8px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, rgba(178, 107, 255, 0.35), rgba(178, 107, 255, 0.1));
+  border: 2px solid #b26bff;
+  animation: pop 0.6s 0.8s var(--spring) both;
+}
+.result-skin .marble-preview {
+  width: 40px;
+  height: 40px;
+}
+.result-skin span {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+.result-skin small {
+  color: #c58bff;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.result-skin strong {
+  font-weight: 700;
+}
+.wh-set {
+  grid-row: 1;
+  grid-column: 3;
+  align-self: end;
+  justify-self: end;
+  display: none;
+}
+.world-head {
+  grid-template-columns: auto 1fr auto auto;
+}
+.world-head .wh-set {
+  display: inline-flex;
+  grid-column: 4;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 3px;
+  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.22);
+  font-weight: 700;
+  font-size: 12px;
+}
+.wh-set .marble-preview {
+  width: 22px;
+  height: 22px;
+}
+.nav-coll > span:first-child {
+  display: grid;
+  place-items: center;
+}
+.nav-coll .badge {
+  top: -8px;
+  right: -8px;
+}
+.al-grid,
+.al-set:first-child .al-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.al-set {
+  min-width: 0;
+}
+.album {
+  min-width: 0;
+}

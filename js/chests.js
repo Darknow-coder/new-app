@@ -8,7 +8,8 @@ import { store, save } from './storage.js';
 import { sfx, haptic } from './audio.js';
 import { t } from './i18n.js';
 import { flyIcons, countTo, reducedMotion } from './fx.js';
-import { pickSkin, grantSkin, marbleHTML } from './skins.js';
+import { pickSkin, grantSkin, marbleHTML, skinName } from './skins.js';
+import { worldOf } from './levels.js';
 
 export const TIERS = {
   wood: { body: '#b5692f', bodyD: '#7a3f17', lid: '#d18646', lidD: '#94501f', metal: '#ffd46e', metalD: '#c98a1c', out: '#43200a', gem: null, glow: '#ffcf6b' },
@@ -40,7 +41,7 @@ const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const round5 = (n) => Math.round(n / 5) * 5;
 
 /** Roll the contents of a chest. */
-export function rollChest(tier) {
+export function rollChest(tier, world = null) {
   const o = ODDS[tier];
   const r = { coins: round5(rnd(o.coins[0], o.coins[1])), hint: 0, rewind: 0, skin: null, dupe: 0 };
   if (tier === 'gold') {
@@ -50,7 +51,7 @@ export function rollChest(tier) {
     for (let i = 0; i < o.boosters; i++) r[Math.random() < 0.45 || (tier === 'silver' && i === 0) ? 'hint' : 'rewind']++;
   }
   if (Math.random() < o.skin) {
-    const s = pickSkin(o.rarities) || (tier === 'gold' ? pickSkin(['common', 'rare', 'epic']) : null);
+    const s = pickSkin(o.rarities, world);
     if (s) r.skin = s;
     else if (tier === 'gold') r.dupe = 100; // collection complete: convert into coins
   }
@@ -271,7 +272,7 @@ function rewardItems(reward) {
   const items = [{ kind: 'coins', icon: 'i-coin', amount: reward.coins + reward.dupe, label: t('coins'), rarity: 'common' }];
   if (reward.hint) items.push({ kind: 'hint', icon: 'i-hint', amount: reward.hint, label: t('hintName'), rarity: 'common' });
   if (reward.rewind) items.push({ kind: 'rewind', icon: 'i-rewind', amount: reward.rewind, label: t('rewindName'), rarity: 'common' });
-  if (reward.skin) items.push({ kind: 'skin', skin: reward.skin.id, rarity: reward.skin.rarity, label: t(`skin_${reward.skin.id}`) });
+  if (reward.skin) items.push({ kind: 'skin', skin: reward.skin.id, rarity: reward.skin.rarity, label: skinName(reward.skin.id) });
   return items;
 }
 
@@ -401,7 +402,8 @@ export function openChest({ id, tier: startTier, title }) {
       }
 
       // 4. Burst: the lid swings open on its hinge, flash, rays, sparks & coins.
-      const reward = rollChest(tier);
+      const world = id && /^w\d+-/.test(id) ? Number(id.slice(1, id.indexOf('-'))) : worldOf(store.data.levels.unlocked);
+      const reward = rollChest(tier, world);
       store.data.coins += reward.coins + reward.dupe;
       store.data.boosters.hint += reward.hint;
       store.data.boosters.rewind += reward.rewind;

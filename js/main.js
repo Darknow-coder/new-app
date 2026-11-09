@@ -23,7 +23,27 @@ import {
 } from './levels.js';
 import { buildScenery, iris, countTo, flyIcons, floatText, replay, burst, reducedMotion, stagger, installRipples } from './fx.js';
 import { openChest, chestSVG, WORLD_CHESTS, chestId, isOpened, ODDS } from './chests.js';
-import { SKINS, hasSkin, equipped, equip, marbleHTML, grantSkin } from './skins.js';
+import {
+  SKINS,
+  SETS,
+  LEGEND_BONUS,
+  hasSkin,
+  equipped,
+  equip,
+  marbleHTML,
+  grantSkin,
+  pickSkin,
+  skinName,
+  skinById,
+  setSkins,
+  availableSets,
+  unseenCount,
+  isSeen,
+  markAllSeen,
+  checkCuteUnlocks,
+  installSkinStyles,
+  skinEvents,
+} from './skins.js';
 import {
   track,
   xpNeeded,
@@ -346,11 +366,15 @@ function renderHome() {
   const advChests = $('#adv-chests');
   advChests.hidden = !ready;
   advChests.textContent = t('chestsReady', { n: ready });
+  for (const id of checkCuteUnlocks()) setTimeout(() => notify('i-star', t('newMarble'), skinName(id)), 600);
+  const unseen = unseenCount();
+  $('#coll-badge').hidden = !unseen;
+  $('#coll-badge').textContent = unseen;
   const ownedSkins = SKINS.filter((sk) => hasSkin(sk.id));
   $('#collection-desc') && ($('#collection-desc').textContent = t('collectionDesc', { n: ownedSkins.length, t: SKINS.length }));
   $('#collection-balls').innerHTML = ownedSkins
     .slice(-1)
-    .map((sk) => marbleHTML(sk.id, 3))
+    .map(() => marbleHTML(equipped(), 3))
     .join('');
   const giftChip = $('#gift-chip');
   giftChip.hidden = store.data.giftDay === today;
@@ -895,6 +919,11 @@ function onSolved() {
     game.reward = levelReward(prev, stars);
     if (game.reward) store.addCoins(game.reward);
     game.prog = track('levelWin', { stars, first: prev === 0, newStars: Math.max(0, stars - prev), usedBooster: !!game.usedBooster });
+    game.bossSkin = null;
+    if (prev === 0 && isBoss(game.n)) {
+      const sk = pickSkin(['rare', 'epic'], worldOf(game.n));
+      if (sk && grantSkin(sk.id)) game.bossSkin = sk.id;
+    }
     // Warm the cache so "Next level" opens instantly.
     setTimeout(() => adventureLevel(game.n + 1), 600);
   }
@@ -1000,6 +1029,12 @@ function showResultXP() {
 
 function showResultCard({ stars, title, line, sub, actions, reward = 0 }) {
   showResultXP();
+  const rs = $('#result-skin');
+  rs.hidden = !game?.bossSkin;
+  if (game?.bossSkin) {
+    rs.innerHTML = `${marbleHTML(game.bossSkin, 2)}<span><small>${t('newMarble')}</small><strong>${skinName(game.bossSkin)}</strong></span>`;
+    setTimeout(() => sfx.epic(), 900);
+  }
   $('#result-rays').classList.toggle('on', stars === 3);
   $('#new-best').hidden = !game?.newBest;
   const rewardEl = $('#result-reward');
@@ -1098,6 +1133,7 @@ function worldBanner(w, ws, first, unlocked) {
       <span class="wh-badge"><span>${w + 1}</span></span>
       <span class="wh-text"><small>${t('world', { n: w + 1 })}</small><strong>${t(`world${w % WORLD_HUES.length}`)}</strong></span>
       <span class="world-stars"><svg><use href="#i-star"/></svg>${ws}/${max}</span>
+      ${w < 8 ? (() => { const list = setSkins(`w${w}`); const got = list.filter((x) => hasSkin(x.id)); return `<span class="wh-set">${marbleHTML(got.length ? got[got.length - 1].id : 'classic', w % 4, got.length ? '' : 'silhouette')}${got.length}/${list.length}</span>`; })() : ''}
       <span class="wh-bar"><i style="width:${(ws / max) * 100}%"></i>${marks}</span>
     </header>`;
 }
@@ -1540,41 +1576,108 @@ function showChestPreview(id, tier, need) {
   openModal('modal-chest-preview');
 }
 
+const setTitle = (set) =>
+  set.id === 'classic' ? t('setClassic') : set.id === 'cute' ? t('setCute') : `${t('world', { n: set.world + 1 })} · ${t(`world${set.world}`)}`;
+const setHue = (set) => (set.world >= 0 ? WORLD_HUES[set.world] : set.id === 'cute' ? '#ff7bb0' : '#9a7bff');
+
+function skinSource(sk) {
+  if (sk.req) return t(sk.req);
+  if (sk.rarity === 'legendary') return t('srcLegend');
+  if (sk.set === 'classic') return t('srcClassic');
+  return t('srcWorld', { n: Number(sk.set.slice(1)) + 1 });
+}
+
+/** The album: one page per series, silhouettes for what is still to find. */
 function renderCollection() {
   const eq = equipped();
-  $('#skin-grid').innerHTML = SKINS.map((sk, i) => {
-    const own = hasSkin(sk.id);
-    return `
-      <button class="skin-tile r-${sk.rarity} ${own ? '' : 'is-locked'} ${sk.id === eq ? 'is-equipped' : ''}" data-skin="${sk.id}" style="--i:${i}">
-        ${marbleHTML(own ? sk.id : 'classic', i % 4, own ? '' : 'silhouette')}
-        <strong>${own ? t(`skin_${sk.id}`) : '???'}</strong>
-        <small>${own ? (sk.id === eq ? `✓ ${t('equipped')}` : t('equip')) : t('lockedSkin')}</small>
-        <em>${t(`rarity_${sk.rarity}`)}</em>
-      </button>`;
+  const avail = availableSets();
+  const total = SKINS.length;
+  const have = SKINS.filter((s) => hasSkin(s.id)).length;
+  $('#album-count').textContent = t('collTotal', { n: have, t: total });
+  $('#album-bar').style.width = `${(have / total) * 100}%`;
+  let k = 0;
+  $('#album').innerHTML = SETS.map((set) => {
+    const list = setSkins(set.id);
+    const n = list.filter((s) => hasSkin(s.id)).length;
+    const reachable = set.world < 0 || avail.includes(set.id);
+    const legend = list.find((s) => s.rarity === 'legendary');
+    const tiles = list
+      .map((sk) => {
+        const own = hasSkin(sk.id);
+        const fresh = own && !isSeen(sk.id);
+        return `<button class="al-tile r-${sk.rarity} ${own ? '' : 'is-locked'} ${sk.id === eq ? 'is-equipped' : ''}" data-skin="${sk.id}" style="--i:${k++}">
+          ${fresh ? `<em class="al-new">${t('newShort')}</em>` : ''}
+          ${own ? marbleHTML(sk.id, (k + 1) % 4) : marbleHTML('classic', 0, 'silhouette')}
+          <strong>${own ? skinName(sk.id) : '?'}</strong>
+          ${sk.id === eq ? '<i class="al-eq">✓</i>' : ''}
+        </button>`;
+      })
+      .join('');
+    const note = !reachable
+      ? `<p class="al-note"><svg><use href="#i-lock"/></svg>${t('srcLockedWorld', { n: set.world + 1 })}</p>`
+      : legend && !hasSkin(legend.id)
+        ? `<p class="al-note"><svg><use href="#i-gift"/></svg>${t('setReward', { n: LEGEND_BONUS })}</p>`
+        : '';
+    return `<section class="al-set ${reachable ? '' : 'is-far'} ${n === list.length ? 'is-done' : ''}" style="--hue:${setHue(set)}">
+      <header class="al-head"><strong>${setTitle(set)}</strong><span class="al-count">${n === list.length ? '✓ ' : ''}${n}/${list.length}</span>
+        <span class="al-bar"><i style="width:${(n / list.length) * 100}%"></i></span></header>
+      <div class="al-grid">${tiles}</div>
+      ${note}
+    </section>`;
   }).join('');
 }
 
-$('#skin-grid').addEventListener('click', (e) => {
-  const tile = e.target.closest('.skin-tile');
-  if (!tile) return;
-  if (tile.classList.contains('is-locked')) {
-    replay(tile, 'deny');
-    sfx.thud();
-    return;
-  }
-  if (equip(tile.dataset.skin)) {
+function showSkin(id) {
+  const sk = skinById(id);
+  const own = hasSkin(id);
+  const card = $('#modal-skin .modal-card');
+  const set = SETS.find((x) => x.id === sk.set);
+  card.style.setProperty('--hue', setHue(set));
+  card.dataset.rarity = sk.rarity;
+  $('#sd-marble').innerHTML = own ? marbleHTML(id, 0) : marbleHTML('classic', 0, 'silhouette');
+  $('#sd-rarity').textContent = t(`rarity_${sk.rarity}`);
+  $('#sd-name').textContent = own ? skinName(id) : '???';
+  $('#sd-set').textContent = setTitle(set);
+  $('#sd-src').textContent = skinSource(sk);
+  $('#sd-colors').innerHTML = own ? [0, 1, 2, 3].map((c) => marbleHTML(id, c)).join('') : '';
+  $('#modal-skin .sd-colors-title').hidden = !own;
+  const btn = $('#sd-equip');
+  btn.hidden = !own;
+  btn.disabled = equipped() === id;
+  btn.textContent = equipped() === id ? `✓ ${t('equipped')}` : t('equip');
+  btn.onclick = () => {
+    if (!equip(id)) return;
     sfx.pop(2);
     buzz(15);
+    replay($('#sd-marble .marble-preview'), 'got');
+    btn.disabled = true;
+    btn.textContent = `✓ ${t('equipped')}`;
     renderCollection();
-    replay($(`.skin-tile[data-skin="${tile.dataset.skin}"]`), 'got');
     renderHome();
-  }
+  };
+  openModal('modal-skin');
+}
+
+$('#album').addEventListener('click', (e) => {
+  const tile = e.target.closest('.al-tile');
+  if (!tile) return;
+  sfx.tap();
+  showSkin(tile.dataset.skin);
+});
+
+skinEvents?.addEventListener('setComplete', (e) => {
+  setTimeout(() => {
+    notify('i-gift', t('setDoneTitle'), `${skinName(e.detail.legend)} · +${LEGEND_BONUS}`, 'levelup');
+    updateCoins(true);
+  }, 1200);
 });
 
 $('#btn-collection').addEventListener('click', () => {
   sfx.tap();
   renderCollection();
   openModal('modal-collection');
+  markAllSeen();
+  renderHome();
 });
 
 /* ==========================================================================
@@ -1661,7 +1764,8 @@ function renderShop() {
     ).join('');
   } else {
     const eq = equipped();
-    panel.innerHTML = SKINS.map((sk, i) => {
+    const avail = availableSets();
+    panel.innerHTML = SKINS.filter((sk) => avail.includes(sk.set) && sk.rarity !== 'legendary').map((sk, i) => {
       const own = hasSkin(sk.id);
       const price = SKIN_PRICES[sk.rarity];
       const action = own
@@ -1673,7 +1777,7 @@ function renderShop() {
         <div class="shop-cardlet skin-cardlet r-${sk.rarity} ${own ? 'is-owned' : ''}" style="--i:${i}">
           <em class="skin-rarity">${t(`rarity_${sk.rarity}`)}</em>
           ${marbleHTML(sk.id, i % 4)}
-          <strong>${t(`skin_${sk.id}`)}</strong>
+          <strong>${skinName(sk.id)}</strong>
           ${action}
         </div>`;
     }).join('');
@@ -1772,7 +1876,7 @@ $('#modal-shop').addEventListener('click', (e) => {
     sfx.epic();
     const tile = btn.closest('.skin-cardlet');
     celebrateBuy(tile.querySelector('.marble-preview'), null);
-    toast(t('skinBought', { s: t(`skin_${skin}`) }));
+    toast(t('skinBought', { s: skinName(skin) }));
     setTimeout(() => {
       renderShop();
       renderHome();
@@ -2068,6 +2172,7 @@ $('#btn-install').addEventListener('click', async () => {
    Boot
    ========================================================================== */
 applyStaticText();
+installSkinStyles();
 installRipples();
 renderHome();
 // Cold-start splash: marbles drop in, then it lifts away.

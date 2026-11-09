@@ -221,3 +221,27 @@ test('achievements unlock from stats and pay out once', () => {
   assert.equal(claimAchievement('firstWin'), null);
   assert.equal(checkAchievements().length, 0);
 });
+
+import { SKINS, pickSkin, grantSkin, setSkins } from '../js/skins.js';
+
+test('collection: 53 unique marbles, every world series has 4 droppables + 1 legendary', () => {
+  assert.equal(new Set(SKINS.map((s) => s.id)).size, SKINS.length);
+  assert.ok(SKINS.length >= 50);
+  for (let w = 0; w < 8; w++) {
+    const set = setSkins(`w${w}`);
+    assert.equal(set.length, 5);
+    assert.equal(set.filter((s) => s.rarity === 'legendary').length, 1);
+  }
+});
+
+test('world chests drop that world\'s marbles; completing a series grants its legendary', () => {
+  store.reset();
+  store.data.levels.unlocked = 70; // worlds 1-4 reached
+  const s = pickSkin(['common', 'rare', 'epic'], 2);
+  assert.equal(s.set, 'w2');
+  assert.equal(pickSkin(['common'], null) && pickSkin(['common'], null).set === 'w7', false, 'unreached worlds never drop');
+  const coins = store.data.coins;
+  for (const sk of setSkins('w2').filter((x) => x.rarity !== 'legendary')) grantSkin(sk.id);
+  assert.ok(store.data.skins.owned.includes('w2-legend'));
+  assert.ok(store.data.coins > coins);
+});

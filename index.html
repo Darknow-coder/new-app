@@ -109,7 +109,7 @@
         </main>
         <nav class="bottom-nav" aria-label="Menu">
           <button class="nav-item" data-shop><span class="nav-ico nav-shop"><svg><use href="#i-coin"/></svg></span><span data-i18n="shop"></span></button>
-          <button class="nav-item" id="btn-collection"><span class="nav-ico nav-coll" id="collection-balls"></span><span data-i18n="collection"></span></button>
+          <button class="nav-item" id="btn-collection"><span class="nav-ico nav-coll"><span id="collection-balls"></span><b class="badge" id="coll-badge" hidden></b></span><span data-i18n="collection"></span></button>
           <button class="nav-play" id="nav-play"><span class="nav-play-ball"><svg><use href="#i-play"/></svg></span><span data-i18n="playBig"></span></button>
           <button class="nav-item" id="btn-achievements"><span class="nav-ico nav-ach"><svg><use href="#i-star"/></svg><b class="badge" id="ach-badge" hidden></b></span><span data-i18n="achievements"></span></button>
           <button class="nav-item" id="btn-stats"><span class="nav-ico nav-stats"><svg><use href="#i-stats"/></svg></span><span data-i18n="statsShort"></span></button>
@@ -176,6 +176,7 @@
         <h2 id="result-title"></h2>
         <p class="result-line" id="result-line"></p>
         <div class="result-xp" id="result-xp" hidden><span id="result-xp-text"></span><div class="xp-bar"><i id="result-xp-fill"></i></div><em id="result-levelup" hidden></em></div>
+        <div class="result-skin" id="result-skin" hidden></div>
         <p class="result-reward" id="result-reward" hidden><svg><use href="#i-coin"/></svg><span></span></p>
         <p class="result-sub" id="result-sub"></p>
         <div class="modal-actions" id="result-actions"></div>
@@ -266,12 +267,28 @@
       </div>
     </dialog>
 
-    <dialog class="modal" id="modal-collection">
-      <div class="modal-card">
+    <dialog class="modal album-modal" id="modal-collection">
+      <div class="modal-card album-card">
         <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
-        <h2 data-i18n="collection"></h2>
-        <p class="shop-sub" data-i18n="collectionSub"></p>
-        <div class="skin-grid" id="skin-grid"></div>
+        <header class="album-head">
+          <h2 data-i18n="collection"></h2>
+          <div class="album-total"><span id="album-count"></span><span class="xp-bar"><i id="album-bar"></i></span></div>
+        </header>
+        <div class="album" id="album"></div>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="modal-skin">
+      <div class="modal-card skin-detail">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <div class="sd-stage"><i class="sd-rays"></i><span id="sd-marble"></span></div>
+        <span class="sd-rarity" id="sd-rarity"></span>
+        <h2 id="sd-name"></h2>
+        <p class="sd-set" id="sd-set"></p>
+        <p class="sd-src" id="sd-src"></p>
+        <small class="sd-colors-title" data-i18n="inColors"></small>
+        <div class="sd-colors" id="sd-colors"></div>
+        <div class="modal-actions"><button class="btn btn-primary btn-full" id="sd-equip"></button></div>
       </div>
     </dialog>
 
