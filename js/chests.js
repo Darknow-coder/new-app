@@ -32,9 +32,9 @@ export const isOpened = (id) => !!store.data.chests.opened[id];
 
 /** What a chest tier can contain (used by the preview sheet and by the roll). */
 export const ODDS = {
-  wood: { coins: [40, 60], boosters: 1, skin: 0.1, rarities: ['common'] },
-  silver: { coins: [90, 130], boosters: 2, skin: 0.35, rarities: ['common', 'rare'] },
-  gold: { coins: [180, 250], boosters: 4, skin: 1, rarities: ['rare', 'epic'] },
+  wood: { coins: [25, 40], boosters: 1, skin: 0.1, rarities: ['common'] },
+  silver: { coins: [60, 90], boosters: 2, skin: 0.35, rarities: ['common', 'rare'] },
+  gold: { coins: [120, 170], boosters: 4, skin: 1, rarities: ['rare', 'epic'] },
 };
 
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
@@ -126,7 +126,7 @@ class ParticleFX {
     this.color = '#fff';
   }
   resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = 1; // particles are soft dots: full resolution would cost a lot of fill-rate for nothing
     this.w = window.innerWidth;
     this.h = window.innerHeight;
     this.c.width = this.w * dpr;
@@ -174,8 +174,14 @@ class ParticleFX {
   }
   step(dt) {
     const { ctx } = this;
+    if (!this.parts.length && !this.motes) {
+      if (this.dirty) ctx.clearRect(0, 0, this.w, this.h);
+      this.dirty = false;
+      return;
+    }
+    this.dirty = true;
     ctx.clearRect(0, 0, this.w, this.h);
-    if (this.motes && !reducedMotion() && Math.random() < 0.35) {
+    if (this.motes && !reducedMotion() && Math.random() < 0.12) {
       this.parts.push({ k: 'mote', x: Math.random() * this.w, y: this.h + 10, vx: (Math.random() - 0.5) * 20, vy: -40 - Math.random() * 60, life: 6, age: 0, r: 1.5 + Math.random() * 2.5, g: 0, drag: 0 });
     }
     const keep = [];

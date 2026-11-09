@@ -7451,3 +7451,43 @@ body {
     opacity: 0;
   }
 }
+/* chest perf: smaller composited light layers */
+.cx-rays {
+  width: 300%;
+  margin: -150% 0 0 -150%;
+  will-change: transform;
+}
+.cx-glow {
+  width: 200%;
+  will-change: transform, opacity;
+}
+.cx-bg {
+  will-change: opacity;
+}
+/* Only the world you are in plays the node entrance (others are off-screen anyway). */
+.view-map.is-active .node,
+.view-map.is-active .node.is-done {
+  animation: none;
+}
+.view-map.is-active .world.is-here .node {
+  animation: node-in 0.45s var(--spring) both;
+  animation-delay: calc(var(--i, 0) * 22ms);
+}
+.view-map.is-active .world.is-here .node.is-current {
+  animation: node-in 0.45s var(--spring) both, node-pulse 1.6s 0.5s ease-in-out infinite;
+}
+.node.is-current {
+  animation: node-pulse 1.6s ease-in-out infinite;
+}
+.about-card p {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.about-ver {
+  margin-top: -8px;
+}
+#modal-settings .btn-ghost {
+  margin-top: 10px;
+}

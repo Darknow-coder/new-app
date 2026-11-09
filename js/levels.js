@@ -39,6 +39,8 @@ export function tierFor(n) {
   if (n <= 3) return 0;
   let tier = world + Math.floor(idx / 5);
   if (isBoss(n)) tier += 1;
+  // World 9 brings arrows after a long break from new mechanics: ramp up gently again.
+  if (world === 8) tier = Math.min(tier, 3 + Math.floor(idx / 3));
   return Math.min(tier, TIERS.length - 1);
 }
 
@@ -109,12 +111,12 @@ export function adventureLevel(n) {
 /** Coins awarded when a level is completed: first-clear bonus + 10 per *new* star. */
 export function levelReward(prevStars, stars) {
   const newStars = Math.max(0, stars - prevStars);
-  return (prevStars === 0 ? 5 : 0) + newStars * 10;
+  return (prevStars === 0 ? 5 : 0) + newStars * 6;
 }
 
 /** Coins for a daily puzzle (first solve only) and for completing the whole day. */
 export function dailyReward(stars) {
-  return 10 + stars * 5;
+  return 8 + stars * 4;
 }
 export function dayCompleteBonus(streak) {
   return 20 + 5 * Math.min(streak, 10);
@@ -132,7 +134,7 @@ export const SHOP_CHESTS = [
   { id: 'chest-silver', tier: 'silver', price: 220 },
   { id: 'chest-gold', tier: 'gold', price: 520 },
 ];
-export const SKIN_PRICES = { common: 250, rare: 600, epic: 1200 };
+export const SKIN_PRICES = { common: 400, rare: 900, epic: 1800 };
 /** Rotating deal of the day: same for everyone on a given day, 40% off, once per day. */
 export const DEALS = [
   { items: { hint: 3 }, base: 120 },

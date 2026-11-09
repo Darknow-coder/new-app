@@ -171,20 +171,19 @@ export function burst(host, x, y, { count = 14, colors = ['var(--c2)', '#fff'], 
  */
 export function stagger(root, selector, { step = 45, base = 0, cls = 'enter-rise' } = {}) {
   if (reducedMotion() || !root) return;
-  let i = 0;
-  root.querySelectorAll(selector).forEach((el) => {
-    if (el.hidden || el.offsetParent === null) return;
+  // Batch: one class removal pass, a single reflow, then one add pass (no per-element layout).
+  const els = [...root.querySelectorAll(selector)].filter((el) => !el.hidden);
+  if (!els.length) return;
+  for (const el of els) el.classList.remove(cls);
+  void root.offsetWidth;
+  els.forEach((el, i) => {
     el.style.setProperty('--enter-delay', `${base + i * step}ms`);
-    el.classList.remove(cls);
-    void el.offsetWidth;
     el.classList.add(cls);
-    const done = (e) => {
+    el.addEventListener('animationend', function done(e) {
       if (e.target !== el) return;
       el.classList.remove(cls);
       el.removeEventListener('animationend', done);
-    };
-    el.addEventListener('animationend', done);
-    i++;
+    });
   });
 }
 

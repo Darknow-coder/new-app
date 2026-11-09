@@ -1,6 +1,8 @@
 import { DAILY_ORDER, dayDiff, addDays } from './daily.js';
 
 const KEY = 'marbl:v1';
+const BACKUP = 'marbl:v1:bak';
+export const SAVE_VERSION = 2;
 
 const defaults = () => ({
   tutorialDone: false,
@@ -26,11 +28,25 @@ const defaults = () => ({
 
 let data = load();
 
-function load() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return defaults();
-    const parsed = JSON.parse(raw);
+function readRaw() {
+  // Main save first, then the daily backup if the main one is missing or corrupted.
+  for (const k of [KEY, BACKUP]) {
+    try {
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch {
+      /* try the next one */
+    }
+  }
+  return null;
+}
+
+/** Turn any (possibly older or partial) save object into a complete, current one. */
+export function normalize(parsed) {
+  if (!parsed) return defaults();
+  {
     const d = defaults();
     const merged = {
       ...d,
@@ -52,17 +68,64 @@ function load() {
     if (!parsed.stats && parsed.levels?.best) merged.stats.levelsWon = Object.keys(parsed.levels.best).length;
     // Migration: players of the old Endless mode keep the level they reached.
     if (!parsed.levels && merged.endless.level > 1) merged.levels.unlocked = merged.endless.level;
+    // Sanity: never trust numbers blindly (a truncated or hand-edited save must not break the game).
+    merged.coins = Number.isFinite(merged.coins) ? Math.max(0, Math.floor(merged.coins)) : 100;
+    merged.levels.unlocked = Math.max(1, Math.floor(merged.levels.unlocked) || 1);
+    for (const b of ['hint', 'rewind']) merged.boosters[b] = Math.max(0, Math.floor(merged.boosters[b]) || 0);
+    if (!Array.isArray(merged.skins.owned)) merged.skins.owned = ['classic'];
+    if (!merged.skins.owned.includes('classic')) merged.skins.owned.unshift('classic');
+    if (!merged.skins.owned.includes(merged.skins.equipped)) merged.skins.equipped = 'classic';
+    if (!Array.isArray(merged.inbox)) merged.inbox = [];
+    merged.version = SAVE_VERSION;
     return merged;
+  }
+}
+
+function load() {
+  try {
+    return normalize(readRaw());
   } catch {
     return defaults();
   }
 }
 
+let lastBackupDay = null;
 export function save() {
   try {
-    localStorage.setItem(KEY, JSON.stringify(data));
+    const json = JSON.stringify(data);
+    localStorage.setItem(KEY, json);
+    // Once a day, keep a second copy: protects against a corrupted main save.
+    const day = new Date().toDateString();
+    if (day !== lastBackupDay) {
+      localStorage.setItem(BACKUP, json);
+      lastBackupDay = day;
+    }
   } catch {
     /* private mode / quota: the game still works for this session */
+  }
+}
+
+/** Progress as a portable code (to move to another phone or keep it safe). */
+export function exportProgress() {
+  const bytes = new TextEncoder().encode(JSON.stringify(data));
+  let bin = '';
+  bytes.forEach((b) => (bin += String.fromCharCode(b)));
+  return `MARBL1.${btoa(bin)}`;
+}
+
+/** Restore a code made by exportProgress. Returns true on success. */
+export function importProgress(code) {
+  try {
+    const m = String(code).replace(/\s+/g, '').match(/^MARBL1\.([A-Za-z0-9+/=]+)$/);
+    if (!m) return false;
+    const bin = atob(m[1]);
+    const parsed = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
+    if (!parsed || typeof parsed !== 'object' || !parsed.levels) return false;
+    data = normalize(parsed);
+    save();
+    return true;
+  } catch {
+    return false;
   }
 }
 

@@ -39,13 +39,13 @@ export function takeFromInbox(id) {
 
 /* ---------- daily quests ---------- */
 export const QUEST_TYPES = {
-  wins: { targets: [3, 5], coins: 40, icon: 'i-flag' },
-  perfect: { targets: [2, 3], coins: 50, icon: 'i-star' },
-  dailies: { targets: [2, 3], coins: 40, icon: 'i-flame' },
-  combo: { targets: [1, 1], coins: 60, icon: 'i-coin' },
-  noBoost: { targets: [3, 4], coins: 45, icon: 'i-hint' },
-  stars: { targets: [6, 10], coins: 50, icon: 'i-star' },
-  chest: { targets: [1, 1], coins: 30, icon: 'i-gift' },
+  wins: { targets: [3, 5], coins: 25, icon: 'i-flag' },
+  perfect: { targets: [2, 3], coins: 30, icon: 'i-star' },
+  dailies: { targets: [2, 3], coins: 25, icon: 'i-flame' },
+  combo: { targets: [1, 1], coins: 35, icon: 'i-coin' },
+  noBoost: { targets: [3, 4], coins: 30, icon: 'i-hint' },
+  stars: { targets: [6, 10], coins: 30, icon: 'i-star' },
+  chest: { targets: [1, 1], coins: 20, icon: 'i-gift' },
 };
 const QUEST_IDS = Object.keys(QUEST_TYPES);
 
@@ -218,7 +218,7 @@ export function tierReward(k) {
   if (k % 4 === 0) return { kind: 'chest', tier: 'wood' };
   if (k % 3 === 0) return { kind: 'hint', n: 2 };
   if (k % 3 === 2) return { kind: 'rewind', n: 2 };
-  return { kind: 'coins', n: 40 + k * 4 };
+  return { kind: 'coins', n: 25 + k * 3 };
 }
 export const SEASON_TIERS = 30;
 

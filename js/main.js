@@ -1,6 +1,6 @@
 import { tilt, isSolved, solve, starsFor, stateKey, DIRS, comboReachable, hashString } from './engine.js';
 import { dateKey, puzzleNumber, msUntilTomorrow, dailyLevel, DAILY_ORDER, addDays } from './daily.js';
-import { store, computeStats, save } from './storage.js';
+import { store, computeStats, save, exportProgress, importProgress } from './storage.js';
 import { sfx, haptic, setSoundEnabled, unlockAudio, setMusicEnabled, setMusicTheme } from './audio.js';
 import { t, LANG } from './i18n.js';
 import { TUTORIAL } from './tutorial.js';
@@ -201,6 +201,12 @@ function updateCoins(bump = false) {
 }
 
 const worldHue = (n) => WORLD_HUES[worldOf(n) % WORLD_HUES.length];
+/** World names: 12 unique ones, then "<name> II", "III"... for the endless worlds beyond. */
+const worldName = (w) => {
+  const base = t(`world${w % 12}`);
+  const lap = Math.floor(w / 12);
+  return lap ? `${base} ${['II', 'III', 'IV', 'V'][Math.min(lap - 1, 3)]}` : base;
+};
 
 /* ---------- progression glue ---------- */
 async function openChestFlow(opts) {
@@ -548,7 +554,7 @@ function startLevel(n) {
   const level = adventureLevel(n);
   const mech = introAt(n);
   const best = store.levelStars(n);
-  const world = t(`world${worldOf(n) % WORLD_HUES.length}`);
+  const world = worldName(worldOf(n));
   startGame({
     mode: 'level',
     n,
@@ -1287,12 +1293,15 @@ function worldBanner(w, ws, first, unlocked) {
   return `
     <header class="world-head">
       <span class="wh-badge"><span>${w + 1}</span></span>
-      <span class="wh-text"><small>${t('world', { n: w + 1 })}</small><strong>${t(`world${w % WORLD_HUES.length}`)}</strong></span>
+      <span class="wh-text"><small>${t('world', { n: w + 1 })}</small><strong>${worldName(w)}</strong></span>
       <span class="world-stars"><svg><use href="#i-star"/></svg>${ws}/${max}</span>
       ${w < 8 ? (() => { const list = setSkins(`w${w}`); const got = list.filter((x) => hasSkin(x.id)); return `<span class="wh-set">${marbleHTML(got.length ? got[got.length - 1].id : 'classic', w % 4, got.length ? '' : 'silhouette')}${got.length}/${list.length}</span>`; })() : ''}
       <span class="wh-bar"><i style="width:${(ws / max) * 100}%"></i>${marks}</span>
     </header>`;
 }
+
+let sceneIO = null;
+const hideUnlockWorld = (n) => (n ? worldOf(n) : -1);
 
 function renderMap({ hideUnlock = 0 } = {}) {
   ensureMapDefs();
@@ -1312,7 +1321,7 @@ function renderMap({ hideUnlock = 0 } = {}) {
     const locked = first > unlocked;
 
     const sec = document.createElement('section');
-    sec.className = `world theme-${theme} ${locked ? 'is-locked' : ''}`;
+    sec.className = `world theme-${theme} ${locked ? 'is-locked' : ''} ${w === worldOf(unlocked) ? 'is-here' : ''}`;
     sec.dataset.world = w;
     sec.style.setProperty('--hue', hue);
     sec.style.setProperty('--g0', mt.g0);
@@ -1380,10 +1389,14 @@ function renderMap({ hideUnlock = 0 } = {}) {
     scenes.push({ sec, w, height, pts, lit, avoid, lastWorld: w === lastWorld });
   }
   // Second pass, now that sizes are known: draw scenery and road in real pixels.
-  const W = map.querySelector('.world-path')?.clientWidth || 360;
-  for (const sc of scenes) {
+  // Read layout once (all sections share the same banner height), then only write.
+  const firstPath = map.querySelector('.world-path');
+  const W = firstPath?.clientWidth || 360;
+  const top = firstPath?.offsetTop || 140; // road enters from the top of the section
+  const draw = (sc) => {
+    if (sc.drawn) return;
+    sc.drawn = true;
     const path = sc.sec.querySelector('.world-path');
-    const top = path.offsetTop; // road enters from the top of the section
     const px = sc.pts.map(([x, y]) => [(x / 100) * W, y]);
     const road = [[W / 2, -top], ...px];
     if (!sc.lastWorld) road.push([W / 2, sc.height]);
@@ -1400,7 +1413,16 @@ function renderMap({ hideUnlock = 0 } = {}) {
     svg.innerHTML = `${worldScene(sc.w, W, sc.height, road, avoid, top)}
       <path class="road-edge" d="${d}"/><path class="road-fill" d="${d}"/>
       <path class="road-lit-edge" d="${dLit}"/><path class="road-lit" d="${dLit}"/><path class="road-dots" d="${dLit}"/>`;
-  }
+  };
+  // Draw the scenery of the current world now, the others when they come near the screen.
+  const cur = worldOf(unlocked);
+  scenes.filter((sc) => Math.abs(sc.w - cur) <= 0 || sc.w === hideUnlockWorld(hideUnlock)).forEach(draw);
+  sceneIO?.disconnect();
+  sceneIO = new IntersectionObserver(
+    (entries) => entries.forEach((e) => e.isIntersecting && draw(scenes.find((x) => x.sec === e.target))),
+    { root: $('#map-scroll'), rootMargin: '900px 0px' },
+  );
+  scenes.forEach((sc) => sceneIO.observe(sc.sec));
   $('#map-sub').textContent = `${total}★ · ${t('level', { n: unlocked })}`;
   updateCoins();
   observeWorlds();
@@ -1561,7 +1583,7 @@ function showLevelPreview(n) {
   const best = store.levelStars(n);
   const card = $('#modal-level .modal-card');
   card.style.setProperty('--hue', worldHue(n));
-  $('#lp-world').textContent = `${t('world', { n: worldOf(n) + 1 })} · ${t(`world${worldOf(n) % WORLD_HUES.length}`)}`;
+  $('#lp-world').textContent = `${t('world', { n: worldOf(n) + 1 })} · ${worldName(worldOf(n))}`;
   $('#lp-title').textContent = isBoss(n) ? `${t('level', { n })} · BOSS` : t('level', { n });
   $('#lp-stars').innerHTML = [0, 1, 2]
     .map((i) => `<span class="${i < best ? 'on' : ''}" style="--i:${i}"><svg><use href="#i-star"/></svg></span>`)
@@ -2440,6 +2462,33 @@ soundBox.addEventListener('change', () => {
 hapticBox.addEventListener('change', () => {
   store.setting('haptics', hapticBox.checked);
   buzz(20);
+});
+const APP_VERSION = '1.0.0-beta';
+$('#btn-export').addEventListener('click', async () => {
+  const code = exportProgress();
+  try {
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) await navigator.share({ text: code });
+    else {
+      await navigator.clipboard.writeText(code);
+      toast(t('exportDone'));
+    }
+  } catch (e) {
+    if (e?.name !== 'AbortError') prompt(t('exportDone'), code);
+  }
+});
+$('#btn-import').addEventListener('click', () => {
+  const code = prompt(t('importAsk'));
+  if (!code) return;
+  if (!/^\s*MARBL1\./.test(code)) return toast(t('importBad'));
+  if (!confirm(t('importConfirm'))) return;
+  if (importProgress(code)) {
+    toast(t('importOk'));
+    setTimeout(() => location.reload(), 700);
+  } else toast(t('importBad'));
+});
+$('#btn-about').addEventListener('click', () => {
+  $('#about-ver').textContent = `v${APP_VERSION}`;
+  openModal('modal-about');
 });
 $('#btn-reset').addEventListener('click', () => {
   if (confirm(t('resetConfirm'))) {

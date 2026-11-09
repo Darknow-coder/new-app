@@ -281,6 +281,20 @@
       </div>
     </dialog>
 
+    <dialog class="modal" id="modal-about">
+      <div class="modal-card about-card">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <h2>marbl</h2>
+        <p class="about-ver" id="about-ver"></p>
+        <h3 class="mini-title" data-i18n="privacyTitle"></h3>
+        <p data-i18n="privacyText"></p>
+        <h3 class="mini-title" data-i18n="creditsTitle"></h3>
+        <p data-i18n="creditsText"></p>
+        <h3 class="mini-title" data-i18n="saveTitle"></h3>
+        <p data-i18n="saveText"></p>
+      </div>
+    </dialog>
+
     <dialog class="modal" id="modal-mech">
       <div class="modal-card mech-card">
         <span class="mech-badge" data-i18n="newMechanic"></span>
@@ -336,6 +350,9 @@
         <label class="toggle"><span data-i18n="music"></span><input type="checkbox" id="set-music" /><i></i></label>
         <label class="toggle"><span data-i18n="haptics"></span><input type="checkbox" id="set-haptics" /><i></i></label>
         <button class="btn btn-ghost btn-wide" id="btn-install" hidden data-i18n="install"></button>
+        <button class="btn btn-ghost btn-wide" id="btn-export" data-i18n="exportSave"></button>
+        <button class="btn btn-ghost btn-wide" id="btn-import" data-i18n="importSave"></button>
+        <button class="btn btn-ghost btn-wide" id="btn-about" data-i18n="about"></button>
         <button class="btn btn-danger-ghost btn-wide" id="btn-reset" data-i18n="resetData"></button>
       </div>
     </dialog>
