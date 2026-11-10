@@ -25,6 +25,8 @@ Tant que `js/online-config.js` est vide, le classement est simplement caché dan
   ton site (référents HTTP).
 
 ## Vie privée
-Opt-in : rien n'est envoyé tant que le joueur n'a pas cliqué « Rejoindre le classement ».
+Chaque joueur est ajouté automatiquement après son premier niveau terminé, sous un nom au hasard
+(aucune donnée personnelle). Il peut quitter le classement à tout moment ; ce choix est retenu.
+Pour suivre la progression des joueurs : console Firebase → Firestore → collection `players`.
 Les noms sont tirés au hasard dans une liste fixe (aucun texte libre, donc rien d'insultant).
 « Quitter le classement » supprime la ligne du joueur.

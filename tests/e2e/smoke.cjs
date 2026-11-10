@@ -46,6 +46,9 @@ const assert = (c, m) => {
   const base = `http://localhost:${srv.address().port}/`;
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ ...devices['Pixel 7'], locale: 'fr-FR' });
+  // Never touch the real online leaderboard from tests: the feature stays off here
+  // (the dedicated step below uses an in-memory fake instead).
+  await ctx.route('**/js/online-config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: "export const FIREBASE = { apiKey: '', projectId: '' };" }));
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
@@ -163,27 +166,29 @@ const assert = (c, m) => {
       const saved = await M((k) => JSON.parse(localStorage.getItem('marbl:v1')).archive[k]?.easy?.done, key);
       assert(saved, 'archive result not saved');
     });
-    await step('leaderboard (fake Firebase): join, rank, leave', async () => {
+    await step('leaderboard (fake Firebase): auto-join, rank, leave', async () => {
       const ctx2 = await browser.newContext({ ...devices['Pixel 7'], locale: 'fr-FR' });
       const seed = Array.from({ length: 30 }, (_, i) => ({ a: i % 24, b: i % 24, n: i, levels: 10 + i * 3, stars: 20 + i * 6 }));
       const docs = await fakeFirebase(ctx2, seed);
       const p2 = await ctx2.newPage();
       p2.on('pageerror', (e) => errors.push(`lb: ${e}`));
-      await p2.addInitScript(() => localStorage.setItem('marbl:v1', JSON.stringify({ tutorialDone: true, levels: { unlocked: 31, best: Object.fromEntries(Array.from({ length: 30 }, (_, i) => [i + 1, 3])) } })));
+      await p2.addInitScript(() => {
+        if (!localStorage.getItem('marbl:v1')) localStorage.setItem('marbl:v1', JSON.stringify({ tutorialDone: true, levels: { unlocked: 31, best: Object.fromEntries(Array.from({ length: 30 }, (_, i) => [i + 1, 3])) } }));
+      });
       await p2.goto(base);
-      await p2.waitForTimeout(1800);
-      assert(await p2.locator('#btn-rank').isVisible(), 'leaderboard card hidden');
+      await p2.waitForTimeout(2200);
+      assert(docs.size === 31, 'player not added automatically');
       await p2.click('#btn-rank');
-      await p2.waitForTimeout(600);
-      await p2.click('#lb-join');
-      await p2.waitForTimeout(1200);
-      assert(docs.size === 31, 'player not written');
+      await p2.waitForTimeout(1000);
       assert((await p2.textContent('#lb-rank')) === '#24', `wrong rank ${await p2.textContent('#lb-rank')}`);
       assert((await p2.locator('.lb-row.is-me').count()) === 1, 'own row missing');
       p2.once('dialog', (d) => d.accept());
       await p2.click('#lb-leave');
       await p2.waitForTimeout(600);
       assert(docs.size === 30, 'leave did not delete');
+      await p2.reload();
+      await p2.waitForTimeout(2000);
+      assert(docs.size === 30, 'player re-added after leaving');
       await ctx2.close();
     });
     await step('save export / import', async () => {

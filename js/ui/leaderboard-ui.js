@@ -2,8 +2,8 @@
 import { LANG, t } from '../i18n.js';
 import { store } from '../storage.js';
 import { sfx } from '../audio.js';
-import { join, joined, leave, me, onlineEnabled, push, rank, reroll, top } from '../leaderboard.js';
-import { $, openModal, toast } from './core.js';
+import { join, joined, leave, me, onlineEnabled, optedOut, push, rank, reroll, top } from '../leaderboard.js';
+import { $, notify, openModal, toast } from './core.js';
 
 const ADJ = {
   en: ['Swift', 'Nimble', 'Calm', 'Clever', 'Wise', 'Brave', 'Red', 'Golden', 'Pink', 'Magic', 'Cosmic', 'Shy', 'Mystic', 'Electric', 'Giant', 'Tiny', 'Fantastic', 'Chill', 'Solar', 'Lunar', 'Polar', 'Wild', 'Famous', 'Turbo'],
@@ -34,9 +34,26 @@ export function myProgress() {
 }
 
 /** Publish progress after a win (no-op unless the player joined). */
+let autoJoining = false;
 export function syncRank() {
+  if (!onlineEnabled()) return;
   const p = myProgress();
-  push(p.levels, p.stars);
+  if (joined()) {
+    push(p.levels, p.stars);
+    return;
+  }
+  // Every player is on the board from their first completed level, with a random
+  // name; leaving it (one tap in the leaderboard) is remembered for good.
+  if (optedOut() || autoJoining || p.levels < 1) return;
+  autoJoining = true;
+  join(p.levels, p.stars)
+    .then(() => {
+      notify('i-trophy', t('rankJoined'), playerName(me()));
+      renderRankCard();
+      rank(p.levels, p.stars).then(renderRankCard, () => {});
+    })
+    .catch(() => {})
+    .finally(() => (autoJoining = false));
 }
 
 export function renderRankCard() {

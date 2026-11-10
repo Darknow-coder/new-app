@@ -30,6 +30,8 @@ function persist() {
 }
 
 export const joined = () => !!session.joined;
+/** The player left the board on purpose: never re-add them automatically. */
+export const optedOut = () => !!session.optedOut;
 export const me = () => session;
 
 const DOCS = () => `https://firestore.googleapis.com/v1/projects/${FIREBASE.projectId}/databases/(default)/documents`;
@@ -108,6 +110,7 @@ export async function join(levels, stars) {
   if (session.a === undefined) Object.assign(session, randomName());
   await write(levels, stars);
   session.joined = true;
+  session.optedOut = false;
   persist();
 }
 
@@ -142,6 +145,7 @@ export async function leave() {
     await http(`${DOCS()}/players/${session.uid}?key=${FIREBASE.apiKey}`, null, { method: 'DELETE', auth: true });
   }
   session.joined = false;
+  session.optedOut = true;
   session.last = null;
   persist();
   cache.top = null;
