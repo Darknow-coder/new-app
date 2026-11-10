@@ -5,6 +5,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { chromium, devices } = require('playwright');
+const fakeFirebase = require('./fake-firebase.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2' };
@@ -161,6 +162,29 @@ const assert = (c, m) => {
       await solve();
       const saved = await M((k) => JSON.parse(localStorage.getItem('marbl:v1')).archive[k]?.easy?.done, key);
       assert(saved, 'archive result not saved');
+    });
+    await step('leaderboard (fake Firebase): join, rank, leave', async () => {
+      const ctx2 = await browser.newContext({ ...devices['Pixel 7'], locale: 'fr-FR' });
+      const seed = Array.from({ length: 30 }, (_, i) => ({ a: i % 24, b: i % 24, n: i, levels: 10 + i * 3, stars: 20 + i * 6 }));
+      const docs = await fakeFirebase(ctx2, seed);
+      const p2 = await ctx2.newPage();
+      p2.on('pageerror', (e) => errors.push(`lb: ${e}`));
+      await p2.addInitScript(() => localStorage.setItem('marbl:v1', JSON.stringify({ tutorialDone: true, levels: { unlocked: 31, best: Object.fromEntries(Array.from({ length: 30 }, (_, i) => [i + 1, 3])) } })));
+      await p2.goto(base);
+      await p2.waitForTimeout(1800);
+      assert(await p2.locator('#btn-rank').isVisible(), 'leaderboard card hidden');
+      await p2.click('#btn-rank');
+      await p2.waitForTimeout(600);
+      await p2.click('#lb-join');
+      await p2.waitForTimeout(1200);
+      assert(docs.size === 31, 'player not written');
+      assert((await p2.textContent('#lb-rank')) === '#24', `wrong rank ${await p2.textContent('#lb-rank')}`);
+      assert((await p2.locator('.lb-row.is-me').count()) === 1, 'own row missing');
+      p2.once('dialog', (d) => d.accept());
+      await p2.click('#lb-leave');
+      await p2.waitForTimeout(600);
+      assert(docs.size === 30, 'leave did not delete');
+      await ctx2.close();
     });
     await step('save export / import', async () => {
       const ok2 = await M(async () => {

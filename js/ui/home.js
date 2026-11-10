@@ -12,6 +12,7 @@ import { startDaily } from './game.js';
 import { renderPlayerStrip, renderQuests, renderSeasonCard } from './progressui.js';
 import { giftToday } from './shop.js';
 import { archiveTodo } from './archive.js';
+import { renderRankCard, syncRank } from './leaderboard-ui.js';
 
 export function renderHome() {
   S.today = dateKey();
@@ -103,6 +104,8 @@ export function renderHome() {
   const g = giftToday();
   $('#gift-text').textContent =
     g.reward === 'chest' ? t('giftDayChest', { d: g.day }) : t('giftDay', { d: g.day, n: g.reward });
+  renderRankCard();
+  syncRank();
   const todo = archiveTodo(S.today);
   $('#archive-count').hidden = !todo;
   $('#archive-count').textContent = todo;

@@ -15,6 +15,7 @@ import { shareDay } from './settings.js';
 import { handleProgress, openDailyChest } from './common.js';
 import { openMap } from './mapview.js';
 import { renderHome } from './home.js';
+import { syncRank } from './leaderboard-ui.js';
 
 export function onSolved() {
   S.game.done = true;
@@ -56,6 +57,7 @@ export function onSolved() {
     }
   } else if (S.game.mode === 'level') {
     const prev = store.recordLevel(S.game.n, stars);
+    syncRank();
     S.game.newBest = prev > 0 && stars > prev;
     if (prev === 0 && store.data.levels.unlocked === S.game.n + 1) S.pendingUnlock = S.game.n + 1;
     S.game.reward = levelReward(prev, stars);

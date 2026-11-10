@@ -44,6 +44,7 @@
         <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20l1.2-4.6L15.6 5a2.1 2.1 0 013 3L8.2 18.4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M13.5 7l3.5 3.5" stroke="currentColor" stroke-width="2.2"/></symbol>
         <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="8.5" cy="14.5" r="1.4" fill="currentColor"/><circle cx="12" cy="14.5" r="1.4" fill="currentColor"/><circle cx="15.5" cy="14.5" r="1.4" fill="currentColor"/></symbol>
         <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+        <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 01-10 0z" fill="currentColor"/><path d="M7 6H4.5v1.5A3 3 0 007.5 10.5M17 6h2.5v1.5a3 3 0 01-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 14v3.5M8 20.5h8M9.5 17.5h5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></symbol>
       </defs>
     </svg>
@@ -101,6 +102,12 @@
               <span class="xp-bar"><i id="season-bar"></i></span>
             </span>
             <span class="season-ready" id="season-ready" hidden></span>
+          </button>
+
+          <button class="rank-card" id="btn-rank" type="button" hidden>
+            <span class="rank-ico"><svg><use href="#i-trophy"/></svg></span>
+            <span class="rank-text"><strong data-i18n="rankTitle"></strong><small id="rank-sub"></small></span>
+            <span class="rank-go"><svg><use href="#i-back"/></svg></span>
           </button>
 
           <ol class="daily-list" id="daily-list"></ol>
@@ -321,6 +328,14 @@
         <p data-i18n="creditsText"></p>
         <h3 class="mini-title" data-i18n="saveTitle"></h3>
         <p data-i18n="saveText"></p>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="modal-rank">
+      <div class="modal-card lb-card">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <h2 data-i18n="rankTitle"></h2>
+        <div id="lb-body"></div>
       </div>
     </dialog>
 

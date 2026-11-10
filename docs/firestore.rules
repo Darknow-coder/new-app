@@ -1,0 +1,22 @@
+rules_version = '2';
+// Marbl leaderboard. Paste into Firebase console → Firestore Database → Rules → Publish.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /players/{uid} {
+      allow read: if true;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['a', 'b', 'n', 'levels', 'stars', 'score', 'updated'])
+        && request.resource.data.a is int && request.resource.data.a >= 0 && request.resource.data.a < 24
+        && request.resource.data.b is int && request.resource.data.b >= 0 && request.resource.data.b < 24
+        && request.resource.data.n is int && request.resource.data.n >= 0 && request.resource.data.n < 100
+        && request.resource.data.levels is int && request.resource.data.levels >= 0 && request.resource.data.levels <= 320
+        && request.resource.data.stars is int && request.resource.data.stars >= 0
+        && request.resource.data.stars <= request.resource.data.levels * 3
+        && request.resource.data.score == request.resource.data.levels * 1000 + request.resource.data.stars
+        && request.resource.data.updated == request.time
+        // at most one write every 5 seconds per player
+        && (resource == null || request.time > resource.data.updated + duration.value(5, 's'));
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
