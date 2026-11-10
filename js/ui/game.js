@@ -13,18 +13,20 @@ import { onSolved } from './result.js';
 import { handleProgress } from './common.js';
 import { openShop } from './shop.js';
 
-export function startDaily(diff) {
+export function startDaily(diff, day = S.today) {
   sfx.tap();
-  const level = dailyLevel(S.today, diff);
-  const entry = store.dailyEntry(S.today, diff);
+  const archive = day !== S.today;
+  const level = dailyLevel(day, diff);
+  const entry = archive ? store.anyEntry(day, diff) : store.dailyEntry(day, diff);
   const review = !!entry?.done;
   startGame({
     mode: 'daily',
     diff,
-    day: S.today,
+    day,
+    archive,
     review,
     level,
-    title: `${t(diff)} · #${puzzleNumber(S.today)}`,
+    title: `${t(diff)} · #${puzzleNumber(day)}`,
     sub: review ? t('solvedIn', { m: entry.moves }) : '',
     restore: !review && entry ? entry : null,
   });
@@ -662,5 +664,9 @@ export function rewind() {
 
 export function persistProgress() {
   if (S.game.mode !== 'daily' || S.game.review) return;
+  if (S.game.archive) {
+    store.setArchiveEntry(S.game.day, S.game.diff, { done: false, moves: S.game.moves, path: S.game.path.slice() });
+    return;
+  }
   store.setDailyEntry(S.game.day, S.game.diff, { done: false, moves: S.game.moves, path: S.game.path.slice() });
 }

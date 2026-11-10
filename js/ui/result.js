@@ -1,7 +1,7 @@
 import { starsFor } from '../engine.js';
 import { burst, iris, replay } from '../fx.js';
 import { save, store } from '../storage.js';
-import { adventureLevel, dailyReward, isBoss, levelReward, worldOf } from '../levels.js';
+import { ARCHIVE_DAY_BONUS, adventureLevel, archiveReward, dailyReward, isBoss, levelReward, worldOf } from '../levels.js';
 import { track, xpNeeded } from '../progress.js';
 import { grantSkin, marbleHTML, pickSkin, skinName } from '../skins.js';
 import { sfx } from '../audio.js';
@@ -29,7 +29,14 @@ export function onSolved() {
   S.game.xpBefore = { ...store.data.player };
   buzz([20, 40, 20, 40, 60]);
 
-  if (S.game.mode === 'daily' && !S.game.review) {
+  if (S.game.mode === 'daily' && S.game.archive && !S.game.review) {
+    store.setArchiveEntry(S.game.day, S.game.diff, { done: true, moves: S.game.moves, stars, par: S.game.level.par });
+    S.game.reward = archiveReward(stars);
+    S.game.archDayDone = DAILY_ORDER.every((d) => store.anyEntry(S.game.day, d)?.done);
+    if (S.game.archDayDone) S.game.reward += ARCHIVE_DAY_BONUS;
+    store.addCoins(S.game.reward);
+    S.game.prog = track('archiveWin', { stars });
+  } else if (S.game.mode === 'daily' && !S.game.review) {
     store.setDailyEntry(S.game.day, S.game.diff, {
       done: true,
       moves: S.game.moves,
@@ -100,7 +107,14 @@ export function showResult() {
   const actions = [];
   let sub = '';
 
-  if (S.game.mode === 'daily') {
+  if (S.game.mode === 'daily' && S.game.archive) {
+    const day = S.game.day;
+    const nextDiff = DAILY_ORDER.find((d) => !store.anyEntry(day, d)?.done);
+    if (S.game.archDayDone) sub = t('archDayDone', { n: ARCHIVE_DAY_BONUS });
+    actions.push({ label: t('calendar'), icon: 'i-calendar', onClick: () => backToArchive(day) });
+    if (nextDiff) actions.push({ label: t('nextPuzzle'), primary: true, onClick: () => iris(() => startDaily(nextDiff, day)) });
+    else actions.push({ label: t('home'), primary: true, onClick: goHome });
+  } else if (S.game.mode === 'daily') {
     const nextDiff = DAILY_ORDER.find((d) => !store.dailyEntry(S.game.day, d)?.done);
     if (nextDiff && S.game.day === S.today) {
       actions.push({ label: t('home'), onClick: goHome });
@@ -262,6 +276,11 @@ export function showResultCard({ stars, title, line, sub, actions, reward = 0 })
   box.querySelector('.btn-primary')?.focus();
 }
 
+function backToArchive(day) {
+  goHome();
+  import('./archive.js').then((m) => m.openArchive(day));
+}
+
 export function goHome() {
   closeModal('modal-result');
   S.game = null;
@@ -275,5 +294,6 @@ export function exitGame() {
     return;
   }
   if (S.game?.mode === 'level') openMap();
+  else if (S.game?.mode === 'daily' && S.game.archive) backToArchive(S.game.day);
   else goHome();
 }

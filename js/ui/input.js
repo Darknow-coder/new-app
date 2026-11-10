@@ -8,6 +8,7 @@ import { exitGame, goHome } from './result.js';
 import { openMap } from './mapview.js';
 import { renderStats, shareDay } from './settings.js';
 import { renderHome } from './home.js';
+import { openArchive } from './archive.js';
 
 export let swipe = null;
 
@@ -107,6 +108,15 @@ $('#btn-stats')?.addEventListener('click', () => {
 $('#streak-chip').addEventListener('click', () => {
   renderStats();
   openModal('modal-stats');
+});
+
+$('#btn-archive').addEventListener('click', () => {
+  sfx.tap();
+  openArchive();
+});
+$('#btn-stats-archive').addEventListener('click', () => {
+  closeModal('modal-stats', true);
+  openArchive();
 });
 
 $('#btn-settings').addEventListener('click', () => openModal('modal-settings'));

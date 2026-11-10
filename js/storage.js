@@ -17,6 +17,7 @@ const defaults = () => ({
   chests: { opened: {} },
   skins: { owned: ['classic'], equipped: 'classic', seen: ['classic'] },
   seenMech: {},
+  archive: {}, // past daily puzzles played late: same shape as `daily`, kept apart so streaks stay honest
   myLevels: [], // levels made in the editor: { id, rows, par, created }
   season: null,
   player: { level: 1, xp: 0 },
@@ -78,6 +79,7 @@ export function normalize(parsed) {
     if (!merged.skins.owned.includes(merged.skins.equipped)) merged.skins.equipped = 'classic';
     if (!Array.isArray(merged.inbox)) merged.inbox = [];
     if (!Array.isArray(merged.myLevels)) merged.myLevels = [];
+    if (!merged.archive || typeof merged.archive !== 'object' || Array.isArray(merged.archive)) merged.archive = {};
     merged.version = SAVE_VERSION;
     return merged;
   }
@@ -142,6 +144,20 @@ export const store = {
     data.daily[key] = data.daily[key] || {};
     data.daily[key][diff] = entry;
     save();
+  },
+  archiveEntry(key, diff) {
+    return data.archive[key]?.[diff] || null;
+  },
+  setArchiveEntry(key, diff, entry) {
+    data.archive[key] = data.archive[key] || {};
+    data.archive[key][diff] = entry;
+    save();
+  },
+  /** Best known result for a past or present daily puzzle: played on the day, or later from the archive. */
+  anyEntry(key, diff) {
+    const live = data.daily[key]?.[diff];
+    if (live?.done) return live;
+    return data.archive[key]?.[diff] || live || null;
   },
   dayComplete(key) {
     const day = data.daily[key];

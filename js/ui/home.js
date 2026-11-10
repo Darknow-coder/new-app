@@ -11,6 +11,7 @@ import { $, S, dailyChestReady, dailyChestTier, els, fmtCountdown, notify, ready
 import { startDaily } from './game.js';
 import { renderPlayerStrip, renderQuests, renderSeasonCard } from './progressui.js';
 import { giftToday } from './shop.js';
+import { archiveTodo } from './archive.js';
 
 export function renderHome() {
   S.today = dateKey();
@@ -102,6 +103,9 @@ export function renderHome() {
   const g = giftToday();
   $('#gift-text').textContent =
     g.reward === 'chest' ? t('giftDayChest', { d: g.day }) : t('giftDay', { d: g.day, n: g.reward });
+  const todo = archiveTodo(S.today);
+  $('#archive-count').hidden = !todo;
+  $('#archive-count').textContent = todo;
   updateCoins();
   updateCountdown();
 }

@@ -42,6 +42,7 @@
         <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="currentColor"/><path d="M8 10.5V8a4 4 0 018 0v2.5" fill="none" stroke="currentColor" stroke-width="2.2"/></symbol>
         <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4.5c4-2 7 2 12 0v8c-5 2-8-2-12 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
         <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20l1.2-4.6L15.6 5a2.1 2.1 0 013 3L8.2 18.4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M13.5 7l3.5 3.5" stroke="currentColor" stroke-width="2.2"/></symbol>
+        <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="8.5" cy="14.5" r="1.4" fill="currentColor"/><circle cx="12" cy="14.5" r="1.4" fill="currentColor"/><circle cx="15.5" cy="14.5" r="1.4" fill="currentColor"/></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></symbol>
       </defs>
     </svg>
@@ -107,6 +108,7 @@
             <button class="btn btn-primary btn-wide" id="btn-share-day"><svg><use href="#i-share"/></svg><span data-i18n="shareDay"></span></button>
           </div>
           <p class="countdown" id="countdown"></p>
+          <button type="button" class="archive-link" id="btn-archive"><svg><use href="#i-calendar"/></svg><span data-i18n="archives"></span><b class="archive-count" id="archive-count" hidden></b></button>
 
           <section class="quests-card" aria-labelledby="quests-title">
             <header class="quests-head">
@@ -250,6 +252,7 @@
         <div class="stats-grid" id="stats-grid"></div>
         <h3 class="mini-title" data-i18n="last7"></h3>
         <div class="week" id="stats-week"></div>
+        <button type="button" class="btn btn-ghost btn-wide" id="btn-stats-archive"><svg><use href="#i-calendar"/></svg><span data-i18n="archives"></span></button>
       </div>
     </dialog>
 
@@ -317,6 +320,21 @@
         <p data-i18n="creditsText"></p>
         <h3 class="mini-title" data-i18n="saveTitle"></h3>
         <p data-i18n="saveText"></p>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="modal-archive">
+      <div class="modal-card arch-card">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <h2 data-i18n="archives"></h2>
+        <p class="arch-todo" id="arch-todo"></p>
+        <div class="arch-nav">
+          <button type="button" class="icon-btn" id="arch-prev" data-i18n-label="prevMonth"><svg><use href="#i-back"/></svg></button>
+          <strong id="arch-month"></strong>
+          <button type="button" class="icon-btn arch-fwd" id="arch-next" data-i18n-label="nextMonth"><svg><use href="#i-back"/></svg></button>
+        </div>
+        <div class="arch-grid" id="arch-grid"></div>
+        <div class="arch-detail" id="arch-detail"></div>
       </div>
     </dialog>
 

@@ -173,6 +173,11 @@ export function track(event, d = {}) {
     notes.push(...bumpQuest('dailies'));
     if (d.stars === 3) notes.push(...bumpQuest('perfect'));
     notes.push(...bumpQuest('stars', d.stars));
+  } else if (event === 'archiveWin') {
+    if (d.stars === 3) s.perfects++;
+    xp = 10 + 5 * d.stars;
+    if (d.stars === 3) notes.push(...bumpQuest('perfect'));
+    notes.push(...bumpQuest('stars', d.stars));
   } else if (event === 'combo') {
     s.combos++;
     s.maxCombo = Math.max(s.maxCombo, d.count);
@@ -183,7 +188,7 @@ export function track(event, d = {}) {
     notes.push(...bumpQuest('chest'));
   }
   const ups = xp ? addXP(xp) : [];
-  const sp = event === 'levelWin' ? d.newStars * 2 + (d.first ? 1 : 0) : event === 'dailyWin' ? d.stars * 2 + 2 : 0;
+  const sp = event === 'levelWin' ? d.newStars * 2 + (d.first ? 1 : 0) : event === 'dailyWin' ? d.stars * 2 + 2 : event === 'archiveWin' ? d.stars : 0;
   if (sp && addSeasonPoints(sp) > 0) notes.push({ kind: 'season', tier: season().tier });
   notes.push(...checkAchievements());
   save();

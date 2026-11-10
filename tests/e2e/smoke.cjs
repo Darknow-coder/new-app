@@ -147,6 +147,21 @@ const assert = (c, m) => {
       await solve();
       assert(await M(() => window.__marbl.game.done), 'shared level not solved');
     });
+    await step('daily archives: replay a past day', async () => {
+      await page.goto(base);
+      await page.waitForTimeout(2200);
+      await page.click('#btn-archive');
+      await page.waitForTimeout(700);
+      const key = await M(() => document.querySelector('.arch-day[data-key]:not(.is-today)')?.dataset.key);
+      assert(key, 'no past day in calendar');
+      await page.click(`.arch-day[data-key="${key}"]`);
+      await page.click('.arch-row[data-diff=easy]');
+      await page.waitForTimeout(1300);
+      assert(await M(() => window.__marbl.game?.archive), 'archive game did not start');
+      await solve();
+      const saved = await M((k) => JSON.parse(localStorage.getItem('marbl:v1')).archive[k]?.easy?.done, key);
+      assert(saved, 'archive result not saved');
+    });
     await step('save export / import', async () => {
       const ok2 = await M(async () => {
         const s = await import('./js/storage.js');

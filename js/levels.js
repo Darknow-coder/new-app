@@ -156,6 +156,11 @@ export function levelReward(prevStars, stars) {
 export function dailyReward(stars) {
   return 8 + stars * 4;
 }
+/** Past puzzles replayed from the calendar pay half, plus a small stamp for finishing a whole day. */
+export function archiveReward(stars) {
+  return Math.ceil(dailyReward(stars) / 2);
+}
+export const ARCHIVE_DAY_BONUS = 15;
 export function dayCompleteBonus(streak) {
   return 20 + 5 * Math.min(streak, 10);
 }
