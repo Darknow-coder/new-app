@@ -40,8 +40,7 @@ export function tierFor(n) {
   let tier = world + Math.floor(idx / 5);
   if (isBoss(n)) tier += 1;
   // World 9 brings arrows after a long break from new mechanics: ramp up gently again.
-  if (world === 8 || world === 12) tier = Math.min(tier, 3 + Math.floor(idx / 3));
-  if (world === 13) tier = Math.min(tier, 5 + Math.floor(idx / 4));
+  if (world === 8) tier = Math.min(tier, 3 + Math.floor(idx / 3));
   return Math.min(tier, TIERS.length - 1);
 }
 
@@ -50,42 +49,47 @@ export function levelParams(n) {
 }
 
 // Each world brings something new. Later worlds remix everything.
+// Pits (the most fun twist) arrive early and stay through the whole game;
+// every world then adds or remixes one idea.
+const P = [1, 1];
+const PP = [1, 2];
 const WORLD_FEATURES = [
-  null, // 1 Pebble Beach — the basics
-  { sand: [1, 3] }, // 2 Sunny Dunes — sand traps
-  { gates: [1, 2] }, // 3 Ember Canyon — crystal gates
-  { portals: 1 }, // 4 Coral Reef — portals
-  { sand: [1, 2], gates: [1, 1] }, // 5 Violet Peaks
-  { portals: 1, sand: [1, 2] }, // 6 Glacier Bay
-  { gates: [1, 2], portals: 1 }, // 7 Mossy Woods
-  { sand: [1, 2], gates: [1, 1], portals: 1 }, // 8 Neon City
-  { arrows: [1, 2] }, // 9 — arrow tiles
-  { arrows: [1, 2], sand: [1, 2] }, // 10
-  { arrows: [1, 2], gates: [1, 1], portals: 1 }, // 11
-  { arrows: [1, 2], gates: [1, 1], portals: 1 }, // 12
-  { pits: [1, 2] }, // 13 — pits
-  { pits: [1, 2], shape: true }, // 14 — shaped boards
-  { pits: [1, 2], shape: true, arrows: [1, 1] }, // 15
-  { pits: [1, 2], shape: true, sand: [1, 2], gates: [1, 1] }, // 16+
+  { pits: P }, // 1 Pebble Beach — basics, pits from level 11
+  { sand: [1, 2], pits: P }, // 2 Sunny Dunes — sand traps
+  { gates: [1, 2], pits: P }, // 3 Ember Canyon — crystal gates
+  { portals: 1, pits: P }, // 4 Coral Reef — portals
+  { sand: [1, 2], gates: [1, 1], pits: PP }, // 5 Violet Peaks
+  { shape: true, pits: PP }, // 6 Glacier Bay — shaped boards
+  { gates: [1, 2], portals: 1, pits: P, shape: true }, // 7 Mossy Woods
+  { sand: [1, 2], gates: [1, 1], portals: 1, pits: PP }, // 8 Neon City
+  { arrows: [1, 2] }, // 9 Arrow Gardens — arrows
+  { arrows: [1, 2], pits: PP }, // 10
+  { arrows: [1, 2], gates: [1, 1], portals: 1, pits: P }, // 11
+  { arrows: [1, 2], shape: true, pits: PP }, // 12
+  { pits: PP, shape: true, sand: [1, 2], gates: [1, 1] }, // 13
+  { pits: PP, arrows: [1, 1], portals: 1 }, // 14
+  { pits: PP, shape: true, arrows: [1, 1], gates: [1, 1] }, // 15
+  { pits: PP, shape: true, sand: [1, 2], gates: [1, 1], portals: 1 }, // 16+
 ];
 
-/** Hand-made first level of a world, so each new mechanic is discovered in a calm, obvious setting. */
+/** Hand-made first level of a mechanic, so each one is discovered in a calm, obvious setting. */
 export const MECHANIC_INTROS = {
+  11: { mech: 'pits', rows: ['A.O.a', '.....', '..#..', '.....', '.....'] },
   21: { mech: 'sand', rows: ['.....', '..a..', '.....', 'A.~..', '.....'] },
   41: { mech: 'gates', rows: ['.....', 'A.v.a', '.....', 'B.v..', '....b'] },
   61: { mech: 'portals', rows: ['.....', 'A.@..', '#####', '..@.a', '.....'] },
   161: { mech: 'arrows', rows: ['A...,', '.....', '....a', '.....', '#....'] },
-  241: { mech: 'pits', rows: ['A.O.a', '.....', '..#..', '.....', '.....'] },
 };
 
 export function featuresFor(n) {
   const world = worldOf(n);
   const f = WORLD_FEATURES[Math.min(world, WORLD_FEATURES.length - 1)];
-  if (!f) return null;
   const idx = (n - 1) % LEVELS_PER_WORLD;
+  if (world === 0) return idx >= 10 ? f : null; // levels 1-10: just the basics
   // Right after an intro, keep the new mechanic in every level; later, ~75% of levels.
   if (idx <= 5 || hashString(`feat:${n}`) % 100 < 75) return f;
-  return null;
+  // The rest still keeps pits most of the time: they are the heart of the challenge.
+  return f.pits && hashString(`pit:${n}`) % 100 < 60 ? { pits: f.pits } : null;
 }
 
 /** Which mechanic (if any) is introduced at level n. */

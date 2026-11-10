@@ -220,7 +220,7 @@ export function solve(level, startState = level.start, { maxDepth = 24, maxState
 export const DIFFICULTIES = {
   easy: { size: 6, marbles: 2, stones: 0, walls: [4, 7], par: [3, 5] },
   medium: { size: 6, marbles: 2, stones: 1, walls: [5, 8], par: [6, 8] },
-  hard: { size: 7, marbles: 3, stones: 1, walls: [6, 10], par: [9, 12] },
+  hard: { size: 7, marbles: 3, stones: 1, walls: [6, 10], par: [9, 12], features: { pits: [1, 1] } },
 };
 
 function shuffle(rng, arr) {
