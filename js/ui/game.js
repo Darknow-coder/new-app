@@ -479,6 +479,17 @@ export function move(dir) {
         }
         el.style.transition = `transform ${segMs}ms ${k > 0 && segs[k - 1].turn ? 'linear' : 'cubic-bezier(0.45, 0, 0.9, 0.65)'}`;
         setPos(el, sg.to);
+        const gates = S.game.level.gates;
+        if (gates && sg.dist) {
+          // A soft chime as the marble slips through each crystal gate on its way.
+          // Direction comes from the segment itself: arrows can turn a marble mid-move.
+          const W = S.game.level.w;
+          const step = Math.floor(sg.from / W) === Math.floor(sg.to / W) ? Math.sign(sg.to - sg.from) : Math.sign(sg.to - sg.from) * W;
+          for (let d = 1; d <= sg.dist; d++) {
+            const c = sg.from + step * d;
+            if (gates[c] >= 0) setTimeout(() => sfx.gate(gates[c]), (segMs * d) / sg.dist - 30);
+          }
+        }
         if (sg.dist >= 2 && S.game.level.pieces[i].kind === 'marble') trail(sg, S.game.level.pieces[i].color, dir, segMs);
       };
       if (k === 0) run();
@@ -507,7 +518,8 @@ export function move(dir) {
         setTimeout(() => el.classList.add('gone'), 340);
       } else {
         el.classList.add(axis);
-        sfx.clack(Math.min(1, m.dist / 5));
+        if (S.game.level.sand?.[m.to]) sfx.sand();
+        else sfx.clack(Math.min(1, m.dist / 5));
       }
     }, ms);
     if (m.sunk) dropIndex++;

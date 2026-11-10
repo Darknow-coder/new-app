@@ -43,6 +43,7 @@
         <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4.5c4-2 7 2 12 0v8c-5 2-8-2-12 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
         <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20l1.2-4.6L15.6 5a2.1 2.1 0 013 3L8.2 18.4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M13.5 7l3.5 3.5" stroke="currentColor" stroke-width="2.2"/></symbol>
         <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="8.5" cy="14.5" r="1.4" fill="currentColor"/><circle cx="12" cy="14.5" r="1.4" fill="currentColor"/><circle cx="15.5" cy="14.5" r="1.4" fill="currentColor"/></symbol>
+        <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></symbol>
       </defs>
     </svg>
@@ -398,7 +399,9 @@
         <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
         <h2 data-i18n="settings"></h2>
         <label class="toggle"><span data-i18n="sound"></span><input type="checkbox" id="set-sound" /><i></i></label>
+        <div class="vol-row" id="row-sfx-vol"><svg><use href="#i-vol"/></svg><input type="range" id="set-sfx-vol" min="0" max="100" step="5" data-i18n-label="sfxVolume" /></div>
         <label class="toggle"><span data-i18n="music"></span><input type="checkbox" id="set-music" /><i></i></label>
+        <div class="vol-row" id="row-music-vol"><svg><use href="#i-vol"/></svg><input type="range" id="set-music-vol" min="0" max="100" step="5" data-i18n-label="musicVolume" /></div>
         <label class="toggle"><span data-i18n="haptics"></span><input type="checkbox" id="set-haptics" /><i></i></label>
         <label class="toggle"><span><span data-i18n="cbMode"></span><small class="toggle-sub" data-i18n="cbModeSub"></small></span><input type="checkbox" id="set-cb" /><i></i></label>
         <button class="btn btn-ghost btn-wide" id="btn-install" hidden data-i18n="install"></button>

@@ -1,4 +1,4 @@
-import { setMusicEnabled, setSoundEnabled, sfx, unlockAudio } from '../audio.js';
+import { setMusicEnabled, setMusicVolume, setSfxVolume, setSoundEnabled, sfx, unlockAudio } from '../audio.js';
 import { iris } from '../fx.js';
 import { exportProgress, importProgress, save, store } from '../storage.js';
 import { t } from '../i18n.js';
@@ -187,6 +187,44 @@ soundBox.addEventListener('change', () => {
   setMusicEnabled(soundBox.checked && store.data.settings2.music);
   sfx.tap();
 });
+
+// Volume sliders: shown under their toggle while it is on.
+const sfxVol = $('#set-sfx-vol');
+const musicVol = $('#set-music-vol');
+const vol = (k, d) => (typeof store.data.settings2[k] === 'number' ? store.data.settings2[k] : d);
+sfxVol.value = Math.round(vol('sfxVol', 0.8) * 100);
+musicVol.value = Math.round(vol('musicVol', 0.7) * 100);
+setSfxVolume(sfxVol.value / 100);
+setMusicVolume(musicVol.value / 100);
+const paintVol = (el) => el.style.setProperty('--p', `${el.value}%`);
+const syncVolRows = () => {
+  $('#row-sfx-vol').hidden = !soundBox.checked;
+  $('#row-music-vol').hidden = !soundBox.checked || !musicBox.checked;
+  paintVol(sfxVol);
+  paintVol(musicVol);
+};
+syncVolRows();
+soundBox.addEventListener('change', syncVolRows);
+musicBox.addEventListener('change', syncVolRows);
+let volTest = 0;
+sfxVol.addEventListener('input', () => {
+  setSfxVolume(sfxVol.value / 100);
+  paintVol(sfxVol);
+  // Preview at the new level, but not on every pixel of the drag.
+  clearTimeout(volTest);
+  volTest = setTimeout(() => sfx.coin(), 80);
+});
+musicVol.addEventListener('input', () => {
+  unlockAudio();
+  setMusicVolume(musicVol.value / 100);
+  paintVol(musicVol);
+});
+for (const [el, k] of [[sfxVol, 'sfxVol'], [musicVol, 'musicVol']]) {
+  el.addEventListener('change', () => {
+    store.data.settings2[k] = el.value / 100;
+    save();
+  });
+}
 
 hapticBox.addEventListener('change', () => {
   store.setting('haptics', hapticBox.checked);

@@ -105,13 +105,17 @@ export function openModal(id) {
   const m = document.getElementById(id);
   clearTimeout(m.closeTimer);
   m.classList.remove('closing');
-  if (!m.open) m.showModal();
+  if (!m.open) {
+    sfx.swish();
+    m.showModal();
+  }
   stagger(m, MODAL_ENTER, { step: 45, base: 90 });
 }
 
 export function closeModal(id, instant = false) {
   const m = typeof id === 'string' ? document.getElementById(id) : id;
   if (!m.open || m.classList.contains('closing')) return;
+  if (!instant) sfx.swish(true);
   if (instant || reducedMotion()) {
     m.close();
     return;
