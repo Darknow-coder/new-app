@@ -9,6 +9,7 @@ import './ui/collection.js';
 import './ui/shop.js';
 import './ui/settings.js';
 import './ui/input.js';
+import { openSharedLevel, openEditor } from './ui/editor.js';
 import { installSkinStyles } from './skins.js';
 import { installRipples, reducedMotion } from './fx.js';
 import { store } from './storage.js';
@@ -49,7 +50,12 @@ const chN = Number(params.get('defi'));
 
 const chC = Number(params.get('c'));
 
-if (chN >= 1 && chN <= 240 && chC >= 1 && chC <= 99) {
+const sharedLevel = params.get('l');
+if (sharedLevel) {
+  history.replaceState(null, '', location.pathname);
+  showView('home');
+  setTimeout(() => openSharedLevel(sharedLevel), 300);
+} else if (chN >= 1 && chN <= 320 && chC >= 1 && chC <= 99) {
   history.replaceState(null, '', location.pathname);
   showView('home');
   setTimeout(() => startChallenge(chN, chC), 300);
@@ -64,5 +70,5 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:' && !/localhost
 }
 
 // Debug hook for automated tests (harmless in production).
-window.__marbl = { startChallenge, challengeImage, season, openSeason,
+window.__marbl = { openEditor, openSharedLevel, startChallenge, challengeImage, season, openSeason,
   track, handleProgress, notify, quests, get game() { return S.game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap, openShop, renderHome, openChest, setPendingUnlock: (n) => (S.pendingUnlock = n) };

@@ -17,6 +17,7 @@ const defaults = () => ({
   chests: { opened: {} },
   skins: { owned: ['classic'], equipped: 'classic', seen: ['classic'] },
   seenMech: {},
+  myLevels: [], // levels made in the editor: { id, rows, par, created }
   season: null,
   player: { level: 1, xp: 0 },
   inbox: [], // chests waiting to be opened: { id, tier, reason, n? }
@@ -76,6 +77,7 @@ export function normalize(parsed) {
     if (!merged.skins.owned.includes('classic')) merged.skins.owned.unshift('classic');
     if (!merged.skins.owned.includes(merged.skins.equipped)) merged.skins.equipped = 'classic';
     if (!Array.isArray(merged.inbox)) merged.inbox = [];
+    if (!Array.isArray(merged.myLevels)) merged.myLevels = [];
     merged.version = SAVE_VERSION;
     return merged;
   }

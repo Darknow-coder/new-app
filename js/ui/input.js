@@ -99,7 +99,7 @@ $('#btn-share-day').addEventListener('click', shareDay);
 
 $('#btn-help').addEventListener('click', () => openModal('modal-help'));
 
-$('#btn-stats').addEventListener('click', () => {
+$('#btn-stats')?.addEventListener('click', () => {
   renderStats();
   openModal('modal-stats');
 });

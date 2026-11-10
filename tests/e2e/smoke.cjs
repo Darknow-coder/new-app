@@ -125,6 +125,28 @@ const assert = (c, m) => {
       await solve();
       assert(await M(() => window.__marbl.game.done), 'challenge not solved');
     });
+    await step('level editor: build, validate, test', async () => {
+      await page.goto(base);
+      await page.waitForTimeout(1800);
+      await page.click('#btn-create');
+      await page.waitForTimeout(1600);
+      const st = await M(() => document.querySelector('#ed-status').dataset.state);
+      assert(st === 'ok', `starter level should be solvable, got ${st}`);
+      await page.click('#ed-test');
+      await page.waitForTimeout(1500);
+      assert((await M(() => window.__marbl.game?.mode)) === 'custom', 'test play did not start');
+      await solve();
+      assert(await M(() => window.__marbl.game.done), 'custom level not solved');
+    });
+    await step('shared level link', async () => {
+      const rows = ['A....', '.....', '..#..', '.....', '....a'];
+      const code = Buffer.from(`${rows.join('/')}|0`).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      await page.goto(`${base}?l=${code}`);
+      await page.waitForTimeout(2200);
+      assert((await M(() => window.__marbl.game?.mode)) === 'custom', 'shared level did not open');
+      await solve();
+      assert(await M(() => window.__marbl.game.done), 'shared level not solved');
+    });
     await step('save export / import', async () => {
       const ok2 = await M(async () => {
         const s = await import('./js/storage.js');

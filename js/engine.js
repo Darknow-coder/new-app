@@ -179,7 +179,7 @@ export function stateKey(state) {
  * Breadth-first search for the shortest solution.
  * Returns { par, path: dirName[] } or null if unsolvable within limits.
  */
-export function solve(level, startState = level.start, { maxDepth = 24, maxStates = 250000 } = {}) {
+export function solve(level, startState = level.start, { maxDepth = 24, maxStates = 250000, info = null } = {}) {
   const start = startState.slice();
   if (isSolved(level, start)) return { par: 0, path: [] };
   const seen = new Map();
@@ -207,7 +207,10 @@ export function solve(level, startState = level.start, { maxDepth = 24, maxState
           return { par: path.length, path };
         }
         nextFrontier.push(ns);
-        if (seen.size > maxStates) return null;
+        if (seen.size > maxStates) {
+          if (info) info.capped = true;
+          return null;
+        }
       }
     }
     if (!nextFrontier.length) return null;

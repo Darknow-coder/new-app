@@ -118,6 +118,25 @@ export function showResult() {
       actions.push({ label: t('openChest'), primary: true, wide: true, icon: 'i-gift', onClick: () => openDailyChest(day).then(goHome) });
       actions.find((a) => a.icon === 'i-share').primary = false;
     }
+  } else if (S.game.mode === 'custom') {
+    const g = S.game;
+    const ed = () => import('./editor.js');
+    showResultCard({
+      stars,
+      title,
+      line,
+      sub: '',
+      actions: g.fromEditor
+        ? [
+            { label: t('edEdit'), onClick: () => ed().then((m) => m.openEditor()) },
+            { label: t('edShare'), primary: true, icon: 'i-share', keepOpen: true, onClick: () => ed().then((m) => m.shareLevel(g.rows, g.level.par)) },
+          ]
+        : [
+            { label: t('customCreate'), onClick: () => ed().then((m) => iris(() => m.openEditor())) },
+            { label: t('customNext'), primary: true, icon: 'i-share', keepOpen: true, wide: true, onClick: () => ed().then((m) => m.shareLevel(g.rows, g.level.par)) },
+          ],
+    });
+    return;
   } else if (S.game.mode === 'challenge') {
     const n = S.game.n;
     const won = moves <= S.game.target;
@@ -251,6 +270,10 @@ export function goHome() {
 }
 
 export function exitGame() {
+  if (S.game?.mode === 'custom' && S.game.fromEditor) {
+    import('./editor.js').then((m) => m.openEditor());
+    return;
+  }
   if (S.game?.mode === 'level') openMap();
   else goHome();
 }

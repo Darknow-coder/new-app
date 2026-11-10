@@ -41,6 +41,7 @@
         <symbol id="i-gift" viewBox="0 0 24 24"><path d="M4 10h16v3H4zM5.5 13h13v7.5h-13zM12 10v10.5M12 10c-1.5-3.5-6-4.5-6-1.8C6 10 9.5 10 12 10zm0 0c1.5-3.5 6-4.5 6-1.8 0 1.8-3.5 1.8-6 1.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
         <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="currentColor"/><path d="M8 10.5V8a4 4 0 018 0v2.5" fill="none" stroke="currentColor" stroke-width="2.2"/></symbol>
         <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4.5c4-2 7 2 12 0v8c-5 2-8-2-12 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20l1.2-4.6L15.6 5a2.1 2.1 0 013 3L8.2 18.4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M13.5 7l3.5 3.5" stroke="currentColor" stroke-width="2.2"/></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></symbol>
       </defs>
     </svg>
@@ -122,7 +123,7 @@
           <button class="nav-item" id="btn-collection"><span class="nav-ico nav-coll"><span id="collection-balls"></span><b class="badge" id="coll-badge" hidden></b></span><span data-i18n="collection"></span></button>
           <button class="nav-play" id="nav-play"><span class="nav-play-ball"><svg><use href="#i-play"/></svg></span><span data-i18n="playBig"></span></button>
           <button class="nav-item" id="btn-achievements"><span class="nav-ico nav-ach"><svg><use href="#i-star"/></svg><b class="badge" id="ach-badge" hidden></b></span><span data-i18n="achievements"></span></button>
-          <button class="nav-item" id="btn-stats"><span class="nav-ico nav-stats"><svg><use href="#i-stats"/></svg></span><span data-i18n="statsShort"></span></button>
+          <button class="nav-item" id="btn-create"><span class="nav-ico nav-stats"><svg><use href="#i-pencil"/></svg></span><span data-i18n="createShort"></span></button>
         </nav>
       </section>
 
@@ -136,6 +137,30 @@
         </header>
         <div class="map-scroll" id="map-scroll"><div class="map" id="map"></div></div>
         <button class="map-recenter" id="map-recenter" hidden><svg class="mr-arrow"><use href="#i-back"/></svg><span id="map-recenter-n"></span></button>
+      </section>
+
+      <!-- LEVEL EDITOR -->
+      <section class="view view-editor" id="view-editor" aria-labelledby="ed-title">
+        <header class="topbar">
+          <button class="icon-btn" id="btn-ed-back" data-i18n-label="back"><svg><use href="#i-back"/></svg></button>
+          <div class="game-title"><strong id="ed-title" data-i18n="editorTitle"></strong><small id="ed-sub"></small></div>
+          <button class="icon-btn" id="btn-ed-mine" data-i18n-label="myLevels"><svg><use href="#i-flag"/></svg></button>
+        </header>
+        <div class="ed-status" id="ed-status"></div>
+        <div class="ed-board-wrap" id="ed-area">
+          <div class="board ed-board" id="ed-board">
+            <div class="board-floor"></div>
+            <div class="board-layer" id="ed-layer"></div>
+          </div>
+        </div>
+        <div class="ed-colors" id="ed-colors"></div>
+        <div class="ed-tools" id="ed-tools"></div>
+        <footer class="ed-actions">
+          <button class="ctrl" id="ed-size"><svg><use href="#i-settings"/></svg><span id="ed-size-label"></span></button>
+          <button class="ctrl" id="ed-clear"><svg><use href="#i-restart"/></svg><span data-i18n="edClear"></span></button>
+          <button class="ctrl" id="ed-test"><svg><use href="#i-play"/></svg><span data-i18n="edTest"></span></button>
+          <button class="ctrl ctrl-boost" id="ed-share"><svg><use href="#i-share"/></svg><span data-i18n="edShare"></span></button>
+        </footer>
       </section>
 
       <!-- GAME -->
@@ -292,6 +317,14 @@
         <p data-i18n="creditsText"></p>
         <h3 class="mini-title" data-i18n="saveTitle"></h3>
         <p data-i18n="saveText"></p>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="modal-mine">
+      <div class="modal-card">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <h2 data-i18n="myLevels"></h2>
+        <ul class="mine-list" id="mine-list"></ul>
       </div>
     </dialog>
 

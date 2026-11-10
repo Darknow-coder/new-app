@@ -26,6 +26,7 @@ export const els = {
   home: $('#view-home'),
   game: $('#view-game'),
   map: $('#view-map'),
+  editor: $('#view-editor'),
   mapEl: $('#map'),
   rewind: $('#btn-rewind'),
   board: $('#board'),
@@ -78,10 +79,11 @@ export const ENTER = {
   home: '.view-home .topbar > *, .hero > *, .adventure-hero, .season-card, .daily-list > li, .share-row, .countdown, .quests-card, .quest, .footer-note, .bottom-nav > *',
   game: '.game-topbar > *, .tip, .controls > .ctrl',
   map: '.view-map .topbar > *, .world-head',
+  editor: '.view-editor .topbar > *, .ed-status, .ed-colors, .ed-tools > *, .ed-actions > *',
 };
 
 export function showView(name) {
-  for (const v of ['home', 'game', 'map']) {
+  for (const v of ['home', 'game', 'map', 'editor']) {
     const was = els[v].classList.contains('is-active');
     els[v].classList.toggle('is-active', name === v);
     els[v].inert = name !== v;
