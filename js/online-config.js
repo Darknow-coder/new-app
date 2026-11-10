@@ -3,6 +3,6 @@
 // These values are public by design: access is controlled by the Firestore rules in
 // docs/firestore.rules, not by keeping the key secret.
 export const FIREBASE = {
-  apiKey: '',
-  projectId: '',
+  apiKey: 'AIzaSyADsPrEhXSlaxpALgzneQAcNtO2TiqwZZA',
+  projectId: 'marbl-3219e',
 };
