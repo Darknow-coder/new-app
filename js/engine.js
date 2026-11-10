@@ -251,6 +251,13 @@ function boardShape(shape, n) {
   return out;
 }
 
+/** ASCII mask ('x' playable, anything else cut out) → outside cells. */
+function maskCells(rows) {
+  const out = new Uint8Array(rows.length * rows[0].length);
+  rows.forEach((r, y) => [...r].forEach((ch, x) => (out[y * r.length + x] = ch === 'x' ? 0 : 1)));
+  return out;
+}
+
 function buildCandidate(rng, p) {
   const w = p.size;
   const h = p.size;
@@ -261,8 +268,8 @@ function buildCandidate(rng, p) {
   const wallCount = p.walls[0] + randInt(rng, p.walls[1] - p.walls[0] + 1);
   let cells = shuffle(rng, Array.from({ length: n }, (_, i) => i));
   let outside = null;
-  if (f && f.shape) {
-    outside = boardShape(SHAPES[randInt(rng, SHAPES.length)], w);
+  if (f && (f.shape || f.mask)) {
+    outside = f.mask ? maskCells(f.mask) : boardShape(SHAPES[randInt(rng, SHAPES.length)], w);
     for (let c = 0; c < n; c++) if (outside[c]) walls[c] = 1;
     cells = cells.filter((c) => !outside[c]);
   }

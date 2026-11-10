@@ -16,6 +16,14 @@ const THEMES = {
   5: { kind: 'snow', count: 26 }, // Glacier Bay
   6: { kind: 'leaf', count: 14 }, // Mossy Woods
   7: { kind: 'neon', count: 12 }, // Neon City
+  8: { kind: 'leaf', count: 16 }, // Arrow Gardens
+  9: { kind: 'dust', count: 18 }, // Sunset Mesa
+  10: { kind: 'bubble', count: 20 }, // Storm Lagoon (rain)
+  11: { kind: 'twinkle', count: 34 }, // Starlight Summit
+  12: { kind: 'dust', count: 14 }, // Echo Valley
+  13: { kind: 'foam', count: 14 }, // Floating Isles (clouds)
+  14: { kind: 'ember', count: 16 }, // Clockwork Caves (sparks)
+  15: { kind: 'twinkle', count: 28 }, // Rainbow Rift
 };
 const ORB_COLORS = ['var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)'];
 

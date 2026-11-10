@@ -1,4 +1,4 @@
-import { LEVELS_PER_WORLD, WORLD_HUES, adventureLevel, introAt, isBoss, worldOf } from '../levels.js';
+import { LEVELS_PER_WORLD, WORLD_HUES, adventureLevel, introAt, isBoss, worldOf, bossShape } from '../levels.js';
 import { WORLD_CHESTS, chestId, chestSVG, isOpened } from '../chests.js';
 import { t } from '../i18n.js';
 import { hasSkin, marbleHTML, setSkins } from '../skins.js';
@@ -318,7 +318,7 @@ export function showLevelPreview(n) {
   const card = $('#modal-level .modal-card');
   card.style.setProperty('--hue', worldHue(n));
   $('#lp-world').textContent = `${t('world', { n: worldOf(n) + 1 })} · ${worldName(worldOf(n))}`;
-  $('#lp-title').textContent = isBoss(n) ? `${t('level', { n })} · BOSS` : t('level', { n });
+  $('#lp-title').textContent = isBoss(n) ? `BOSS · ${t(`bossName_${bossShape(n)}`)}` : t('level', { n });
   $('#lp-stars').innerHTML = [0, 1, 2]
     .map((i) => `<span class="${i < best ? 'on' : ''}" style="--i:${i}"><svg><use href="#i-star"/></svg></span>`)
     .join('');

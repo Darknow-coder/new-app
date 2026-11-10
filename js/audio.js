@@ -193,6 +193,14 @@ const THEMES = {
   5: { root: 392.0, minor: false, bpm: 62 }, // Glacier Bay — G
   6: { root: 293.66, minor: true, bpm: 74 }, // Mossy Woods — D minor
   7: { root: 311.13, minor: false, bpm: 84 }, // Neon City — E♭
+  8: { root: 349.23, minor: false, bpm: 78 }, // Arrow Gardens — F
+  9: { root: 233.08, minor: true, bpm: 70 }, // Sunset Mesa — B♭ minor
+  10: { root: 196.0, minor: true, bpm: 64 }, // Storm Lagoon — G minor
+  11: { root: 415.3, minor: false, bpm: 58 }, // Starlight Summit — A♭
+  12: { root: 277.18, minor: true, bpm: 66 }, // Echo Valley — C# minor
+  13: { root: 369.99, minor: false, bpm: 74 }, // Floating Isles — F#
+  14: { root: 207.65, minor: true, bpm: 88 }, // Clockwork Caves — G# minor
+  15: { root: 440.0, minor: false, bpm: 82 }, // Rainbow Rift — A
 };
 // Scale degrees in semitones; chord progressions as scale-degree roots.
 const PENTA_MAJ = [0, 2, 4, 7, 9, 12, 14, 16];

@@ -21,7 +21,7 @@ const TIERS = [
 ];
 
 // World names / colours (names are i18n keys: world0..world7, then they cycle).
-export const WORLD_HUES = ['#1fd1b9', '#ffc23d', '#ff8a3d', '#ff5d73', '#9a7bff', '#4aa8ff', '#5ed36a', '#e86bd6'];
+export const WORLD_HUES = ['#1fd1b9', '#ffc23d', '#ff8a3d', '#ff5d73', '#9a7bff', '#4aa8ff', '#5ed36a', '#e86bd6', '#7fd36a', '#ff8a5c', '#5aa9d6', '#b8a6ff', '#d9a87a', '#6ec8ff', '#d9a24a', '#ff8fd0'];
 export const WORLD_COUNT_NAMED = WORLD_HUES.length;
 
 export function worldOf(n) {
@@ -95,9 +95,36 @@ export function featuresFor(n) {
 /** Which mechanic (if any) is introduced at level n. */
 export const introAt = (n) => MECHANIC_INTROS[n]?.mech || null;
 
+/** Boss boards draw a picture that matches their world (7×7, 'x' = playable). */
+export const BOSS_SHAPES = [
+  ['fish', ['__xxx_x', '_xxxxxx', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', '_xxxxxx', '__xxx_x']],
+  ['pyramid', ['___x___', '__xxx__', '__xxx__', '_xxxxx_', '_xxxxx_', 'xxxxxxx', 'xxxxxxx']],
+  ['skull', ['_xxxxx_', 'xxxxxxx', 'xx_x_xx', 'xxxxxxx', '_xxxxx_', '_xxxxx_', '_x_x_x_']],
+  ['heart', ['_xx_xx_', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', '_xxxxx_', '__xxx__', '___x___']],
+  ['crown', ['x_x_x_x', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', '_xxxxx_', '_xxxxx_']],
+  ['butterfly', ['xx___xx', 'xxx_xxx', 'xxxxxxx', '_xxxxx_', 'xxxxxxx', 'xxx_xxx', 'xx___xx']],
+  ['tree', ['___x___', '__xxx__', '_xxxxx_', 'xxxxxxx', '_xxxxx_', '__xxx__', '__xxx__']],
+  ['castle', ['x_x_x_x', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', 'xx___xx', 'xx___xx']],
+  ['flower', ['_xx_xx_', 'xxxxxxx', '_xxxxx_', 'xxxxxxx', '_xx_xx_', '___x___', '__xxx__']],
+  ['sun', ['x__x__x', '_xxxxx_', '_xxxxx_', 'xxxxxxx', '_xxxxx_', '_xxxxx_', 'x__x__x']],
+  ['cloud', ['__xx___', '_xxxxx_', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', '_xxxxx_', '_x_x_x_']],
+  ['star', ['___x___', '__xxx__', 'xxxxxxx', '_xxxxx_', '_xxxxx_', '_xx_xx_', 'xx___xx']],
+  ['bell', ['__xxx__', '_xxxxx_', '_xxxxx_', '_xxxxx_', 'xxxxxxx', 'xxxxxxx', '___x___']],
+  ['island', ['___xx__', '_xxxxx_', 'xxxxxxx', 'xxxxxxx', '_xxxxx_', '__xxx__', '___x___']],
+  ['gear', ['_x_x_x_', 'xxxxxxx', '_xxxxx_', 'xxx_xxx', '_xxxxx_', 'xxxxxxx', '_x_x_x_']],
+  ['rainbow', ['__xxx__', '_xxxxx_', 'xxxxxxx', 'xxx_xxx', 'xx___xx', 'xx___xx', 'xx___xx']],
+];
+export const bossShape = (n) => (isBoss(n) ? BOSS_SHAPES[worldOf(n) % BOSS_SHAPES.length][0] : null);
+
 /** Build level n from scratch (used by scripts/build-levels.mjs and beyond the pre-computed range). */
 export function generateAdventureLevel(n) {
   if (MECHANIC_INTROS[n]) return parseLevel(MECHANIC_INTROS[n].rows);
+  if (isBoss(n)) {
+    // Signature boss: a picture-shaped board, and many more candidates to keep the best puzzle.
+    const [, mask] = BOSS_SHAPES[worldOf(n) % BOSS_SHAPES.length];
+    const feat = { ...(featuresFor(n) || {}), shape: false, mask };
+    return generate(`marbl:boss:v${LEVEL_GENERATOR_VERSION}:${n}`, { ...levelParams(n), size: 7, features: feat }, { attempts: 2500, candidates: 24 });
+  }
   return generate(`marbl:level:v${LEVEL_GENERATOR_VERSION}:${n}`, { ...levelParams(n), features: featuresFor(n) });
 }
 

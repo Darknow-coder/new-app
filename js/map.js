@@ -75,7 +75,34 @@ const PROPS = {
   sign: `${SH(16)}<path d="M-2 0V-24M10 0V-24" stroke="${OL}" stroke-width="3"/><rect x="-16" y="-48" width="38" height="24" rx="8" fill="#1b1440" stroke="#ff5dc8" stroke-width="3.5"/><rect class="blink" x="-10" y="-41" width="26" height="10" rx="5" fill="#5df2ff"/>`,
   tower: `${SH(12)}<path d="M-10 0L-3-70H3L10 0Z" fill="#3a3270" ${O}/><path d="M-7-20H7M-5-40H5M-4-56H4" stroke="#6b62b8" stroke-width="2"/><circle class="blink" cx="0" cy="-74" r="4" fill="#5df2ff" ${O}/>`,
   lamp: `${SH(10)}<path d="M0 0V-44Q0-50 8-50" stroke="${OL}" stroke-width="4" fill="none"/><path d="M0 0V-44Q0-50 8-50" stroke="#7a72c8" stroke-width="2" fill="none"/><circle cx="10" cy="-48" r="5" fill="#fff3a0" ${O}/>`,
+  // gardens
+  flower: `${SH(10)}<path d="M0 0V-20" stroke="${OL}" stroke-width="5"/><path d="M0 0V-20" stroke="#3fae55" stroke-width="2.5"/><g class="sway"><circle cx="-6" cy="-26" r="5" fill="#ff8fb8" ${O}/><circle cx="6" cy="-26" r="5" fill="#ff8fb8" ${O}/><circle cx="0" cy="-32" r="5" fill="#ff8fb8" ${O}/><circle cx="0" cy="-20" r="5" fill="#ff8fb8" ${O}/><circle cx="0" cy="-26" r="4" fill="#ffd34d" ${O}/></g>`,
+  hedge: `${SH(14)}<path d="M-9 0L-7-10H7L9 0Z" fill="#c4683a" ${O}/><circle cx="0" cy="-24" r="15" fill="#3fae55" ${O}/><circle cx="-5" cy="-29" r="4" fill="#6fd47f"/>`,
+  arrowsign: `${SH(10)}<path d="M0 0V-34" stroke="${OL}" stroke-width="6"/><path d="M0 0V-34" stroke="#a8743f" stroke-width="3"/><path d="M-14-44H8L16-36L8-28H-14Z" fill="#6fe0ff" ${O}/><path d="M-8-36H6M2-40L6-36L2-32" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+  // sunset mesa
+  tumbleweed: `${SH(12)}<g class="bob"><circle cx="0" cy="-12" r="12" fill="#d9a35c" ${O}/><path d="M-8-16Q0-4 8-16M-8-8Q0-20 8-8M-10-12H10" stroke="#9a6a2e" stroke-width="2" fill="none"/></g>`,
+  // storm lagoon
+  buoy: `<g class="bob"><path d="M-12-4Q0 4 12-4L8-24H-8Z" fill="#ff5d5d" ${O}/><path d="M-10-14H10" stroke="#fff" stroke-width="5"/><path d="M0-24V-38" stroke="${OL}" stroke-width="3"/><circle class="blink" cx="0" cy="-40" r="4" fill="#fff3a0" ${O}/></g>`,
+  cloud: `<g class="bob"><path d="M-22-30C-26-40-14-48-6-42C-2-52 14-52 16-40C26-42 30-30 22-26H-18C-24-26-24-30-22-30Z" fill="#c9d4ea" ${O}/><path d="M-12-20L-16-10M0-20L-4-10M12-20L8-10" stroke="#7fb4ff" stroke-width="3" stroke-linecap="round"/></g>`,
+  lighthouse: `${SH(14)}<path d="M-10 0L-6-50H6L10 0Z" fill="#fff" ${O}/><path d="M-9-12H9M-7-30H7" stroke="#ff5d5d" stroke-width="7"/><path d="M-10 0L-6-50H6L10 0Z" fill="none" ${O}/><rect x="-8" y="-62" width="16" height="12" rx="3" fill="#fff3a0" ${O}/><path d="M-10-62L0-72L10-62Z" fill="#ff5d5d" ${O}/>`,
+  // starlight summit
+  star: `<path class="blink" d="${starPath(10, 4, 5, -26)}" fill="#fff3a0" ${O}/>`,
+  telescope: `${SH(14)}<path d="M0-20L-10 0M0-20L10 0M0-20V0" stroke="${OL}" stroke-width="3"/><g transform="rotate(-30 0 -24)"><rect x="-18" y="-30" width="36" height="12" rx="4" fill="#7a72c8" ${O}/><rect x="14" y="-32" width="8" height="16" rx="2" fill="#fff3a0" ${O}/></g>`,
+  // echo valley
+  arch: `${SH(32)}<path d="M-32 0V-30C-32-52 32-52 32-30V0H18V-28C18-40-18-40-18-28V0Z" fill="#b48e72" ${O}/><path d="M-26-36C-20-46 20-46 26-36" stroke="#fff" stroke-width="3" fill="none" opacity=".4" stroke-linecap="round"/>`,
+  pillar: `${SH(12)}<rect x="-9" y="-46" width="18" height="46" fill="#d7cfc0" ${O}/><rect x="-13" y="-52" width="26" height="8" rx="2" fill="#e8e1d4" ${O}/><path d="M-3-42V-4M3-42V-4" stroke="#b4aa98" stroke-width="2"/>`,
+  // floating isles
+  island: `<g class="bob"><path d="M-28-24H28L12 4L0-2L-14 6Z" fill="#9c6b4a" ${O}/><path d="M-30-24C-30-34 30-34 30-24Z" fill="#5fcf6f" ${O}/><circle cx="10" cy="-36" r="9" fill="#3fae55" ${O}/><path d="M10-28V-24" stroke="${OL}" stroke-width="3"/></g>`,
+  balloon: `<g class="bob"><path d="M0-26V-6" stroke="${OL}" stroke-width="1.5"/><ellipse cx="0" cy="-38" rx="12" ry="14" fill="#ff7bb0" ${O}/><path d="M-4-42Q-2-48 2-48" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/><rect x="-5" y="-8" width="10" height="8" rx="2" fill="#a8743f" ${O}/></g>`,
+  // clockwork caves
+  gear: `<g class="spin"><path d="${(() => { let d = ''; for (let i = 0; i < 16; i++) { const a = (i * Math.PI) / 8; const r = i % 2 ? 13 : 17; d += `${i ? 'L' : 'M'}${(Math.cos(a) * r).toFixed(1)} ${(Math.sin(a) * r - 20).toFixed(1)}`; } return `${d}Z`; })()}" fill="#c9a24a" ${O}/><circle cx="0" cy="-20" r="5" fill="#6b5a2e" ${O}/></g>`,
+  pipe: `${SH(16)}<path d="M-16 0V-30H8V-44" stroke="${OL}" stroke-width="13" fill="none" stroke-linejoin="round"/><path d="M-16 0V-30H8V-44" stroke="#b87a3c" stroke-width="8" fill="none" stroke-linejoin="round"/><rect x="2" y="-50" width="12" height="7" rx="2" fill="#d99a52" ${O}/>`,
+  lantern: `${SH(8)}<path d="M0 0V-30" stroke="${OL}" stroke-width="3"/><rect x="-7" y="-46" width="14" height="16" rx="3" fill="#ffd36b" ${O}/><circle class="blink" cx="0" cy="-38" r="9" fill="rgba(255,220,120,.35)"/>`,
+  // rainbow rift
+  rainbow: `${SH(30)}<path d="M-30 0A30 30 0 0 1 30 0" stroke="${OL}" stroke-width="22" fill="none"/><path d="M-27 0A27 27 0 0 1 27 0" stroke="#ff5d73" stroke-width="5" fill="none"/><path d="M-22 0A22 22 0 0 1 22 0" stroke="#ffc23d" stroke-width="5" fill="none"/><path d="M-17 0A17 17 0 0 1 17 0" stroke="#5ed36a" stroke-width="5" fill="none"/><path d="M-12 0A12 12 0 0 1 12 0" stroke="#4aa8ff" stroke-width="5" fill="none"/>`,
+  lollipop: `${SH(8)}<path d="M0 0V-24" stroke="${OL}" stroke-width="5"/><path d="M0 0V-24" stroke="#fff" stroke-width="2.5"/><circle cx="0" cy="-34" r="12" fill="#ff8fb8" ${O}/><path d="M0-34m-7 0a7 7 0 1 0 7-7a4 4 0 1 1-4 4" stroke="#fff" stroke-width="2.5" fill="none"/>`,
 };
+
 
 /* ---------- world themes ---------- */
 export const MAP_THEMES = [
@@ -87,9 +114,17 @@ export const MAP_THEMES = [
   { g0: '#dff3fc', g1: '#b5ddf2', road: '#ffffff', detail: '#9ccbe6', props: [['iceberg', 2], ['penguin', 2], ['igloo', 1], ['snowpile', 2], ['crystal', 1]], land: 'sea-right' },
   { g0: '#69bd62', g1: '#3f8f45', road: '#f7eccc', detail: '#2f7a37', props: [['tree', 4], ['mushroom', 2], ['bush', 2], ['stump', 1]], land: 'pond' },
   { g0: '#2c1d60', g1: '#140d36', road: '#d8d2ff', detail: '#4b3aa0', props: [['building', 3], ['sign', 2], ['tower', 2], ['lamp', 2]], land: 'grid' },
+  { g0: '#9fe0a0', g1: '#6cc27a', road: '#fff8e6', detail: '#4fa65e', props: [['flower', 4], ['hedge', 2], ['arrowsign', 2], ['bush', 1]], land: 'pond' }, // 9 Arrow Gardens
+  { g0: '#ffb27a', g1: '#e0705a', road: '#fff0dc', detail: '#c25a3c', props: [['mesa', 2], ['cactus', 2], ['tumbleweed', 2], ['spire', 1]], land: 'dunes' }, // 10 Sunset Mesa
+  { g0: '#5f8fb0', g1: '#35607f', road: '#eef6ff', detail: '#9cc4e6', props: [['buoy', 2], ['cloud', 2], ['lighthouse', 1], ['rock', 2]], land: 'sea-left' }, // 11 Storm Lagoon
+  { g0: '#2e2a66', g1: '#171440', road: '#e6e0ff', detail: '#fff3a0', props: [['star', 4], ['mountain', 2], ['telescope', 1], ['pine', 2]], land: 'patches' }, // 12 Starlight Summit
+  { g0: '#e3c9a8', g1: '#c39f7a', road: '#fff8ee', detail: '#a98462', props: [['arch', 1], ['pillar', 3], ['rock', 2], ['bush', 1]], land: 'patches' }, // 13 Echo Valley
+  { g0: '#a9dcff', g1: '#7cbcf0', road: '#ffffff', detail: '#ffffff', props: [['island', 3], ['balloon', 2], ['cloud', 2]], land: 'patches' }, // 14 Floating Isles
+  { g0: '#5a4a3e', g1: '#3a2f27', road: '#f3e6cf', detail: '#8a7560', props: [['gear', 3], ['pipe', 2], ['lantern', 2], ['crystal', 1]], land: 'patches' }, // 15 Clockwork Caves
+  { g0: '#f6c8ff', g1: '#b9a6ff', road: '#ffffff', detail: '#ffffff', props: [['rainbow', 1], ['lollipop', 3], ['crystal', 2], ['star', 2]], land: 'patches' }, // 16 Rainbow Rift
 ];
 // Typical half-size of each prop, used for spacing.
-const SIZE = { mountain: 40, mesa: 36, pyramid: 34, iceberg: 32, igloo: 30, building: 24, palm: 30, umbrella: 28, tree: 26, lava: 26 };
+const SIZE = { arch: 34, island: 30, rainbow: 32, lighthouse: 22, mountain: 40, mesa: 36, pyramid: 34, iceberg: 32, igloo: 30, building: 24, palm: 30, umbrella: 28, tree: 26, lava: 26 };
 
 let defsDone = false;
 export function ensureMapDefs() {
@@ -201,11 +236,11 @@ export function worldScene(w, W, H, road, avoid, top) {
   for (let i = 0; i < 46; i++) {
     const x = r() * W;
     const y = y0 + r() * (H + top);
-    if (w % 8 === 6) det += `M${x.toFixed(0)} ${y.toFixed(0)}l3-7l2 7l3-6`;
-    else if (w % 8 === 5) det += `M${(x - 4).toFixed(0)} ${y.toFixed(0)}h8m-4-4v8`;
+    if (w % 16 === 6) det += `M${x.toFixed(0)} ${y.toFixed(0)}l3-7l2 7l3-6`;
+    else if (w % 16 === 5) det += `M${(x - 4).toFixed(0)} ${y.toFixed(0)}h8m-4-4v8`;
     else det += `M${x.toFixed(0)} ${y.toFixed(0)}h0.1`;
   }
-  parts.push(`<path d="${det}" stroke="${th.detail}" stroke-width="${w % 8 === 6 || w % 8 === 5 ? 2 : 5}" stroke-linecap="round" fill="none" opacity=".55"/>`);
+  parts.push(`<path d="${det}" stroke="${th.detail}" stroke-width="${w % 16 === 6 || w % 16 === 5 ? 2 : 5}" stroke-linecap="round" fill="none" opacity=".55"/>`);
   if (th.land === 'pond') {
     // a pond in the widest free spot is placed below among props
   }

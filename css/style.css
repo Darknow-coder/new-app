@@ -7063,3 +7063,35 @@ body{
   background: var(--bg);
   box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.55);
 }
+.mp .spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin 6s linear infinite;
+}
+
+/* Shaped boards follow their silhouette */
+.board.shaped {
+  background: none;
+  box-shadow: none;
+}
+.board.shaped .board-floor {
+  background: none;
+  box-shadow: none;
+}
+.tile-edge::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--size) * -0.022);
+  border-radius: calc(var(--size) * 0.02);
+  background: var(--tray);
+  box-shadow: 0 calc(var(--size) * 0.03) 0 var(--tray-edge);
+}
+.tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--floor);
+}
+.tile.odd::before {
+  background: var(--floor-2);
+}

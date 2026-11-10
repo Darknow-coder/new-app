@@ -2,7 +2,7 @@ import { setMusicTheme, sfx, unlockAudio } from '../audio.js';
 import { dailyLevel, puzzleNumber } from '../daily.js';
 import { save, store } from '../storage.js';
 import { t } from '../i18n.js';
-import { WORLD_HUES, adventureLevel, introAt, isBoss, worldOf } from '../levels.js';
+import { WORLD_HUES, adventureLevel, introAt, isBoss, worldOf, bossShape } from '../levels.js';
 import { DIRS, comboReachable, isDead, isSolved, solve, stateKey, tilt } from '../engine.js';
 import { TUTORIAL } from '../tutorial.js';
 import { buildScenery, burst, reducedMotion, replay } from '../fx.js';
@@ -153,7 +153,7 @@ export function startLevel(n) {
     n,
     level,
     title: t('level', { n }),
-    sub: isBoss(n) ? `${t('boss')} · ${world}` : best ? `${world} · ${starsText(best)}` : world,
+    sub: isBoss(n) ? `BOSS · ${t(`bossName_${bossShape(n)}`)}` : best ? `${world} · ${starsText(best)}` : world,
     tip: mech ? t(`mech_${mech}_desc`) : null,
   });
   if (mech && !store.data.seenMech[mech]) setTimeout(() => showMechanic(mech), 500);
@@ -255,6 +255,7 @@ export function buildBoard() {
   const { level } = S.game;
   els.board.className = els.board.className.replace(/\bskin-\S+/g, '').trim();
   els.board.classList.add(`skin-${equipped()}`);
+  els.board.classList.toggle('shaped', !!level.outside);
   els.board.style.setProperty('--w', level.w);
   els.board.style.setProperty('--h', level.h);
   els.layer.innerHTML = '';
@@ -263,12 +264,24 @@ export function buildBoard() {
   S.game.pieceEls = [];
 
   const frag = document.createDocumentFragment();
+  const edges = [];
+  const tiles = [];
   for (let c = 0; c < level.w * level.h; c++) {
+    if (level.outside && !level.outside[c]) {
+      // Shaped board: each playable cell gets its own tile so the board follows the silhouette.
+      // Outlines go in one layer and floors in another drawn above, so borders never cross tiles.
+      const xy = cellXY(c);
+      const edge = document.createElement('div');
+      edge.className = 'cell tile-edge';
+      setPos(edge, c);
+      edges.push(edge);
+      const tile = document.createElement('div');
+      tile.className = `cell tile ${(xy.x + xy.y) % 2 ? 'odd' : ''}`;
+      setPos(tile, c);
+      tiles.push(tile);
+    }
     if (level.outside?.[c]) {
-      const o = document.createElement('div');
-      o.className = 'cell out';
-      setPos(o, c);
-      frag.appendChild(o);
+      continue;
     } else if (level.pits?.[c]) {
       const pit = document.createElement('div');
       pit.className = 'cell pit';
@@ -312,6 +325,7 @@ export function buildBoard() {
     frag.appendChild(el);
     S.game.pieceEls[i] = el;
   });
+  frag.prepend(...edges, ...tiles);
   els.layer.appendChild(frag);
   els.layer.querySelectorAll('.cell').forEach((el) => {
     const x = Number(el.style.getPropertyValue('--x')) || 0;
