@@ -154,6 +154,16 @@ window.addEventListener('pointerdown', () => unlockAudio(), { once: true });
 export const soundBox = $('#set-sound');
 
 export const hapticBox = $('#set-haptics');
+// Colour-blind mode: a distinct symbol on every marble, hole and gate.
+const cbBox = $('#set-cb');
+const applyCb = () => document.body.classList.toggle('cb', !!store.data.settings2.cb);
+cbBox.checked = !!store.data.settings2.cb;
+applyCb();
+cbBox.addEventListener('change', () => {
+  store.data.settings2.cb = cbBox.checked;
+  save();
+  applyCb();
+});
 
 soundBox.checked = store.setting('sound');
 

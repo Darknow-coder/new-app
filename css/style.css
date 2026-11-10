@@ -6925,3 +6925,58 @@ body{
 #modal-settings .btn-ghost{
   margin-top: 10px;
 }
+
+/* ==========================================================================
+   Colour-blind mode: one shape per colour (▲ ■ ✚ ◆)
+   ========================================================================== */
+.sym {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34%;
+  height: 34%;
+  translate: -50% -50%;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.92);
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35));
+}
+.cb .sym {
+  display: block;
+}
+.sym.s0 {
+  clip-path: polygon(50% 6%, 96% 92%, 4% 92%);
+}
+.sym.s1 {
+  clip-path: inset(8% round 18%);
+}
+.sym.s2 {
+  clip-path: polygon(36% 0, 64% 0, 64% 36%, 100% 36%, 100% 64%, 64% 64%, 64% 100%, 36% 100%, 36% 64%, 0 64%, 0 36%, 36% 36%);
+}
+.sym.s3 {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+/* in holes and gates the symbol takes the colour, on the dark background */
+.hole .sym {
+  z-index: 1;
+  width: 30%;
+  height: 30%;
+  background: var(--col);
+  filter: none;
+}
+.gate .sym {
+  z-index: 1;
+  width: 36%;
+  height: 36%;
+  background: #fff;
+}
+.hole.filled .sym {
+  background: rgba(255, 255, 255, 0.9);
+}
+.toggle-sub {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}

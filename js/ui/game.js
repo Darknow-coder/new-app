@@ -280,12 +280,16 @@ export function buildBoard() {
       const t = document.createElement('div');
       if (level.sand?.[c]) t.className = 'cell sand';
       else if (level.portal && level.portal[c] >= 0) t.className = 'cell portal';
-      else t.className = `cell gate c${level.gates[c]}`;
+      else {
+        t.className = `cell gate c${level.gates[c]}`;
+        t.innerHTML = `<i class="sym s${level.gates[c]}"></i>`;
+      }
       setPos(t, c);
       frag.appendChild(t);
     } else if (level.holes[c] >= 0) {
       const h = document.createElement('div');
       h.className = `cell hole c${level.holes[c]}`;
+      h.innerHTML = `<i class="sym s${level.holes[c]}"></i>`;
       setPos(h, c);
       S.game.holeEls.set(level.holes[c], h);
       frag.appendChild(h);
@@ -294,7 +298,7 @@ export function buildBoard() {
   level.pieces.forEach((p, i) => {
     const el = document.createElement('div');
     el.className = 'cell piece';
-    el.innerHTML = p.kind === 'marble' ? `<div class="ball c${p.color}"></div>` : '<div class="stone"></div>';
+    el.innerHTML = p.kind === 'marble' ? `<div class="ball c${p.color}"></div><i class="sym s${p.color}"></i>` : '<div class="stone"></div>';
     frag.appendChild(el);
     S.game.pieceEls[i] = el;
   });
