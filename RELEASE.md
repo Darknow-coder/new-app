@@ -1,7 +1,7 @@
 # Marbl — release checklist
 
 ## Done (foundations)
-- [x] 240 levels, all verified solvable with optimal par (`npm test`), difficulty audited (`npm run audit:levels`)
+- [x] 320 levels, all verified solvable with optimal par (`npm test`), difficulty audited (`npm run audit:levels`)
 - [x] End-to-end smoke test of every main flow (`npm run e2e`)
 - [x] Works offline (service worker), installable PWA, EN/FR, light/dark, reduced-motion support
 - [x] Performance budget on a 6×-throttled CPU: gameplay ~60 fps, chest ~50 fps, map open < 0.1 s worst frame

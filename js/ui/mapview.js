@@ -330,6 +330,7 @@ export function showLevelPreview(n) {
   if (level.gates) chips.push(`<span class="lp-chip"><i class="lp-ico ico-gate"></i>${t('mech_gates_title')}</span>`);
   if (level.portal) chips.push(`<span class="lp-chip"><i class="lp-ico ico-portal"></i>${t('mech_portals_title')}</span>`);
   if (level.arrows) chips.push(`<span class="lp-chip"><i class="lp-ico ico-arrow"></i>${t('mech_arrows_title')}</span>`);
+  if (level.pits) chips.push(`<span class="lp-chip"><i class="lp-ico ico-pit"></i>${t('mech_pits_title')}</span>`);
   $('#lp-chips').innerHTML = chips.join('');
   $('#lp-best').textContent = best === 3 ? t('perfect') : best ? t('lpImprove', { n: 3 - best }) : t('lpGoal');
   $('#lp-play').onclick = () => {

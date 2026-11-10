@@ -128,6 +128,10 @@ export const sfx = {
     tone({ freq: 140, to: 620, dur, type: 'sawtooth', gain: 0.035 });
     tone({ freq: 280, to: 1240, dur, type: 'sine', gain: 0.05 });
   },
+  fall() {
+    tone({ freq: 520, to: 70, dur: 0.45, type: 'triangle', gain: 0.16 });
+    noise({ dur: 0.35, freq: 400, q: 0.7, gain: 0.08, delay: 0.1 });
+  },
   land() {
     tone({ freq: 120, to: 55, dur: 0.22, type: 'sine', gain: 0.3 });
     noise({ dur: 0.18, freq: 500, q: 0.8, gain: 0.12 });

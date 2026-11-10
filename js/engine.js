@@ -10,6 +10,9 @@ export const DIRS = {
   right: { dx: 1, dy: 0, arrow: '➡️', key: 'R' },
 };
 export const DIR_NAMES = ['up', 'right', 'down', 'left'];
+/** State value of a marble that fell into a pit. */
+export const LOST = -3;
+export const isDead = (state) => state.includes(LOST);
 const ARROW_DIRS = [DIRS.up, DIRS.right, DIRS.down, DIRS.left];
 export const COLORS = ['coral', 'teal', 'gold', 'violet'];
 
@@ -64,6 +67,9 @@ export function isSolved(level, state) {
  *           rolling (at most one teleport per tilt, so moves stay readable).
  *   gates:  Int8Array  — a crystal gate of colour k only lets marbles of colour k through.
  *   arrows: Int8Array  — an arrow tile (0 up, 1 right, 2 down, 3 left) turns a piece rolling onto it.
+ *   pits:   Uint8Array — a marble rolling over a pit is lost (state LOST: the move fails);
+ *                        a stone falls in and disappears.
+ *   outside: Uint8Array — cells outside a shaped board (behave as walls, drawn as empty).
  */
 export function tilt(level, state, dirName) {
   const { dx, dy } = DIRS[dirName];
@@ -72,6 +78,7 @@ export function tilt(level, state, dirName) {
   const portal = level.portal || null;
   const gates = level.gates || null;
   const arrows = level.arrows || null;
+  const pits = level.pits || null;
   const next = state.slice();
   const moves = new Array(pieces.length).fill(null);
 
@@ -97,6 +104,7 @@ export function tilt(level, state, dirName) {
     let y = Math.floor(from / w);
     let dist = 0;
     let sunk = false;
+    let fell = false;
     let segStart = from;
     let segDist = 0;
     let hops = 0;
@@ -118,6 +126,10 @@ export function tilt(level, state, dirName) {
       segDist++;
       if (isMarble && holes[nc] === col) {
         sunk = true;
+        break;
+      }
+      if (pits && pits[nc]) {
+        fell = true;
         break;
       }
       if (portal && portal[nc] >= 0 && hops < 1) {
@@ -146,13 +158,15 @@ export function tilt(level, state, dirName) {
     }
     const to = y * w + x;
     segs.push({ from: segStart, to, dist: segDist });
-    if (sunk) {
+    if (fell) {
+      next[i] = isMarble ? LOST : -1;
+    } else if (sunk) {
       next[i] = -1;
     } else {
       next[i] = to;
       occupied[to] = i;
     }
-    moves[i] = { from, to, sunk, dist, segs };
+    moves[i] = { from, to, sunk, fell, dist, segs };
   }
   return { state: next, moves };
 }
@@ -180,6 +194,7 @@ export function solve(level, startState = level.start, { maxDepth = 24, maxState
         const k = stateKey(ns);
         if (seen.has(k)) continue;
         seen.set(k, { prev: sk, dir: d });
+        if (isDead(ns)) continue;
         if (isSolved(level, ns)) {
           const path = [];
           let cur = k;
@@ -216,6 +231,26 @@ function shuffle(rng, arr) {
   return arr;
 }
 
+/** Board shapes (cells cut out of a square board). */
+export const SHAPES = ['cross', 'diamond', 'ring', 'notch', 'hourglass'];
+function boardShape(shape, n) {
+  const out = new Uint8Array(n * n);
+  const m = n - 1;
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const c = y * n + x;
+      const cx = Math.abs(x - m / 2);
+      const cy = Math.abs(y - m / 2);
+      if (shape === 'cross') out[c] = cx > 1.5 && cy > 1.5 ? 1 : 0; // corners cut
+      else if (shape === 'diamond') out[c] = cx + cy > m / 2 + 1 ? 1 : 0;
+      else if (shape === 'ring') out[c] = cx < 1 && cy < 1 ? 1 : 0; // hollow centre
+      else if (shape === 'notch') out[c] = (x === 0 || x === m) && (y === 0 || y === m || y === Math.floor(m / 2)) ? 1 : 0;
+      else if (shape === 'hourglass') out[c] = cy < 1 && cx > 1.5 ? 1 : 0; // pinched middle
+    }
+  }
+  return out;
+}
+
 function buildCandidate(rng, p) {
   const w = p.size;
   const h = p.size;
@@ -224,7 +259,13 @@ function buildCandidate(rng, p) {
   const holes = new Int8Array(n).fill(-1);
   const f = p.features || null;
   const wallCount = p.walls[0] + randInt(rng, p.walls[1] - p.walls[0] + 1);
-  const cells = shuffle(rng, Array.from({ length: n }, (_, i) => i));
+  let cells = shuffle(rng, Array.from({ length: n }, (_, i) => i));
+  let outside = null;
+  if (f && f.shape) {
+    outside = boardShape(SHAPES[randInt(rng, SHAPES.length)], w);
+    for (let c = 0; c < n; c++) if (outside[c]) walls[c] = 1;
+    cells = cells.filter((c) => !outside[c]);
+  }
   let k = 0;
   for (let i = 0; i < wallCount; i++) walls[cells[k++]] = 1;
 
@@ -240,7 +281,7 @@ function buildCandidate(rng, p) {
     pieces.push({ kind: 'stone', color: -1 });
     start.push(cells[k++]);
   }
-  const level = { w, h, walls, holes, pieces, start, sand: null, portal: null, gates: null, arrows: null };
+  const level = { w, h, walls, holes, pieces, start, sand: null, portal: null, gates: null, arrows: null, pits: null, outside };
   if (f) {
     if (f.sand) {
       level.sand = new Uint8Array(n);
@@ -253,6 +294,11 @@ function buildCandidate(rng, p) {
       const b = cells[k++];
       level.portal[a] = b;
       level.portal[b] = a;
+    }
+    if (f.pits) {
+      level.pits = new Uint8Array(n);
+      const count = f.pits[0] + randInt(rng, f.pits[1] - f.pits[0] + 1);
+      for (let i = 0; i < count; i++) level.pits[cells[k++]] = 1;
     }
     if (f.arrows) {
       level.arrows = new Int8Array(n).fill(-1);
@@ -269,13 +315,13 @@ function buildCandidate(rng, p) {
 }
 
 export function hasFeatures(level) {
-  return !!(level.sand || level.portal || level.gates || level.arrows);
+  return !!(level.sand || level.portal || level.gates || level.arrows || level.pits);
 }
 
 /** True when the special tiles actually change the optimal solution (so they are not decoration). */
 function featuresMatter(level, par, maxDepth) {
   if (!hasFeatures(level)) return true;
-  const plain = { ...level, sand: null, portal: null, gates: null, arrows: null };
+  const plain = { ...level, sand: null, portal: null, gates: null, arrows: null, pits: null };
   const sol = solve(plain, plain.start, { maxDepth, maxStates: 120000 });
   return !sol || sol.par !== par;
 }
@@ -348,7 +394,9 @@ export function encodeLevel(level) {
   const { w, h } = level;
   const grid = new Array(w * h).fill('.');
   for (let c = 0; c < w * h; c++) {
-    if (level.walls[c]) grid[c] = '#';
+    if (level.outside?.[c]) grid[c] = '_';
+    else if (level.walls[c]) grid[c] = '#';
+    else if (level.pits?.[c]) grid[c] = 'O';
     else if (level.holes[c] >= 0) grid[c] = String.fromCharCode(97 + level.holes[c]);
     else if (level.sand?.[c]) grid[c] = '~';
     else if (level.portal && level.portal[c] >= 0) grid[c] = '@';
@@ -374,6 +422,8 @@ export function parseLevel(rows, known = null) {
   let sand = null;
   let gates = null;
   let arrows = null;
+  let pits = null;
+  let outside = null;
   const portals = [];
   rows.forEach((row, y) => {
     if (row.length !== w) throw new Error('Ragged level row ' + y);
@@ -395,6 +445,13 @@ export function parseLevel(rows, known = null) {
       } else if (ch >= 'v' && ch <= 'y') {
         gates = gates || new Int8Array(w * h).fill(-1);
         gates[c] = ch.charCodeAt(0) - 118;
+      } else if (ch === 'O') {
+        pits = pits || new Uint8Array(w * h);
+        pits[c] = 1;
+      } else if (ch === '_') {
+        outside = outside || new Uint8Array(w * h);
+        outside[c] = 1;
+        walls[c] = 1;
       } else if (ARROW_CH.includes(ch)) {
         arrows = arrows || new Int8Array(w * h).fill(-1);
         arrows[c] = ARROW_CH.indexOf(ch);
@@ -408,7 +465,7 @@ export function parseLevel(rows, known = null) {
     portal[portals[0]] = portals[1];
     portal[portals[1]] = portals[0];
   }
-  const level = { w, h, walls, holes, pieces, start, sand, portal, gates, arrows };
+  const level = { w, h, walls, holes, pieces, start, sand, portal, gates, arrows, pits, outside };
   if (known) {
     level.par = known.par;
     level.solution = known.solution;
@@ -435,6 +492,7 @@ export function comboReachable(level, slack = 2, maxStates = 5000) {
         for (const m of r.moves) if (m && m.sunk) sunk++;
         if (sunk >= 2) return true;
         const k = stateKey(r.state);
+        if (isDead(r.state)) continue;
         if (!seen.has(k)) {
           seen.add(k);
           next.push(r.state);

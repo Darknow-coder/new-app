@@ -3,7 +3,7 @@ import { dailyLevel, puzzleNumber } from '../daily.js';
 import { save, store } from '../storage.js';
 import { t } from '../i18n.js';
 import { WORLD_HUES, adventureLevel, introAt, isBoss, worldOf } from '../levels.js';
-import { DIRS, comboReachable, isSolved, solve, stateKey, tilt } from '../engine.js';
+import { DIRS, comboReachable, isDead, isSolved, solve, stateKey, tilt } from '../engine.js';
 import { TUTORIAL } from '../tutorial.js';
 import { buildScenery, burst, reducedMotion, replay } from '../fx.js';
 import { equipped } from '../skins.js';
@@ -264,7 +264,17 @@ export function buildBoard() {
 
   const frag = document.createDocumentFragment();
   for (let c = 0; c < level.w * level.h; c++) {
-    if (level.walls[c]) {
+    if (level.outside?.[c]) {
+      const o = document.createElement('div');
+      o.className = 'cell out';
+      setPos(o, c);
+      frag.appendChild(o);
+    } else if (level.pits?.[c]) {
+      const pit = document.createElement('div');
+      pit.className = 'cell pit';
+      setPos(pit, c);
+      frag.appendChild(pit);
+    } else if (level.walls[c]) {
       const w = document.createElement('div');
       w.className = 'cell wall';
       setPos(w, c);
@@ -428,7 +438,7 @@ export function move(dir) {
     if (!m || m.dist === 0) return;
     const el = S.game.pieceEls[i];
     const ms = moveMs(m);
-    longest = Math.max(longest, ms + (m.sunk ? 300 : 120));
+    longest = Math.max(longest, ms + (m.sunk || m.fell ? 320 : 120));
     el.classList.remove('impact-x', 'impact-y', 'sinking', 'warp');
     // Each straight run is animated separately; between runs the piece warps through a portal.
     const segs = m.segs || [{ from: m.from, to: m.to, dist: m.dist }];
@@ -462,7 +472,12 @@ export function move(dir) {
     const piece = S.game.level.pieces[i];
     const order = dropIndex;
     setTimeout(() => {
-      if (m.sunk) {
+      if (m.fell) {
+        el.classList.add('falling');
+        sfx.fall();
+        buzz([40, 20, 60]);
+        setTimeout(() => el.classList.add('gone'), 360);
+      } else if (m.sunk) {
         el.classList.add('sinking');
         const hole = S.game.holeEls.get(piece.color);
         hole.classList.remove('pulse');
@@ -495,6 +510,24 @@ export function move(dir) {
 
   setTimeout(() => {
     S.animating = false;
+    if (isDead(S.game.state)) {
+      // A marble fell into a pit: the move is lost (still counted) and the board rewinds.
+      S.queued = null;
+      toast(t('marbleLost'));
+      els.board.classList.remove('shake');
+      void els.board.offsetWidth;
+      els.board.classList.add('shake');
+      S.animating = true;
+      setTimeout(() => {
+        S.game.state = S.game.history.pop();
+        S.game.path.pop();
+        syncPieces(240);
+        updateHud(false);
+        persistProgress();
+        S.animating = false;
+      }, 520);
+      return;
+    }
     if (isSolved(S.game.level, S.game.state)) {
       onSolved();
     } else if (S.queued) {

@@ -270,3 +270,19 @@ test('save data: export / import round-trip', () => {
   assert.equal(store.data.coins, 4321);
   assert.equal(store.data.levels.unlocked, 77);
 });
+
+test('pits: a marble falling in makes the state dead and the solver avoids it', () => {
+  const l = parseLevel(['A.O.a', '.....', '..#..', '.....', '.....']);
+  const { state } = tilt(l, l.start, 'right');
+  assert.equal(state[0], -3);
+  assert.ok(!l.solution.includes('right') || l.solution[0] !== 'right');
+  let s = l.start;
+  for (const d of l.solution) s = tilt(l, s, d).state;
+  assert.ok(isSolved(l, s));
+});
+
+test('shaped boards: outside cells block like walls and survive encoding', () => {
+  const l = parseLevel(['_A..a', '.....', 'S.O..']);
+  assert.equal(encodeLevel(l).join('/'), '_A..a/...../S.O..');
+  assert.deepEqual(tilt(l, l.start, 'right').state, [-1, -1]);
+});

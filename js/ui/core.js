@@ -146,8 +146,8 @@ export function updateCoins(bump = false) {
 export const worldHue = (n) => WORLD_HUES[worldOf(n) % WORLD_HUES.length];
 
 export const worldName = (w) => {
-  const base = t(`world${w % 12}`);
-  const lap = Math.floor(w / 12);
+  const base = t(`world${w % 16}`);
+  const lap = Math.floor(w / 16);
   return lap ? `${base} ${['II', 'III', 'IV', 'V'][Math.min(lap - 1, 3)]}` : base;
 };
 

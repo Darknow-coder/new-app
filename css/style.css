@@ -6980,3 +6980,86 @@ body{
   font-size: 12px;
   font-weight: 500;
 }
+
+/* ==========================================================================
+   Pits and shaped boards
+   ========================================================================== */
+.pit::before {
+  content: '';
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 55%, #000 0 38%, #14102c 62%, #2b2458 78%);
+  box-shadow: inset 0 6px 10px rgba(0, 0, 0, 0.9), 0 0 0 calc(var(--size) * 0.006) rgba(0, 0, 0, 0.5);
+}
+.pit::after {
+  content: '';
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 120, 120, 0.45);
+  animation: spin 7s linear infinite;
+}
+.board.intro .pit::before {
+  animation: hole-in 0.45s var(--ease-out) both;
+  animation-delay: var(--d);
+}
+/* cells cut out of the board: show the tray instead of floor */
+.out::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: var(--tray);
+}
+.piece.falling > * {
+  animation: fall-in 0.36s cubic-bezier(0.5, 0, 0.9, 0.4) forwards !important;
+}
+@keyframes fall-in {
+  30% {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(0.1) rotate(160deg);
+    opacity: 0;
+    filter: brightness(0.2);
+  }
+}
+.ico-pit {
+  border-radius: 50%;
+  background: radial-gradient(circle, #000 40%, #2b2458);
+  box-shadow: 0 0 0 2px rgba(255, 120, 120, 0.6);
+}
+.mech-pits .t1 {
+  left: calc(var(--s) * 2);
+  border-radius: 50%;
+  background: radial-gradient(circle, #000 40%, #2b2458);
+  transform: scale(0.85);
+}
+.mech-pits .ball {
+  animation-name: demo-pit;
+}
+@keyframes demo-pit {
+  0%,
+  12% {
+    left: 0;
+    opacity: 1;
+    transform: scale(0.82);
+  }
+  42% {
+    left: calc(var(--s) * 2);
+    opacity: 1;
+    transform: scale(0.82);
+  }
+  60%,
+  100% {
+    left: calc(var(--s) * 2);
+    opacity: 0;
+    transform: scale(0.1) rotate(160deg);
+  }
+}
+.out::before {
+  inset: 3%;
+  border-radius: 22%;
+  background: var(--bg);
+  box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.55);
+}

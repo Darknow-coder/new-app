@@ -40,7 +40,8 @@ export function tierFor(n) {
   let tier = world + Math.floor(idx / 5);
   if (isBoss(n)) tier += 1;
   // World 9 brings arrows after a long break from new mechanics: ramp up gently again.
-  if (world === 8) tier = Math.min(tier, 3 + Math.floor(idx / 3));
+  if (world === 8 || world === 12) tier = Math.min(tier, 3 + Math.floor(idx / 3));
+  if (world === 13) tier = Math.min(tier, 5 + Math.floor(idx / 4));
   return Math.min(tier, TIERS.length - 1);
 }
 
@@ -60,7 +61,12 @@ const WORLD_FEATURES = [
   { sand: [1, 2], gates: [1, 1], portals: 1 }, // 8 Neon City
   { arrows: [1, 2] }, // 9 — arrow tiles
   { arrows: [1, 2], sand: [1, 2] }, // 10
-  { arrows: [1, 2], gates: [1, 1], portals: 1 }, // 11+
+  { arrows: [1, 2], gates: [1, 1], portals: 1 }, // 11
+  { arrows: [1, 2], gates: [1, 1], portals: 1 }, // 12
+  { pits: [1, 2] }, // 13 — pits
+  { pits: [1, 2], shape: true }, // 14 — shaped boards
+  { pits: [1, 2], shape: true, arrows: [1, 1] }, // 15
+  { pits: [1, 2], shape: true, sand: [1, 2], gates: [1, 1] }, // 16+
 ];
 
 /** Hand-made first level of a world, so each new mechanic is discovered in a calm, obvious setting. */
@@ -69,6 +75,7 @@ export const MECHANIC_INTROS = {
   41: { mech: 'gates', rows: ['.....', 'A.v.a', '.....', 'B.v..', '....b'] },
   61: { mech: 'portals', rows: ['.....', 'A.@..', '#####', '..@.a', '.....'] },
   161: { mech: 'arrows', rows: ['A...,', '.....', '....a', '.....', '#....'] },
+  241: { mech: 'pits', rows: ['A.O.a', '.....', '..#..', '.....', '.....'] },
 };
 
 export function featuresFor(n) {
