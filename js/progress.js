@@ -188,8 +188,12 @@ export function track(event, d = {}) {
     notes.push(...bumpQuest('chest'));
   }
   const ups = xp ? addXP(xp) : [];
-  const sp = event === 'levelWin' ? d.newStars * 2 + (d.first ? 1 : 0) : event === 'dailyWin' ? d.stars * 2 + 2 : event === 'archiveWin' ? d.stars : 0;
-  if (sp && addSeasonPoints(sp) > 0) notes.push({ kind: 'season', tier: season().tier });
+  let sp = event === 'levelWin' ? d.newStars + (d.first ? 1 : 0) : event === 'dailyWin' ? d.stars + 1 : event === 'archiveWin' ? Math.ceil(d.stars / 2) : 0;
+  // Grinding levels can't finish a 4-week season in a weekend: level/archive points are
+  // capped per day; daily puzzles and quests always count.
+  if (sp && (event === 'levelWin' || event === 'archiveWin')) sp = levelSpAllowance(sp);
+  const gained = sp ? addSeasonPoints(sp) : 0;
+  if (gained > 0) notes.push({ kind: 'season', tier: season().tier, gained });
   notes.push(...checkAchievements());
   save();
   return { xp, ups, notes };
@@ -197,9 +201,10 @@ export function track(event, d = {}) {
 
 /* ---------- free season pass ---------- */
 // A season lasts 28 days. Season points (SP) come from stars and quests;
-// every 10 SP unlocks the next of 30 reward tiers. Free for everyone.
+// every 12 SP unlocks the next of 30 reward tiers. Free for everyone.
+// Pace: ~10 days for someone who plays a lot, 3-4 weeks for a few minutes a day.
 export const SEASON_DAYS = 28;
-export const TIER_SP = 10;
+export const TIER_SP = 12;
 export const SEASON_EPOCH = '2026-11-01';
 
 function dayIndex(day) {
@@ -236,6 +241,19 @@ export function season(day = dateKey()) {
   const s = store.data.season;
   const tier = Math.min(SEASON_TIERS, Math.floor(s.sp / TIER_SP));
   return { ...info, sp: s.sp, tier, inTier: s.sp % TIER_SP, claimed: s.claimed };
+}
+
+export const LEVEL_SP_PER_DAY = 20;
+function levelSpAllowance(n, day = dateKey()) {
+  season(day);
+  const s = store.data.season;
+  if (s.lvlDay !== day) {
+    s.lvlDay = day;
+    s.lvlSp = 0;
+  }
+  const ok = Math.max(0, Math.min(n, LEVEL_SP_PER_DAY - s.lvlSp));
+  s.lvlSp += ok;
+  return ok;
 }
 
 export function addSeasonPoints(n) {

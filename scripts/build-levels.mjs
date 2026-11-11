@@ -1,14 +1,22 @@
 // Pre-computes the adventure levels into js/levels-data.js so the game never has to run the
 // (slow on phones) generator for them. Run after changing the generator:  npm run build:levels
+// Rebuild only some levels and keep the rest:  node scripts/build-levels.mjs 320 6-10
 import { writeFileSync } from 'node:fs';
+import { LEVEL_DATA } from '../js/levels-data.js';
 import { encodeLevel } from '../js/engine.js';
 import { generateAdventureLevel, LEVEL_GENERATOR_VERSION } from '../js/levels.js';
 
 const COUNT = Number(process.argv[2] || 240);
+const [lo, hi] = (process.argv[3] || '').split('-').map(Number);
+const only = (n) => !process.argv[3] || (n >= lo && n <= (hi || lo));
 const CODE = { up: 'U', down: 'D', left: 'L', right: 'R' };
 const out = [];
 const t0 = Date.now();
 for (let n = 1; n <= COUNT; n++) {
+  if (!only(n) && LEVEL_DATA[n - 1]) {
+    out.push(LEVEL_DATA[n - 1]);
+    continue;
+  }
   const l = generateAdventureLevel(n);
   out.push(`${encodeLevel(l).join('/')}|${l.par}|${l.solution.map((d) => CODE[d]).join('')}`);
   if (n % 20 === 0) process.stdout.write(`world ${n / 20} done (${((Date.now() - t0) / 1000).toFixed(0)}s)\n`);

@@ -32,20 +32,38 @@ export function isBoss(n) {
   return n % LEVELS_PER_WORLD === 0;
 }
 
+// Start and end tier of each world: every world opens a notch easier than the previous
+// one ended, then climbs to its boss. Later worlds keep a real sawtooth instead of
+// sitting at max difficulty (their new mechanics already make them harder).
+const WORLD_RAMP = [
+  [0, 3], [1, 4], [2, 5], [3, 6], [3, 7], [4, 8], [4, 8], [5, 9], // worlds 1-8
+  [3, 9], // world 9: arrows arrive, ramp up gently again
+  [5, 9], // worlds 10+
+];
+
 export function tierFor(n) {
   const world = worldOf(n);
   const idx = (n - 1) % LEVELS_PER_WORLD;
   // Very first levels are deliberately trivial so new players win fast.
   if (n <= 3) return 0;
-  let tier = world + Math.floor(idx / 5);
-  if (isBoss(n)) tier += 1;
-  // World 9 brings arrows after a long break from new mechanics: ramp up gently again.
-  if (world === 8) tier = Math.min(tier, 3 + Math.floor(idx / 3));
-  return Math.min(tier, TIERS.length - 1);
+  const [from, to] = WORLD_RAMP[Math.min(world, WORLD_RAMP.length - 1)];
+  if (isBoss(n)) return Math.min(to + 1, TIERS.length - 1);
+  // A step every few levels (plateaus of 3-5 similar levels feel fair, not grindy).
+  return Math.min(TIERS.length - 1, from + Math.floor(((to - from + 1) * idx) / 19));
 }
 
+// First world, before pits arrive: replay what the tutorial taught (two colours,
+// grey stones) on small boards, so the opening levels don't all feel the same.
+const EARLY = {
+  6: { size: 5, marbles: 2, stones: 0, walls: [3, 5], par: [3, 4] },
+  7: { size: 5, marbles: 2, stones: 0, walls: [3, 5], par: [3, 4] },
+  8: { size: 5, marbles: 1, stones: 1, walls: [3, 5], par: [3, 4] },
+  9: { size: 5, marbles: 1, stones: 1, walls: [3, 6], par: [4, 5] },
+  10: { size: 5, marbles: 2, stones: 1, walls: [3, 6], par: [4, 5] },
+};
+
 export function levelParams(n) {
-  return TIERS[tierFor(n)];
+  return EARLY[n] || TIERS[tierFor(n)];
 }
 
 // Each world brings something new. Later worlds remix everything.

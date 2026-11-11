@@ -286,3 +286,31 @@ test('shaped boards: outside cells block like walls and survive encoding', () =>
   assert.equal(encodeLevel(l).join('/'), '_A..a/...../S.O..');
   assert.deepEqual(tilt(l, l.start, 'right').state, [-1, -1]);
 });
+
+import { season, TIER_SP, LEVEL_SP_PER_DAY } from '../js/progress.js';
+
+test('grinding levels cannot rush the season pass: level points are capped per day', () => {
+  store.reset();
+  const sp0 = season().sp;
+  for (let i = 0; i < 40; i++) track('levelWin', { stars: 3, first: true, newStars: 3, usedBooster: false });
+  const fromLevels = season().sp - sp0;
+  assert.equal(fromLevels, LEVEL_SP_PER_DAY);
+  // Daily puzzles still count on top of the cap.
+  track('dailyWin', { stars: 3 });
+  assert.equal(season().sp - sp0, LEVEL_SP_PER_DAY + 4);
+  assert.ok(season().tier <= Math.ceil((LEVEL_SP_PER_DAY + 4) / TIER_SP));
+});
+
+test('every world breathes: it starts easier than the previous boss and is not stuck at max', () => {
+  for (let w = 1; w < 16; w++) {
+    const first = w * LEVELS_PER_WORLD + 2; // +2: skip a possible hand-made mechanic intro
+    assert.ok(tierFor(first) < tierFor(w * LEVELS_PER_WORLD), `world ${w + 1} starts easier`);
+    let run = 0;
+    let maxRun = 0;
+    for (let i = 1; i <= LEVELS_PER_WORLD; i++) {
+      run = tierFor(w * LEVELS_PER_WORLD + i) === 9 ? run + 1 : 0;
+      maxRun = Math.max(maxRun, run);
+    }
+    assert.ok(maxRun <= 5, `world ${w + 1}: ${maxRun} levels in a row at max tier`);
+  }
+});

@@ -168,6 +168,12 @@ export function notify(icon, title, sub, kind = '') {
 }
 
 export function nextNotif() {
+  // Never talk over a "new mechanic" card or a chest ceremony: wait until they close.
+  if (document.querySelector('#modal-mech[open], #modal-chest[open]')) {
+    notifBusy = true;
+    setTimeout(nextNotif, 600);
+    return;
+  }
   const n = notifQueue.shift();
   const el = $('#notif');
   if (!n) {
