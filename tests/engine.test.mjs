@@ -228,7 +228,7 @@ test('collection: 53 unique marbles, every world series has 4 droppables + 1 leg
   assert.equal(new Set(SKINS.map((s) => s.id)).size, SKINS.length);
   assert.ok(SKINS.length >= 50);
   for (let w = 0; w < 8; w++) {
-    const set = setSkins(`w${w}`);
+    const set = SK.setSkins(`w${w}`);
     assert.equal(set.length, 5);
     assert.equal(set.filter((s) => s.rarity === 'legendary').length, 1);
   }
@@ -313,4 +313,27 @@ test('every world breathes: it starts easier than the previous boss and is not s
     }
     assert.ok(maxRun <= 5, `world ${w + 1}: ${maxRun} levels in a row at max tier`);
   }
+});
+
+import * as SK from '../js/skins.js';
+const { pickSkin: pick2, grantSkin: grant } = SK;
+
+test('every world has its own marble series with one legendary reward', () => {
+  for (let w = 0; w < 16; w++) {
+    const set = SK.setSkins(`w${w}`);
+    assert.equal(set.length, 5, `world ${w + 1}`);
+    assert.equal(set.filter((s) => s.rarity === 'legendary').length, 1);
+  }
+  assert.equal(new Set(SK.SKINS.map((s) => s.id)).size, SK.SKINS.length, 'unique ids');
+});
+
+test('late worlds drop their own series and completing it grants the legendary', () => {
+  store.reset();
+  store.data.levels.unlocked = 250; // world 13
+  const s = pick2(['common'], 12);
+  assert.equal(s.set, 'w12');
+  const coins = store.data.coins;
+  for (const x of SK.setSkins('w12')) if (x.rarity !== 'legendary') grant(x.id);
+  assert.ok(store.data.skins.owned.includes('w12-legend'));
+  assert.equal(store.data.coins, coins + 300);
 });

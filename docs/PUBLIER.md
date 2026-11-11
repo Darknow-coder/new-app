@@ -52,7 +52,7 @@ minimum de coups.
 ✦ 320 niveaux répartis dans 16 mondes illustrés, avec un boss à chaque fin de monde
 ✦ 3 nouveaux puzzles chaque jour (facile, moyen, difficile) + le calendrier des jours passés
 ✦ Des mécaniques qui se renouvellent : gouffres, sable, portes de cristal, portails, flèches
-✦ Coffres, collection de 57 billes, saison gratuite, succès et quêtes du jour
+✦ Coffres, collection de 97 billes, saison gratuite, succès et quêtes du jour
 ✦ Éditeur de niveaux : crée tes propres puzzles et partage-les avec un simple lien
 ✦ Classement mondial et défis entre amis
 ✦ Jouable hors ligne, mode daltonien, aucune pub, aucun achat
@@ -73,7 +73,7 @@ to drop each marble into the hole of its colour, in as few moves as possible.
 ✦ 320 levels across 16 illustrated worlds, with a boss at the end of each one
 ✦ 3 fresh puzzles every day (easy, medium, hard) + a calendar of past days
 ✦ Mechanics that keep changing: pits, sand, crystal gates, portals, arrows
-✦ Chests, a collection of 57 marbles, a free season pass, achievements and daily quests
+✦ Chests, a collection of 97 marbles, a free season pass, achievements and daily quests
 ✦ Level editor: build your own puzzles and share them with a simple link
 ✦ Global leaderboard and friend challenges
 ✦ Plays offline, colour-blind mode, no ads, no purchases

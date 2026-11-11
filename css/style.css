@@ -5977,6 +5977,10 @@ body{
   0%, 100% { box-shadow: 0 0 6px var(--col), 0 0 16px color-mix(in srgb, var(--col) 60%, transparent); }
   50% { box-shadow: 0 0 12px var(--col), 0 0 30px var(--col); }
 }
+@keyframes sk-spin { to { transform: rotate(360deg); } }
+@keyframes sk-flash { 0%, 86%, 100% { filter: none; } 90% { filter: brightness(1.9); } 94% { filter: brightness(1.1); } 97% { filter: brightness(1.6); } }
+@keyframes sk-wind { to { background-position: 0 0, -200% 0, 0 0, 0 0; } }
+@keyframes sk-float { 50% { background-position: 0 0, 0 -3px, 0 -3px, 0 0, 0 0, 0 0; } }
 @keyframes sk-holo { to { background-position: 0 0, 300% 300%, 0 0, 0 0, 0 0; filter: hue-rotate(0deg); } }
 .marble-preview.is-legend::after{
   content: '';

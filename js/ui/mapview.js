@@ -29,7 +29,7 @@ export function worldBanner(w, ws, first, unlocked) {
       <span class="wh-badge"><span>${w + 1}</span></span>
       <span class="wh-text"><small>${t('world', { n: w + 1 })}</small><strong>${worldName(w)}</strong></span>
       <span class="world-stars"><svg><use href="#i-star"/></svg>${ws}/${max}</span>
-      ${w < 8 ? (() => { const list = setSkins(`w${w}`); const got = list.filter((x) => hasSkin(x.id)); return `<span class="wh-set">${marbleHTML(got.length ? got[got.length - 1].id : 'classic', w % 4, got.length ? '' : 'silhouette')}${got.length}/${list.length}</span>`; })() : ''}
+      ${w < 16 ? (() => { const list = setSkins(`w${w}`); const got = list.filter((x) => hasSkin(x.id)); return `<span class="wh-set">${marbleHTML(got.length ? got[got.length - 1].id : 'classic', w % 4, got.length ? '' : 'silhouette')}${got.length}/${list.length}</span>`; })() : ''}
       <span class="wh-bar"><i style="width:${(ws / max) * 100}%"></i>${marks}</span>
     </header>`;
 }
