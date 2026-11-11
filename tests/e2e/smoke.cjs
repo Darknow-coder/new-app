@@ -166,7 +166,7 @@ const assert = (c, m) => {
       const saved = await M((k) => JSON.parse(localStorage.getItem('marbl:v1')).archive[k]?.easy?.done, key);
       assert(saved, 'archive result not saved');
     });
-    await step('leaderboard (fake Firebase): auto-join, rank, leave', async () => {
+    await step('leaderboard + feedback (fake Firebase)', async () => {
       const ctx2 = await browser.newContext({ ...devices['Pixel 7'], locale: 'fr-FR' });
       const seed = Array.from({ length: 30 }, (_, i) => ({ a: i % 24, b: i % 24, n: i, levels: 10 + i * 3, stars: 20 + i * 6 }));
       const docs = await fakeFirebase(ctx2, seed);
@@ -182,6 +182,20 @@ const assert = (c, m) => {
       await p2.waitForTimeout(1000);
       assert((await p2.textContent('#lb-rank')) === '#24', `wrong rank ${await p2.textContent('#lb-rank')}`);
       assert((await p2.locator('.lb-row.is-me').count()) === 1, 'own row missing');
+      // Feedback window, offered from Settings.
+      await p2.click('#modal-rank .modal-close');
+      await p2.waitForTimeout(500);
+      await p2.click('#btn-settings');
+      await p2.waitForTimeout(500);
+      await p2.click('#btn-feedback');
+      await p2.waitForTimeout(500);
+      await p2.click('.fb-face[data-r="5"]');
+      await p2.fill('#fb-text', 'Super jeu');
+      await p2.click('#fb-send');
+      await p2.waitForTimeout(800);
+      assert(docs.feedback?.[0]?.rating === 5 && docs.feedback[0].text === 'Super jeu', 'feedback not sent');
+      await p2.click('#btn-rank');
+      await p2.waitForTimeout(800);
       p2.once('dialog', (d) => d.accept());
       await p2.click('#lb-leave');
       await p2.waitForTimeout(600);

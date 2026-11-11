@@ -151,6 +151,33 @@ export async function leave() {
   cache.top = null;
 }
 
+/** Send a player's feedback (rating 1-5 + optional text). Readable only in the Firebase console. */
+export async function sendFeedback({ rating, text, levels, lang, version }) {
+  await token();
+  const id = Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => b.toString(16).padStart(2, '0')).join('');
+  await http(
+    `${DOCS()}:commit?key=${FIREBASE.apiKey}`,
+    {
+      writes: [
+        {
+          update: {
+            name: `projects/${FIREBASE.projectId}/databases/(default)/documents/feedback/${id}`,
+            fields: {
+              rating: int(Math.max(1, Math.min(5, rating))),
+              text: { stringValue: String(text || '').slice(0, 500) },
+              levels: int(Math.max(0, Math.min(MAX_LEVELS, levels))),
+              lang: { stringValue: String(lang).slice(0, 8) },
+              version: { stringValue: String(version).slice(0, 20) },
+            },
+          },
+          updateTransforms: [{ fieldPath: 'created', setToServerValue: 'REQUEST_TIME' }],
+        },
+      ],
+    },
+    { auth: true },
+  );
+}
+
 const cache = { top: null, at: 0 };
 /** Top players (cached for a minute to stay well inside the free quota). */
 export async function top(limit = 50) {

@@ -12,6 +12,7 @@ import './ui/input.js';
 import { openSharedLevel, openEditor } from './ui/editor.js';
 import { openArchive } from './ui/archive.js';
 import { openLeaderboard } from './ui/leaderboard-ui.js';
+import { openFeedback } from './ui/feedback.js';
 import { installSkinStyles } from './skins.js';
 import { installRipples, reducedMotion } from './fx.js';
 import { store } from './storage.js';
@@ -72,5 +73,5 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:' && !/localhost
 }
 
 // Debug hook for automated tests (harmless in production).
-window.__marbl = { openLeaderboard, openArchive, openEditor, openSharedLevel, startChallenge, challengeImage, season, openSeason,
+window.__marbl = { openFeedback, openLeaderboard, openArchive, openEditor, openSharedLevel, startChallenge, challengeImage, season, openSeason,
   track, handleProgress, notify, quests, get game() { return S.game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap, openShop, renderHome, openChest, setPendingUnlock: (n) => (S.pendingUnlock = n) };

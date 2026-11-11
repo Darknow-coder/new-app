@@ -6,6 +6,7 @@ import { t } from '../i18n.js';
 import { iris, replay } from '../fx.js';
 import { $, S, buzz, els, openModal, closeModal, showView, toast } from './core.js';
 import { startGame } from './game.js';
+import { shareBase } from '../site.js';
 
 const SIZES = [5, 6, 7];
 const TOOLS = ['floor', 'wall', 'pit', 'sand', 'void', 'stone', 'marble', 'hole', 'gate', 'portal', 'arrow'];
@@ -318,7 +319,7 @@ export const fromB64url = (s) => {
 };
 
 export function levelLink(r, par) {
-  return `${location.origin}${location.pathname.replace(/index\.html$/, '')}?l=${b64url(`${r.join('/')}|${par}`)}`;
+  return `${shareBase()}?l=${b64url(`${r.join('/')}|${par}`)}`;
 }
 
 function remember(r, par) {

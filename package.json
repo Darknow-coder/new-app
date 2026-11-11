@@ -2,14 +2,16 @@
   "name": "marbl",
   "version": "1.0.0",
   "private": true,
-  "description": "Marbl \u2014 the daily tilt puzzle. Zero-dependency static PWA.",
+  "description": "Marbl — the daily tilt puzzle. Zero-dependency static PWA.",
   "type": "module",
   "scripts": {
     "start": "python3 -m http.server 8080",
     "test": "node --test tests/*.test.mjs",
     "build:levels": "node scripts/build-levels.mjs 320",
     "e2e": "node tests/e2e/smoke.cjs",
-    "audit:levels": "node scripts/audit-levels.mjs"
+    "audit:levels": "node scripts/audit-levels.mjs",
+    "package": "bash scripts/package.sh",
+    "shots": "node scripts/store-shots.cjs"
   },
   "license": "MIT"
 }

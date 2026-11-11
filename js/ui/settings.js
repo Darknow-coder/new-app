@@ -3,6 +3,7 @@ import { DAILY_ORDER, addDays, dailyLevel, puzzleNumber } from '../daily.js';
 import { LANG, t } from '../i18n.js';
 import { countTo } from '../fx.js';
 import { $, DIFF_EMOJI, S, toast } from './core.js';
+import { shareBase } from '../site.js';
 
 export function shareText(key = S.today) {
   const stats = computeStats(S.today);
@@ -16,7 +17,7 @@ export function shareText(key = S.today) {
       lines.push(`${DIFF_EMOJI[d]} —`);
     }
   }
-  lines.push(location.origin + location.pathname.replace(/index\.html$/, ''));
+  lines.push(shareBase());
   return lines.join('\n');
 }
 

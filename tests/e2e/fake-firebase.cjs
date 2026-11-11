@@ -14,6 +14,11 @@ module.exports = async function fakeFirebase(ctx, seed = []) {
     if (url.includes(':commit')) {
       const u = body.writes[0].update;
       const f = u.fields;
+      if (u.name.includes('/feedback/')) {
+        docs.feedback = docs.feedback || [];
+        docs.feedback.push({ rating: num(f.rating), text: f.text.stringValue, levels: num(f.levels) });
+        return json(r, {});
+      }
       const d = { a: num(f.a), b: num(f.b), n: num(f.n), levels: num(f.levels), stars: num(f.stars) };
       if (d.stars > d.levels * 3 || d.levels > 320 || num(f.score) !== d.levels * 1000 + d.stars) return r.fulfill({ status: 403, body: '{"error":{"message":"PERMISSION_DENIED"}}' });
       docs.set(u.name.split('/').pop(), d);

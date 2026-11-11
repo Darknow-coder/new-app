@@ -331,6 +331,18 @@
       </div>
     </dialog>
 
+    <dialog class="modal" id="modal-feedback">
+      <div class="modal-card fb-card">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <h2 data-i18n="fbTitle"></h2>
+        <p class="fb-lead" data-i18n="fbLead"></p>
+        <div class="fb-faces" id="fb-faces"></div>
+        <textarea class="fb-text" id="fb-text" maxlength="500" rows="4" data-i18n-placeholder="fbPlaceholder"></textarea>
+        <button class="btn btn-primary btn-wide" id="fb-send" data-i18n="fbSend" disabled></button>
+        <small class="fb-note" data-i18n="fbNote"></small>
+      </div>
+    </dialog>
+
     <dialog class="modal" id="modal-rank">
       <div class="modal-card lb-card">
         <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
@@ -420,6 +432,7 @@
         <label class="toggle"><span data-i18n="haptics"></span><input type="checkbox" id="set-haptics" /><i></i></label>
         <label class="toggle"><span><span data-i18n="cbMode"></span><small class="toggle-sub" data-i18n="cbModeSub"></small></span><input type="checkbox" id="set-cb" /><i></i></label>
         <button class="btn btn-ghost btn-wide" id="btn-install" hidden data-i18n="install"></button>
+        <button class="btn btn-primary btn-wide" id="btn-feedback" data-i18n="fbButton" hidden></button>
         <button class="btn btn-ghost btn-wide" id="btn-export" data-i18n="exportSave"></button>
         <button class="btn btn-ghost btn-wide" id="btn-import" data-i18n="importSave"></button>
         <button class="btn btn-ghost btn-wide" id="btn-about" data-i18n="about"></button>

@@ -215,6 +215,7 @@ export function openMap() {
     const target = els.mapEl.querySelector(animate ? `.node[data-n="${u}"]` : '.node.is-current');
     scrollMapTo(target);
     if (animate) setTimeout(() => playUnlock(u), 450);
+    else import('./feedback.js').then((m) => m.maybeAskFeedback());
   });
 }
 

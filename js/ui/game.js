@@ -10,6 +10,7 @@ import { equipped } from '../skins.js';
 import { track } from '../progress.js';
 import { $, S, announce, buzz, els, openModal, showView, toast, worldHue, worldName } from './core.js';
 import { onSolved } from './result.js';
+import { shareBase } from '../site.js';
 import { handleProgress } from './common.js';
 import { openShop } from './shop.js';
 
@@ -120,7 +121,7 @@ export async function challengeImage(n, moves, stars) {
 }
 
 export async function shareChallenge(n, moves, stars) {
-  const url = `${location.origin}${location.pathname.replace(/index\.html$/, '')}?defi=${n}&c=${moves}`;
+  const url = `${shareBase()}?defi=${n}&c=${moves}`;
   const text = t('chShareText', { n, m: moves });
   try {
     const blob = await challengeImage(n, moves, stars);

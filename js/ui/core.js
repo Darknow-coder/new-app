@@ -53,6 +53,7 @@ export function applyStaticText() {
     n.setAttribute('aria-label', t(n.dataset.i18nLabel));
     n.title = t(n.dataset.i18nLabel);
   });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((n) => (n.placeholder = t(n.dataset.i18nPlaceholder)));
 }
 
 export function starsHTML(n, total = 3) {

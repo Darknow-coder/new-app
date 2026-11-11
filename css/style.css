@@ -7757,3 +7757,44 @@ button.arch-day:active{ transform: scale(0.92); }
   font-weight: 600;
   text-decoration: underline;
 }
+
+/* ---------- feedback ---------- */
+.fb-card{ max-width: 400px; }
+.fb-lead{ margin: -4px 0 12px; color: var(--muted); font-weight: 600; text-align: center; }
+.fb-faces{ display: flex; justify-content: space-between; gap: 6px; margin-bottom: 12px; }
+.fb-face{
+  flex: 1;
+  aspect-ratio: 1;
+  max-width: 60px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--surface-2);
+  font-size: 30px;
+  filter: grayscale(0.7);
+  opacity: 0.75;
+  transition: transform 0.2s var(--spring), filter 0.2s, opacity 0.2s, background 0.2s;
+}
+.fb-face:active{ transform: scale(0.9); }
+.fb-face.is-on{
+  filter: none;
+  opacity: 1;
+  transform: scale(1.15);
+  background: color-mix(in srgb, var(--accent) 30%, var(--surface-2));
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.fb-text{
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  resize: none;
+  margin-bottom: 12px;
+}
+.fb-text:focus{ outline: 2px solid var(--accent); }
+.fb-note{ display: block; margin-top: 8px; text-align: center; color: var(--muted); font-size: 12px; }
