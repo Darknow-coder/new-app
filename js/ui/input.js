@@ -1,7 +1,7 @@
 import { setMusicEnabled, setMusicVolume, setSfxVolume, setSoundEnabled, sfx, unlockAudio } from '../audio.js';
 import { iris } from '../fx.js';
 import { exportProgress, importProgress, save, store } from '../storage.js';
-import { t } from '../i18n.js';
+import { LANG_CHOICE, LANG_KEY, t } from '../i18n.js';
 import { $, S, anyModalOpen, buzz, closeModal, els, openModal, toast, worldHue } from './core.js';
 import { hint, move, restart, rewind, startTutorial, undo } from './game.js';
 import { exitGame, goHome } from './result.js';
@@ -255,6 +255,22 @@ $('#btn-import').addEventListener('click', () => {
     toast(t('importOk'));
     setTimeout(() => location.reload(), 700);
   } else toast(t('importBad'));
+});
+
+// Language picker: applying a new language needs a reload (all text is built at start).
+const langSeg = $('#set-lang');
+langSeg.querySelectorAll('button').forEach((b) => {
+  b.setAttribute('aria-checked', String(b.dataset.l === LANG_CHOICE));
+  b.addEventListener('click', () => {
+    if (b.dataset.l === LANG_CHOICE) return;
+    try {
+      if (b.dataset.l === 'auto') localStorage.removeItem(LANG_KEY);
+      else localStorage.setItem(LANG_KEY, b.dataset.l);
+    } catch {
+      /* storage unavailable */
+    }
+    location.reload();
+  });
 });
 
 $('#btn-about').addEventListener('click', () => {

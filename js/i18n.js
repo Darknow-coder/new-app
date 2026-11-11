@@ -30,6 +30,8 @@ const STRINGS = {
     resultLine: '{m} moves · par {p}',
     nextPuzzle: 'Next puzzle',
     archives: 'Archives',
+    language: 'Language',
+    langAuto: 'Phone',
     fbButton: 'Give your opinion 💬',
     fbTitle: 'Your opinion',
     fbLead: 'Enjoying Marbl? Your opinion helps make the game better.',
@@ -124,7 +126,8 @@ const STRINGS = {
     collect: 'Collect',
     openChest: 'Open the chest',
     chestReady: 'Open!',
-    chestsReady: '{n} chest(s) ready',
+    chestsReady: '{n} chests ready',
+    chestsReadyOne: '1 chest ready',
     chestNeed: 'Collect {n}★ in this world to open this chest',
     newBest: 'New best!',
     packName: 'Smart pack',
@@ -155,7 +158,8 @@ const STRINGS = {
     lockedSkin: 'Find it in a chest',
     chestContents: 'Possible contents',
     oddsCoins: '{a}–{b} coins',
-    oddsBoosters: '{n} booster(s): hints or rewinds',
+    oddsBoosters: '{n} boosters: hints or rewinds',
+    oddsBoostersOne: '1 booster: a hint or a rewind',
     oddsSkin: '{p}% chance of a marble skin ({r})',
     oddsUpgrade: 'May upgrade while you shake it!',
     needStars: '{n} more ★ to open',
@@ -285,7 +289,7 @@ const STRINGS = {
     seasonTitle: 'Season {n}',
     seasonPass: 'Season pass',
     seasonSub: 'Tier {t}/{max} · {d} days left',
-    seasonHow: 'Earn season points with new stars (2 each), daily puzzles and quests. Free for everyone!',
+    seasonHow: 'Earn season points with new stars, daily puzzles and quests (level points are capped each day, so playing a little every day is the way). Free for everyone!',
     seasonTierUp: 'Season tier {n}!',
     seasonClaimAll: 'Claim',
     seasonSkinDone: 'All season marbles owned: +300 coins',
@@ -312,7 +316,7 @@ const STRINGS = {
     importOk: 'Progress restored!',
     importBad: 'This code is not a valid Marbl backup.',
     privacyTitle: 'Privacy',
-    privacyText: 'Marbl collects no personal data: no account, no ads, no trackers, no analytics. Your progress is stored only on this device. Once you complete a level, you appear on the online leaderboard under a random name: that name, your level count and stars are stored on Google Firebase (no personal details). “Leave the leaderboard” deletes them and stops it for good.',
+    privacyText: 'Marbl collects no personal data: no account, no ads, no trackers, no analytics. Feedback you choose to send is stored anonymously. Your progress is stored only on this device. Once you complete a level, you appear on the online leaderboard under a random name: that name, your level count and stars are stored on Google Firebase (no personal details). “Leave the leaderboard” deletes them and stops it for good.',
     creditsTitle: 'Credits',
     creditsText: 'Game design, code, art and sounds made for Marbl. Font: Fredoka (SIL Open Font License 1.1).',
     saveTitle: 'Your progress',
@@ -366,7 +370,7 @@ const STRINGS = {
     edEmptyMine: 'No levels yet — create one and share it!',
     edEdit: 'Edit',
     edPlay: 'Play',
-    customLevel: 'Player level',
+    customLevel: 'Player-made level',
     customBy: 'Made by a player',
     customBad: 'This level link is broken.',
     customCreate: 'Create my own',
@@ -446,6 +450,8 @@ const STRINGS = {
     resultLine: '{m} coups · par {p}',
     nextPuzzle: 'Puzzle suivant',
     archives: 'Archives',
+    language: 'Langue',
+    langAuto: 'Téléphone',
     fbButton: 'Donner mon avis 💬',
     fbTitle: 'Ton avis',
     fbLead: 'Tu aimes Marbl ? Ton avis aide à rendre le jeu meilleur.',
@@ -540,7 +546,8 @@ const STRINGS = {
     collect: 'Récupérer',
     openChest: 'Ouvrir le coffre',
     chestReady: 'Ouvrir !',
-    chestsReady: '{n} coffre(s) à ouvrir',
+    chestsReady: '{n} coffres à ouvrir',
+    chestsReadyOne: '1 coffre à ouvrir',
     chestNeed: 'Récolte {n}★ dans ce monde pour ouvrir ce coffre',
     newBest: 'Nouveau record !',
     packName: 'Pack malin',
@@ -572,6 +579,7 @@ const STRINGS = {
     chestContents: 'Contenu possible',
     oddsCoins: '{a} à {b} pièces',
     oddsBoosters: '{n} bonus : indices ou retours',
+    oddsBoostersOne: '1 bonus : un indice ou un retour',
     oddsSkin: '{p} % de chance d’obtenir une bille ({r})',
     oddsUpgrade: 'Peut s’améliorer pendant que tu le secoues !',
     needStars: 'Encore {n} ★ pour l’ouvrir',
@@ -701,7 +709,7 @@ const STRINGS = {
     seasonTitle: 'Saison {n}',
     seasonPass: 'Passe de saison',
     seasonSub: 'Palier {t}/{max} · encore {d} j',
-    seasonHow: 'Gagne des points de saison avec les nouvelles étoiles (2 chacune), les puzzles du jour et les quêtes. Gratuit pour tous !',
+    seasonHow: 'Gagne des points de saison avec les nouvelles étoiles, les puzzles du jour et les quêtes (les points des niveaux sont plafonnés chaque jour : un peu chaque jour, c’est l’idéal). Gratuit pour tous !',
     seasonTierUp: 'Palier de saison {n} !',
     seasonClaimAll: 'Réclamer',
     seasonSkinDone: 'Toutes les billes de saison possédées : +300 pièces',
@@ -728,7 +736,7 @@ const STRINGS = {
     importOk: 'Progression restaurée !',
     importBad: 'Ce code n’est pas une sauvegarde Marbl valide.',
     privacyTitle: 'Confidentialité',
-    privacyText: 'Marbl ne collecte aucune donnée personnelle : pas de compte, pas de pub, pas de traceur, pas de statistiques. Ta progression est stockée uniquement sur cet appareil. Dès ton premier niveau terminé, tu apparais dans le classement en ligne sous un nom tiré au hasard : ce nom, ton nombre de niveaux et tes étoiles sont stockés sur Google Firebase (aucune donnée personnelle). « Quitter le classement » les supprime et l’arrête définitivement.',
+    privacyText: 'Marbl ne collecte aucune donnée personnelle : pas de compte, pas de pub, pas de traceur, pas de statistiques. Les avis que tu choisis d’envoyer sont stockés anonymement. Ta progression est stockée uniquement sur cet appareil. Dès ton premier niveau terminé, tu apparais dans le classement en ligne sous un nom tiré au hasard : ce nom, ton nombre de niveaux et tes étoiles sont stockés sur Google Firebase (aucune donnée personnelle). « Quitter le classement » les supprime et l’arrête définitivement.',
     creditsTitle: 'Crédits',
     creditsText: 'Conception, code, graphismes et sons créés pour Marbl. Police : Fredoka (SIL Open Font License 1.1).',
     saveTitle: 'Ta progression',
@@ -782,7 +790,7 @@ const STRINGS = {
     edEmptyMine: 'Aucun niveau pour l’instant — crée-en un et partage-le !',
     edEdit: 'Modifier',
     edPlay: 'Jouer',
-    customLevel: 'Niveau de joueur',
+    customLevel: 'Niveau créé par un joueur',
     customBy: 'Créé par un joueur',
     customBad: 'Ce lien de niveau est abîmé.',
     customCreate: 'Créer le mien',
@@ -833,11 +841,22 @@ const STRINGS = {
   },
 };
 
+// Language: the player's choice (Settings) if any, otherwise the phone's language.
+export const LANG_KEY = 'marbl:lang';
+let chosen = null;
+try {
+  chosen = typeof localStorage !== 'undefined' ? localStorage.getItem(LANG_KEY) : null;
+} catch {
+  /* storage unavailable */
+}
 const nav = typeof navigator !== 'undefined' ? navigator.language : 'en';
-const lang = (nav || 'en').toLowerCase().startsWith('fr') ? 'fr' : 'en';
+const lang = chosen === 'fr' || chosen === 'en' ? chosen : (nav || 'en').toLowerCase().startsWith('fr') ? 'fr' : 'en';
+export const LANG_CHOICE = chosen === 'fr' || chosen === 'en' ? chosen : 'auto';
 if (typeof document !== 'undefined') document.documentElement.lang = lang;
 
 export function t(key, vars = {}) {
+  // Singular form when a "<key>One" string exists and n is 1.
+  if (vars.n === 1 && (STRINGS[lang][`${key}One`] || STRINGS.en[`${key}One`])) key = `${key}One`;
   const s = STRINGS[lang][key] ?? STRINGS.en[key] ?? key;
   return s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : `{${k}}`));
 }

@@ -7826,3 +7826,34 @@ button.arch-day:active{ transform: scale(0.92); }
 .lite .scenery .glow{
   animation: none;
 }
+
+/* ---------- language picker (settings) ---------- */
+.lang-row{
+  flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+}
+.seg{
+  display: flex;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--surface-3);
+}
+.seg button{
+  padding: 6px 10px;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--muted);
+  transition: background 0.2s, color 0.2s;
+}
+.seg button[aria-checked='true']{
+  background: var(--c1);
+  color: #fff;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+}
