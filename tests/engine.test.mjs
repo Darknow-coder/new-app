@@ -337,3 +337,18 @@ test('late worlds drop their own series and completing it grants the legendary',
   assert.ok(store.data.skins.owned.includes('w12-legend'));
   assert.equal(store.data.coins, coins + 300);
 });
+
+import { readFileSync } from 'node:fs';
+
+test('every language has every text, with the same {placeholders}', () => {
+  const src = readFileSync(new URL('../js/i18n.js', import.meta.url), 'utf8');
+  const S = new Function(`${src.slice(0, src.indexOf('// Language:')).replace('const STRINGS', 'var STRINGS')}; return STRINGS;`)();
+  const ph = (v) => (v.match(/\{\w+\}/g) || []).sort().join();
+  for (const lang of Object.keys(S)) {
+    for (const k of Object.keys(S.en)) {
+      assert.ok(k in S[lang], `${lang} is missing "${k}"`);
+      assert.equal(ph(S[lang][k]), ph(S.en[k]), `${lang}.${k} placeholders`);
+    }
+  }
+  assert.deepEqual(Object.keys(S).sort(), ['en', 'es', 'fr']);
+});

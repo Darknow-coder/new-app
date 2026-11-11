@@ -9,16 +9,19 @@ const ADJ = {
   en: ['Swift', 'Nimble', 'Calm', 'Clever', 'Wise', 'Brave', 'Red', 'Golden', 'Pink', 'Magic', 'Cosmic', 'Shy', 'Mystic', 'Electric', 'Giant', 'Tiny', 'Fantastic', 'Chill', 'Solar', 'Lunar', 'Polar', 'Wild', 'Famous', 'Turbo'],
   fr: ['Rapide', 'Agile', 'Calme', 'Habile', 'Sage', 'Brave', 'Rouge', 'Jaune', 'Rose', 'Magique', 'Cosmique', 'Timide', 'Mystique', 'Électrique', 'Énorme', 'Minuscule', 'Fantastique', 'Tranquille', 'Solaire', 'Lunaire', 'Polaire', 'Sauvage', 'Célèbre', 'Turbo'],
 };
+ADJ.es = ['Veloz', 'Ágil', 'Zen', 'Genial', 'Sagaz', 'Valiente', 'Carmesí', 'Brillante', 'Rosa', 'Estelar', 'Feliz', 'Rebelde', 'Turquesa', 'Gigante', 'Sutil', 'Fenomenal', 'Alegre', 'Solar', 'Lunar', 'Polar', 'Salvaje', 'Célebre', 'Turbo', 'Audaz']; // invariable: they fit masculine and feminine animals
 const ANIMAL = {
   en: ['Otter', 'Panda', 'Fox', 'Owl', 'Koala', 'Tiger', 'Penguin', 'Bunny', 'Dolphin', 'Llama', 'Hedgehog', 'Beaver', 'Seal', 'Kitten', 'Cub', 'Raccoon', 'Gecko', 'Octopus', 'Raven', 'Falcon', 'Lynx', 'Yak', 'Turtle', 'Whale'],
   fr: ['Loutre', 'Panda', 'Renard', 'Hibou', 'Koala', 'Tigre', 'Pingouin', 'Lapin', 'Dauphin', 'Lama', 'Hérisson', 'Castor', 'Phoque', 'Chaton', 'Ourson', 'Raton', 'Gecko', 'Poulpe', 'Corbeau', 'Faucon', 'Lynx', 'Yack', 'Tortue', 'Baleine'],
 };
 
+ANIMAL.es = ['Nutria', 'Panda', 'Zorro', 'Búho', 'Koala', 'Tigre', 'Pingüino', 'Conejo', 'Delfín', 'Llama', 'Erizo', 'Castor', 'Foca', 'Gatito', 'Osezno', 'Mapache', 'Gecko', 'Pulpo', 'Cuervo', 'Halcón', 'Lince', 'Yak', 'Tortuga', 'Ballena'];
+
 export function playerName({ a, b, n }) {
-  const L = LANG.startsWith('fr') ? 'fr' : 'en';
+  const L = LANG === 'fr' || LANG === 'es' ? LANG : 'en';
   const adj = ADJ[L][a] || ADJ[L][0];
   const an = ANIMAL[L][b] || ANIMAL[L][0];
-  return L === 'fr' ? `${an} ${adj} ${n}` : `${adj} ${an} ${n}`;
+  return L === 'en' ? `${adj} ${an} ${n}` : `${an} ${adj} ${n}`;
 }
 
 /** Levels completed (at least one star) and total adventure stars. */

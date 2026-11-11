@@ -7857,3 +7857,16 @@ button.arch-day:active{ transform: scale(0.92); }
   color: #fff;
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
 }
+
+/* Narrow phones (320-380 px): the HUD must fit with the chest inbox showing too. */
+@media (max-width: 380px) {
+  .hud{ gap: 6px; }
+  .hud-coins{ min-width: 0; flex: 1 1 auto; }
+  .hud-coins b{ min-width: 0; font-size: 16px; }
+  .inbox-btn{ width: 42px; }
+  .inbox-btn .mini-chest{ width: 38px; height: 34px; }
+  .hud .hud-btn{ width: 40px; height: 40px; flex: none; }
+}
+/* Language picker: own line, buttons share the width. */
+.lang-row .seg{ flex: 1 1 100%; }
+.lang-row .seg button{ flex: 1; padding: 7px 4px; }
