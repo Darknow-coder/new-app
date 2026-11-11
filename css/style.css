@@ -7870,3 +7870,40 @@ button.arch-day:active{ transform: scale(0.92); }
 /* Language picker: own line, buttons share the width. */
 .lang-row .seg{ flex: 1 1 100%; }
 .lang-row .seg button{ flex: 1; padding: 7px 4px; }
+
+/* ---------- lost (marble in a pit) ---------- */
+.lost-card{ text-align: center; }
+.lost-art{
+  position: relative;
+  width: 120px;
+  height: 110px;
+  margin: 4px auto 6px;
+}
+.lost-pit{
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 6px;
+  height: 46px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, #000 45%, #1a1d3d);
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.08), inset 0 8px 14px rgba(0, 0, 0, 0.8);
+}
+.lost-ball{
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 48px;
+  height: 48px;
+  margin-left: -24px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fff 0 6%, #ffb3be 16%, #ff5d73 50%, #b8243f);
+  animation: lost-drop 1.8s cubic-bezier(.5, 0, .9, .5) infinite;
+}
+@keyframes lost-drop{
+  0%{ transform: translateY(0) scale(1); opacity: 1; }
+  55%{ transform: translateY(46px) scale(.9); opacity: 1; }
+  75%, 100%{ transform: translateY(58px) scale(.35); opacity: 0; }
+}
+.lost-text{ color: var(--muted); font-weight: 600; margin: 0 0 14px; }
+.lost-actions{ display: grid; gap: 10px; }

@@ -151,6 +151,23 @@ const assert = (c, m) => {
       await solve();
       assert(await M(() => window.__marbl.game.done), 'shared level not solved');
     });
+    await step('pit: lost screen, take back (marble visible), retry', async () => {
+      await M(() => window.__marbl.startLevel(11));
+      await page.waitForTimeout(1500);
+      await M(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+      await M(() => window.__marbl.move('right'));
+      await page.waitForTimeout(1500);
+      assert(await M(() => document.querySelector('#modal-lost').open), 'lost screen not shown');
+      await page.click('#lost-undo');
+      await page.waitForTimeout(900);
+      const op = await M(() => getComputedStyle(window.__marbl.game.pieceEls[0]).opacity);
+      assert(op === '1', `marble invisible after take back (opacity ${op})`);
+      await M(() => window.__marbl.move('right'));
+      await page.waitForTimeout(1500);
+      await page.click('#lost-retry');
+      await page.waitForTimeout(1500);
+      assert((await M(() => window.__marbl.game.moves)) === 0, 'retry did not reset the moves');
+    });
     await step('daily archives: replay a past day', async () => {
       await page.goto(base);
       await page.waitForTimeout(2200);

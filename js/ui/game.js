@@ -5,10 +5,10 @@ import { t } from '../i18n.js';
 import { WORLD_HUES, adventureLevel, introAt, isBoss, worldOf, bossShape } from '../levels.js';
 import { DIRS, comboReachable, isDead, isSolved, solve, stateKey, tilt } from '../engine.js';
 import { TUTORIAL } from '../tutorial.js';
-import { buildScenery, burst, reducedMotion, replay } from '../fx.js';
+import { buildScenery, burst, iris, reducedMotion, replay } from '../fx.js';
 import { equipped } from '../skins.js';
 import { track } from '../progress.js';
-import { $, S, announce, buzz, els, openModal, showView, toast, worldHue, worldName } from './core.js';
+import { $, S, announce, buzz, closeModal, els, openModal, showView, toast, worldHue, worldName } from './core.js';
 import { onSolved } from './result.js';
 import { shareBase } from '../site.js';
 import { handleProgress } from './common.js';
@@ -349,6 +349,14 @@ export function syncPieces(duration) {
     const el = S.game.pieceEls[i];
     el.style.transition = duration ? `transform ${duration}ms var(--ease-out)` : 'none';
     el.classList.remove('sinking', 'impact-x', 'impact-y');
+    // A marble that fell into a pit and comes back must be visible again.
+    if (el.classList.contains('falling')) {
+      el.classList.remove('falling', 'gone');
+      if (state[i] !== -1) {
+        el.classList.remove('appear');
+        requestAnimationFrame(() => el.classList.add('appear'));
+      }
+    }
     if (state[i] === -1) {
       el.classList.add('gone');
       if (p.kind === 'marble') {
@@ -540,21 +548,15 @@ export function move(dir) {
   setTimeout(() => {
     S.animating = false;
     if (isDead(S.game.state)) {
-      // A marble fell into a pit: the move is lost (still counted) and the board rewinds.
+      // A marble fell into a pit: the attempt is lost. Offer a fresh retry, or to take
+      // the move back (it still counts).
       S.queued = null;
-      toast(t('marbleLost'));
-      els.board.classList.remove('shake');
-      void els.board.offsetWidth;
-      els.board.classList.add('shake');
+      replay(els.board, 'shake');
       S.animating = true;
       setTimeout(() => {
-        S.game.state = S.game.history.pop();
-        S.game.path.pop();
-        syncPieces(240);
-        updateHud(false);
-        persistProgress();
         S.animating = false;
-      }, 520);
+        showLost();
+      }, 650);
       return;
     }
     if (isSolved(S.game.level, S.game.state)) {
@@ -624,6 +626,58 @@ export function undo() {
   updateHud(false);
   persistProgress();
 }
+
+/* ---------- "lost" screen (marble in a pit) ---------- */
+function showLost() {
+  const m = $('#modal-lost');
+  sfx.thud();
+  openModal('modal-lost');
+  $('#lost-retry').focus();
+  // Escape / tapping outside: the gentle option (take the move back).
+  m.onclose = () => {
+    m.onclose = null;
+    if (S.game && isDead(S.game.state)) takeBackFatalMove();
+  };
+}
+
+function takeBackFatalMove() {
+  if (!S.game || !isDead(S.game.state)) return;
+  S.game.state = S.game.history.pop();
+  S.game.path.pop();
+  syncPieces(240);
+  updateHud(false);
+  persistProgress();
+}
+
+export function retryAfterLoss() {
+  const g = S.game;
+  if (!g) return;
+  $('#modal-lost').onclose = null;
+  closeModal('modal-lost', true);
+  if (g.mode === 'daily') {
+    // Daily puzzles: back to the start, but the tilts still count (fair for everyone).
+    g.history.length = 0;
+    g.path = [];
+    g.state = g.level.start.slice();
+    syncPieces(260);
+    updateHud(false);
+    persistProgress();
+    return;
+  }
+  const { state, history, path, moves, hintUsed, done, drops, pieceEls, holeEls, restore, ...opts } = g;
+  iris(() => startGame({ ...opts, restore: null }), g.mode === 'level' ? worldHue(g.n) : undefined);
+}
+
+$('#lost-retry').addEventListener('click', () => {
+  sfx.tap();
+  retryAfterLoss();
+});
+$('#lost-undo').addEventListener('click', () => {
+  sfx.undo();
+  $('#modal-lost').onclose = null;
+  closeModal('modal-lost');
+  takeBackFatalMove();
+});
 
 export function restart() {
   if (!S.game || S.game.done || S.animating || !S.game.history.length) return;
