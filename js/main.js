@@ -14,7 +14,7 @@ import { openArchive } from './ui/archive.js';
 import { openLeaderboard } from './ui/leaderboard-ui.js';
 import { openFeedback } from './ui/feedback.js';
 import { installSkinStyles } from './skins.js';
-import { installRipples, reducedMotion } from './fx.js';
+import { initLite, installRipples, reducedMotion } from './fx.js';
 import { store } from './storage.js';
 import { quests, season, track } from './progress.js';
 import { openChest } from './chests.js';
@@ -26,6 +26,8 @@ import { handleProgress } from './ui/common.js';
 import { shareText } from './ui/settings.js';
 import { openMap } from './ui/mapview.js';
 import { openShop } from './ui/shop.js';
+
+initLite();
 
 applyStaticText();
 

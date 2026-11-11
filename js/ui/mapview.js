@@ -38,6 +38,8 @@ export let sceneIO = null;
 
 export const hideUnlockWorld = (n) => (n ? worldOf(n) : -1);
 
+const idle = (fn) => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 250 }) : setTimeout(fn, 16));
+
 export function renderMap({ hideUnlock = 0 } = {}) {
   ensureMapDefs();
   const unlocked = store.data.levels.unlocked;
@@ -154,7 +156,8 @@ export function renderMap({ hideUnlock = 0 } = {}) {
   scenes.filter((sc) => Math.abs(sc.w - cur) <= 0 || sc.w === hideUnlockWorld(hideUnlock)).forEach(draw);
   sceneIO?.disconnect();
   sceneIO = new IntersectionObserver(
-    (entries) => entries.forEach((e) => e.isIntersecting && draw(scenes.find((x) => x.sec === e.target))),
+    // Build the scenery in idle time rather than in the middle of a scroll frame.
+    (entries) => entries.forEach((e) => e.isIntersecting && idle(() => draw(scenes.find((x) => x.sec === e.target)))),
     { root: $('#map-scroll'), rootMargin: '900px 0px' },
   );
   scenes.forEach((sc) => sceneIO.observe(sc.sec));
@@ -364,7 +367,20 @@ export function updateRecenter() {
   $('#map-recenter-n').textContent = cur.dataset.n;
 }
 
-$('#map-scroll').addEventListener('scroll', () => requestAnimationFrame(updateRecenter), { passive: true });
+// The "back to my level" button only needs to follow the scroll loosely: checking it
+// at most every 150 ms keeps layout reads out of most scroll frames.
+let recenterTimer = 0;
+$('#map-scroll').addEventListener(
+  'scroll',
+  () => {
+    if (recenterTimer) return;
+    recenterTimer = setTimeout(() => {
+      recenterTimer = 0;
+      requestAnimationFrame(updateRecenter);
+    }, 150);
+  },
+  { passive: true },
+);
 
 recenter.addEventListener('click', () => {
   scrollMapTo(els.mapEl.querySelector('.node.is-current'), true);

@@ -1,4 +1,4 @@
-import { DAILY_ORDER, dailyLevel, dateKey, msUntilTomorrow, puzzleNumber } from '../daily.js';
+import { DAILY_ORDER, dailyLevel, dateKey, msUntilTomorrow, prefetchDaily, puzzleNumber } from '../daily.js';
 import { LANG, t } from '../i18n.js';
 import { computeStats, store } from '../storage.js';
 import { buildScenery, iris } from '../fx.js';
@@ -42,8 +42,10 @@ export function renderHome() {
     li.querySelector('button').addEventListener('click', () => iris(() => startDaily(diff)));
     list.appendChild(li);
   }
-  // Generating the three levels takes a few dozen ms: do it after first paint.
-  setTimeout(() => {
+  // The three puzzles are built in a worker (and cached for the day): fill in their par when ready.
+  const day = S.today;
+  prefetchDaily(day).then(() => {
+    if (day !== S.today) return;
     list.querySelectorAll('.daily-card').forEach((card) => {
       const diff = card.dataset.diff;
       const lvl = dailyLevel(S.today, diff);
@@ -53,7 +55,7 @@ export function renderHome() {
         ? `${t('solvedIn', { m: entry.moves })} · ${t('par', { n: lvl.par })}`
         : t('par', { n: lvl.par });
     });
-  }, 30);
+  });
 
   const stats = computeStats(S.today);
   const chip = $('#streak-chip');

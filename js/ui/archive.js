@@ -1,6 +1,6 @@
 // Daily puzzle archives: a month calendar of every past puzzle since #1.
 // Late solves live in `store.data.archive`, so they never repair a streak.
-import { DAILY_ORDER, EPOCH, addDays, dailyLevel, dateKey, dayDiff, keyToDate, puzzleNumber } from '../daily.js';
+import { DAILY_ORDER, EPOCH, addDays, dailyLevel, dateKey, dayDiff, keyToDate, prefetchDaily, puzzleNumber } from '../daily.js';
 import { LANG, t } from '../i18n.js';
 import { store } from '../storage.js';
 import { iris } from '../fx.js';
@@ -147,15 +147,15 @@ function renderDetail() {
       iris(() => startDaily(diff, key));
     }),
   );
-  // Par needs the generator (a few ms per puzzle): fill it in after paint.
-  setTimeout(() => {
+  // Par needs the generator: built in a worker, filled in when ready.
+  prefetchDaily(key).then(() => {
     if (selected !== key) return;
     box.querySelectorAll('.arch-row').forEach((b) => {
       const e = store.anyEntry(key, b.dataset.diff);
       const par = dailyLevel(key, b.dataset.diff).par;
       b.querySelector('[data-par]').textContent = e?.done ? `${t('solvedIn', { m: e.moves })} · ${t('par', { n: par })}` : t('par', { n: par });
     });
-  }, 30);
+  });
 }
 
 function shiftMonth(delta) {

@@ -33,9 +33,12 @@ export function setMusicVolume(v) {
 function impulse(c, seconds = 1.6, decay = 3) {
   const len = Math.floor(c.sampleRate * seconds);
   const buf = c.createBuffer(2, len, c.sampleRate);
+  // Exponential tail computed by repeated multiplication (Math.pow per sample was slow).
+  const k = Math.exp(-decay * 2.3 / len);
   for (let ch = 0; ch < 2; ch++) {
     const d = buf.getChannelData(ch);
-    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    let g = 1;
+    for (let i = 0; i < len; i++, g *= k) d[i] = (Math.random() * 2 - 1) * g;
   }
   return buf;
 }

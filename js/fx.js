@@ -146,12 +146,19 @@ export function floatText(el, text, layer = document.body) {
   setTimeout(() => t.remove(), 1000);
 }
 
-/** Restart a CSS animation class on an element. */
+/**
+ * Restart a CSS animation class on an element. No forced layout: reading offsetWidth
+ * here used to cost a full layout of the page on every effect (100+ ms on slow phones).
+ */
 export function replay(el, cls) {
   if (!el) return;
+  if (!el.classList.contains(cls)) {
+    el.classList.add(cls);
+    return;
+  }
   el.classList.remove(cls);
-  void el.offsetWidth;
-  el.classList.add(cls);
+  // Two frames: the removal must be rendered once for the animation to start over.
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add(cls)));
 }
 
 /** Burst of coloured particles inside `host` at (x%, y%) of the host. */
@@ -179,20 +186,24 @@ export function burst(host, x, y, { count = 14, colors = ['var(--c2)', '#fff'], 
  */
 export function stagger(root, selector, { step = 45, base = 0, cls = 'enter-rise' } = {}) {
   if (reducedMotion() || !root) return;
-  // Batch: one class removal pass, a single reflow, then one add pass (no per-element layout).
   const els = [...root.querySelectorAll(selector)].filter((el) => !el.hidden);
   if (!els.length) return;
-  for (const el of els) el.classList.remove(cls);
-  void root.offsetWidth;
-  els.forEach((el, i) => {
-    el.style.setProperty('--enter-delay', `${base + i * step}ms`);
-    el.classList.add(cls);
-    el.addEventListener('animationend', function done(e) {
-      if (e.target !== el) return;
-      el.classList.remove(cls);
-      el.removeEventListener('animationend', done);
+  const start = () =>
+    els.forEach((el, i) => {
+      el.style.setProperty('--enter-delay', `${base + i * step}ms`);
+      el.classList.add(cls);
+      el.addEventListener('animationend', function done(e) {
+        if (e.target !== el) return;
+        el.classList.remove(cls);
+        el.removeEventListener('animationend', done);
+      });
     });
-  });
+  // Usually the class is already gone (removed when the animation ended): start right away.
+  // Otherwise remove it and restart two frames later, instead of forcing a full layout
+  // (reading offsetWidth here cost 100+ ms per screen on slow phones).
+  if (!els.some((el) => el.classList.contains(cls))) return start();
+  for (const el of els) el.classList.remove(cls);
+  requestAnimationFrame(() => requestAnimationFrame(start));
 }
 
 /* ---------- touch ripples on every button ---------- */
@@ -218,4 +229,51 @@ export function installRipples() {
     },
     { passive: true },
   );
+}
+
+/* ---------- lite mode for slow phones ---------- */
+const LITE_KEY = 'marbl:lite';
+/**
+ * Turn off the costliest effects (backdrop blur, half the scenery particles) on phones
+ * that can't keep up. Decided once from real frame times, then remembered.
+ */
+export function initLite() {
+  const root = document.documentElement;
+  let saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(LITE_KEY));
+  } catch {
+    /* storage unavailable or old format */
+  }
+  if (navigator.deviceMemory && navigator.deviceMemory <= 2) {
+    root.classList.add('lite');
+    return;
+  }
+  if (saved?.lite) root.classList.add('lite');
+  // Re-measure once a week: a phone that was just busy at first launch shouldn't stay "lite".
+  if (saved && Date.now() - saved.at < 7 * 864e5) return;
+  // Sample ~2 s of frames shortly after start-up, while the home screen animates.
+  setTimeout(() => {
+    const dts = [];
+    let last = performance.now();
+    const tick = (t) => {
+      dts.push(t - last);
+      last = t;
+      if (dts.length < 120 && !document.hidden) requestAnimationFrame(tick);
+      else decide();
+    };
+    const decide = () => {
+      if (dts.length < 60) return; // tab hidden: try again next launch
+      dts.sort((a, b) => a - b);
+      const median = dts[dts.length >> 1];
+      const slow = median > 24;
+      root.classList.toggle('lite', slow);
+      try {
+        localStorage.setItem(LITE_KEY, JSON.stringify({ lite: slow, at: Date.now() }));
+      } catch {
+        /* ignore */
+      }
+    };
+    requestAnimationFrame(tick);
+  }, 2500);
 }

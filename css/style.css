@@ -4416,8 +4416,6 @@ button{
   row-gap: 8px;
   padding: 12px 14px 14px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--hue) 38%, var(--surface)), color-mix(in srgb, var(--hue) 10%, var(--surface)));
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 .wh-badge{
   grid-row: 1;
@@ -7802,3 +7800,29 @@ button.arch-day:active{ transform: scale(0.92); }
 }
 .fb-text:focus{ outline: 2px solid var(--accent); }
 .fb-note{ display: block; margin-top: 8px; text-align: center; color: var(--muted); font-size: 12px; }
+
+/* Collection: series far below the fold are not laid out / painted until scrolled near
+   (97 animated marbles at once were a 0.5 s hitch on slow phones). */
+.album .al-set{
+  content-visibility: auto;
+  contain-intrinsic-size: auto 210px;
+}
+
+/* ---------- lite mode (slow phones, detected at runtime) ---------- */
+.lite .modal::backdrop{
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(6, 8, 22, 0.78);
+}
+.lite .world-fog,
+.lite .rc-front{
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.lite .scenery .sp:nth-of-type(2n),
+.lite .scenery .glow.g2{
+  display: none;
+}
+.lite .scenery .glow{
+  animation: none;
+}
