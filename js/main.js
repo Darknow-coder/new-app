@@ -20,7 +20,7 @@ import { quests, season, track } from './progress.js';
 import { openChest } from './chests.js';
 import { $, S, applyStaticText, notify, showView } from './ui/core.js';
 import { renderHome } from './ui/home.js';
-import { challengeImage, hint, move, restart, rewind, startChallenge, startLevel, startTutorial, undo } from './ui/game.js';
+import { challengeImage, hint, move, restart, rewind, startChallenge, startDaily, startLevel, startTutorial, undo } from './ui/game.js';
 import { openSeason } from './ui/progressui.js';
 import { handleProgress } from './ui/common.js';
 import { shareText } from './ui/settings.js';
@@ -75,5 +75,5 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:' && !/localhost
 }
 
 // Debug hook for automated tests (harmless in production).
-window.__marbl = { openFeedback, openLeaderboard, openArchive, openEditor, openSharedLevel, startChallenge, challengeImage, season, openSeason,
+window.__marbl = { startDaily, openFeedback, openLeaderboard, openArchive, openEditor, openSharedLevel, startChallenge, challengeImage, season, openSeason,
   track, handleProgress, notify, quests, get game() { return S.game; }, move, undo, restart, rewind, hint, shareText, store, startLevel, openMap, openShop, renderHome, openChest, setPendingUnlock: (n) => (S.pendingUnlock = n) };

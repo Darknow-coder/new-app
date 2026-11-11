@@ -11,7 +11,8 @@
     "e2e": "node tests/e2e/smoke.cjs",
     "audit:levels": "node scripts/audit-levels.mjs",
     "package": "bash scripts/package.sh",
-    "shots": "node scripts/store-shots.cjs"
+    "shots": "node scripts/store-shots.cjs",
+    "clip": "node scripts/clips.cjs"
   },
   "license": "MIT"
 }
