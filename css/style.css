@@ -8103,3 +8103,10 @@ button.arch-day:active{ transform: scale(0.92); }
   animation: run-flicker 1.6s ease-in-out infinite;
 }
 @keyframes run-flicker{ 50%{ filter: brightness(1.15); transform: scale(1.06); } }
+
+/* Player badge + chest inbox on mid-size phones: drop the XP text rather than crush it. */
+.hud-xp strong, .hud-xp small{ white-space: nowrap; }
+@media (max-width: 480px){
+  .hud:has(.inbox-btn:not([hidden])) .hud-xp{ display: none; }
+  .hud:has(.inbox-btn:not([hidden])) .hud-player{ flex: none; padding: 3px; }
+}
