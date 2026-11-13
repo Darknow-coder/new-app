@@ -11,12 +11,15 @@ const defaults = () => ({
   endless: { level: 1, best: {} }, // legacy (pre-adventure); migrated into `levels`
   levels: { unlocked: 1, best: {} }, // best: { [level]: stars }
   coins: 100,
-  boosters: { hint: 3, rewind: 3 },
+  boosters: { hint: 3, rewind: 3, freeze: 1 }, // freeze: protects the daily streak for one missed day
+  frozenDays: {}, // days covered by a streak freeze
   giftDay: null,
   rewardedDays: {}, // days whose completion bonus was paid
   chests: { opened: {} },
   skins: { owned: ['classic'], equipped: 'classic', seen: ['classic'] },
   seenMech: {},
+  perfectRun: 0, // consecutive new levels won with 3★
+  perfectPending: null, // { n, run }: a run that can still be saved by replaying level n for 3★
   archive: {}, // past daily puzzles played late: same shape as `daily`, kept apart so streaks stay honest
   myLevels: [], // levels made in the editor: { id, rows, par, created }
   season: null,
@@ -159,6 +162,26 @@ export const store = {
     if (live?.done) return live;
     return data.archive[key]?.[diff] || live || null;
   },
+  /**
+   * Missed days right before today that would break a running streak are covered by
+   * freezes, if the player has enough. Returns the number of freezes used.
+   */
+  useStreakFreezes(today) {
+    const ok = (k) => store.dayComplete(k) || !!data.frozenDays?.[k];
+    const gap = [];
+    let k = addDays(today, -1);
+    while (!ok(k) && gap.length < 7) {
+      gap.push(k);
+      k = addDays(k, -1);
+    }
+    const have = data.boosters.freeze || 0;
+    if (!gap.length || !ok(k) || gap.length > have) return 0;
+    data.frozenDays = data.frozenDays || {};
+    for (const g of gap) data.frozenDays[g] = true;
+    data.boosters.freeze = have - gap.length;
+    save();
+    return gap.length;
+  },
   dayComplete(key) {
     const day = data.daily[key];
     return !!day && DAILY_ORDER.every((d) => day[d]?.done);
@@ -206,20 +229,23 @@ export const store = {
 /** Stats derived from history (never stored, so they can't drift out of sync). */
 export function computeStats(today) {
   const keys = Object.keys(data.daily).sort();
-  const complete = keys.filter((k) => store.dayComplete(k));
+  // A day saved by a streak freeze keeps the streak alive (it doesn't count as played).
+  const ok = (k) => store.dayComplete(k) || !!data.frozenDays?.[k];
+  const complete = [...new Set([...keys, ...Object.keys(data.frozenDays || {})])].sort().filter(ok);
   let best = 0;
   let run = 0;
   let prev = null;
+  const played = (k) => (store.dayComplete(k) ? 1 : 0); // frozen days bridge the run but don't add to it
   for (const k of complete) {
-    run = prev && dayDiff(prev, k) === 1 ? run + 1 : 1;
+    run = prev && dayDiff(prev, k) === 1 ? run + played(k) : played(k);
     best = Math.max(best, run);
     prev = k;
   }
-  // Current streak: alive if today or yesterday is complete.
+  // Current streak: alive if today or yesterday is complete (or frozen).
   let current = 0;
-  let cursor = store.dayComplete(today) ? today : addDays(today, -1);
-  while (store.dayComplete(cursor)) {
-    current++;
+  let cursor = ok(today) ? today : addDays(today, -1);
+  while (ok(cursor)) {
+    current += played(cursor);
     cursor = addDays(cursor, -1);
   }
   let stars = 0;
@@ -233,7 +259,7 @@ export function computeStats(today) {
   }
   const levelStars = Object.values(data.levels.best).reduce((a, b) => a + b, 0);
   return {
-    played: complete.length,
+    played: keys.filter((k) => store.dayComplete(k)).length,
     current,
     best,
     stars,

@@ -12,7 +12,7 @@ export const S = {
   game: null,
   pendingUnlock: 0,
   animating: false,
-  queued: null,
+  queue: [], // tilts made while pieces were still rolling
   shownCoins: null,
 };
 

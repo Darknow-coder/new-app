@@ -208,8 +208,11 @@ export function startGame(opts) {
   };
   if (opts.restore) {
     for (const d of opts.restore.path || []) {
+      const next = tilt(S.game.level, S.game.state, d).state;
+      // A saved game that ended on a fatal move (closed on the "Lost!" screen): stop before it.
+      if (isDead(next)) break;
       S.game.history.push(S.game.state);
-      S.game.state = tilt(S.game.level, S.game.state, d).state;
+      S.game.state = next;
       S.game.path.push(d);
     }
     S.game.moves = opts.restore.moves || 0;
@@ -227,7 +230,7 @@ export function startGame(opts) {
   els.rewind.hidden = opts.mode !== 'level';
   els.restart.hidden = opts.mode === 'tutorial' && opts.tut === 0;
   S.animating = false;
-  S.queued = null;
+  S.queue = [];
   if (opts.mode === 'level') {
     buildScenery($('#scenery-game'), worldOf(opts.n) % WORLD_HUES.length, worldHue(opts.n));
     setMusicTheme(worldOf(opts.n) % WORLD_HUES.length);
@@ -395,11 +398,7 @@ new ResizeObserver(sizeBoard).observe(els.area);
 
 export function updateHud(bump = true) {
   els.moves.textContent = S.game.moves;
-  if (bump) {
-    els.moves.classList.remove('bump');
-    void els.moves.offsetWidth;
-    els.moves.classList.add('bump');
-  }
+  if (bump) replay(els.moves, 'bump');
   els.par.textContent = t('par', { n: S.game.level.par });
   els.counter.classList.toggle('is-over', S.game.moves > S.game.level.par);
   if (bump && S.game.moves === S.game.level.par + 1) replay(els.counter, 'over-shake');
@@ -417,22 +416,21 @@ export function updateHud(bump = true) {
   }
 }
 
-export function rollMs(dist) {
+export function baseRollMs(dist) {
   return Math.round(95 * Math.sqrt(dist) + 45);
 }
 
 export function move(dir) {
   if (!S.game || S.game.done) return;
   if (S.animating) {
-    S.queued = dir;
+    // Fast swipers: keep every tilt, in order (a few at most, so the board never lags far behind).
+    if (S.queue.length < 12) S.queue.push(dir);
     return;
   }
   unlockAudio();
   const { state: next, moves } = tilt(S.game.level, S.game.state, dir);
   if (stateKey(next) === stateKey(S.game.state)) {
-    els.board.classList.remove('shake');
-    void els.board.offsetWidth;
-    els.board.classList.add('shake');
+    replay(els.board, 'shake');
     sfx.thud();
     buzz(15);
     announce(t('nothingMoved'));
@@ -454,7 +452,10 @@ export function move(dir) {
   let longest = 0;
   let dropIndex = 0;
   const sunkNow = moves.filter((m) => m && m.sunk);
-  const WARP_GAP = 110;
+  // Catching up with queued tilts: animate faster so the board never lags behind the player.
+  const pace = S.queue.length >= 3 ? 0.45 : S.queue.length ? 0.65 : 1;
+  const rollMs = (d) => Math.round(baseRollMs(d) * pace);
+  const WARP_GAP = Math.round(110 * pace);
   const moveMs = (m) => {
     const segs = m.segs || [m];
     return segs.reduce((acc, sg, k) => acc + (sg.dist ? rollMs(sg.dist) : 0) + (k > 0 && !segs[k - 1].turn ? WARP_GAP : 0), 0);
@@ -463,7 +464,7 @@ export function move(dir) {
     if (!m || m.dist === 0) return;
     const el = S.game.pieceEls[i];
     const ms = moveMs(m);
-    longest = Math.max(longest, ms + (m.sunk || m.fell ? 320 : 120));
+    longest = Math.max(longest, ms + Math.round((m.sunk || m.fell ? 320 : 120) * pace));
     el.classList.remove('impact-x', 'impact-y', 'sinking', 'warp');
     // Each straight run is animated separately; between runs the piece warps through a portal.
     const segs = m.segs || [{ from: m.from, to: m.to, dist: m.dist }];
@@ -488,6 +489,12 @@ export function move(dir) {
         }
         el.style.transition = `transform ${segMs}ms ${k > 0 && segs[k - 1].turn ? 'linear' : 'cubic-bezier(0.45, 0, 0.9, 0.65)'}`;
         setPos(el, sg.to);
+        // Stretch along the motion while rolling (squash comes on impact).
+        if (sg.dist >= 2) {
+          const horiz = Math.floor(sg.from / S.game.level.w) === Math.floor(sg.to / S.game.level.w);
+          el.classList.remove('roll-x', 'roll-y');
+          el.classList.add(horiz ? 'roll-x' : 'roll-y');
+        }
         const gates = S.game.level.gates;
         if (gates && sg.dist) {
           // A soft chime as the marble slips through each crystal gate on its way.
@@ -516,19 +523,22 @@ export function move(dir) {
       } else if (m.sunk) {
         el.classList.add('sinking');
         const hole = S.game.holeEls.get(piece.color);
-        hole.classList.remove('pulse');
-        void hole.offsetWidth;
-        hole.classList.add('pulse', 'filled');
+        el.classList.remove('roll-x', 'roll-y');
+        hole.classList.add('filled');
+        replay(hole, 'pulse');
         sparks(m.to, piece.color);
+        shockwave(m.to, piece.color);
         S.game.drops = (S.game.drops || 0) + 1;
         sfx.drop(order + S.game.drops - 1);
         replay(els.board, 'jolt');
         buzz([10, 30, 20]);
         setTimeout(() => el.classList.add('gone'), 340);
       } else {
+        el.classList.remove('roll-x', 'roll-y');
         el.classList.add(axis);
         if (S.game.level.sand?.[m.to]) sfx.sand();
         else sfx.clack(Math.min(1, m.dist / 5));
+        if (m.dist >= 3 && !reducedMotion()) dust(m.to, dir);
       }
     }, ms);
     if (m.sunk) dropIndex++;
@@ -550,7 +560,7 @@ export function move(dir) {
     if (isDead(S.game.state)) {
       // A marble fell into a pit: the attempt is lost. Offer a fresh retry, or to take
       // the move back (it still counts).
-      S.queued = null;
+      S.queue = [];
       replay(els.board, 'shake');
       S.animating = true;
       setTimeout(() => {
@@ -561,12 +571,10 @@ export function move(dir) {
     }
     if (isSolved(S.game.level, S.game.state)) {
       onSolved();
-    } else if (S.queued) {
-      const d = S.queued;
-      S.queued = null;
-      move(d);
+    } else if (S.queue.length) {
+      move(S.queue.shift());
     }
-  }, Math.max(longest, 160));
+  }, Math.max(longest, Math.round(160 * pace)));
 }
 
 export function trail(sg, color, dir, ms) {
@@ -597,6 +605,36 @@ export function showCombo(count) {
   buzz([20, 30, 20, 30, 40]);
   burst(els.layer, 50, 50, { count: 24, colors: ['var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)', '#fff'], dist: 160 });
   handleProgress(track('combo', { count }));
+}
+
+/** A puff of dust on the side a piece slammed into (long rolls only). */
+function dust(cell, dir) {
+  const { x, y } = cellXY(cell);
+  const { w, h } = S.game.level;
+  const { dx, dy } = DIRS[dir];
+  for (let i = 0; i < 4; i++) {
+    const d = document.createElement('i');
+    d.className = 'dust';
+    const spread = (i - 1.5) * 0.22;
+    d.style.left = `${((x + 0.5 + dx * 0.42 + (dy ? spread : 0)) / w) * 100}%`;
+    d.style.top = `${((y + 0.5 + dy * 0.42 + (dx ? spread : 0)) / h) * 100}%`;
+    d.style.setProperty('--dx', `${(dy ? spread * 40 : -dx * 10) + (Math.random() - 0.5) * 8}px`);
+    d.style.setProperty('--dy', `${(dx ? spread * 40 : -dy * 10) + (Math.random() - 0.5) * 8}px`);
+    els.layer.appendChild(d);
+    setTimeout(() => d.remove(), 520);
+  }
+}
+
+/** A coloured ring that ripples out of a hole when its marble drops in. */
+function shockwave(cell, color) {
+  const { x, y } = cellXY(cell);
+  const { w, h } = S.game.level;
+  const r = document.createElement('i');
+  r.className = `shockwave c${color}`;
+  r.style.left = `${((x + 0.5) / w) * 100}%`;
+  r.style.top = `${((y + 0.5) / h) * 100}%`;
+  els.layer.appendChild(r);
+  setTimeout(() => r.remove(), 700);
 }
 
 export function sparks(cell, color) {
@@ -706,8 +744,18 @@ export function hint() {
   if (!S.game || S.game.done || S.animating || S.game.mode !== 'level') return;
   const key = stateKey(S.game.state);
   if (S.game.hintKey === key && !els.hintArrow.hidden) return; // already showing for this position
-  const sol = solve(S.game.level, S.game.state, { maxDepth: 30, maxStates: 400000 });
-  if (!sol || !sol.path.length) return;
+  // Still on the optimal path? Then the next move is known: no search needed.
+  const ref = S.game.level.solution || [];
+  const onPath = S.game.path.length < ref.length && S.game.path.every((d, i) => d === ref[i]);
+  const next = onPath ? ref[S.game.path.length] : solve(S.game.level, S.game.state, { maxDepth: 30, maxStates: 400000 })?.path[0];
+  if (!next) {
+    // Dead end (or too far from any solution): say so instead of doing nothing.
+    toast(t('hintStuck'));
+    replay(els.restart, 'nudge-once');
+    buzz(30);
+    return;
+  }
+  const sol = { path: [next] };
   if (!useBooster('hint')) return;
   S.game.hintKey = key;
   updateHud(false);

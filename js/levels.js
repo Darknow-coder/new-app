@@ -171,6 +171,14 @@ export function levelReward(prevStars, stars) {
 }
 
 /** Coins for a daily puzzle (first solve only) and for completing the whole day. */
+/** Bonus coins for a run of perfect (3★) new levels in a row. */
+export function perfectRunBonus(run) {
+  if (run === 3) return 15;
+  if (run === 5) return 30;
+  if (run >= 10 && run % 5 === 0) return 60;
+  return 0;
+}
+
 export function dailyReward(stars) {
   return 8 + stars * 4;
 }
@@ -189,6 +197,7 @@ export const SHOP = [
   { id: 'hint5', items: { hint: 5 }, price: 150, tag: '-25%' },
   { id: 'rewind1', items: { rewind: 1 }, price: 25 },
   { id: 'rewind5', items: { rewind: 5 }, price: 100, tag: '-20%' },
+  { id: 'freeze1', items: { freeze: 1 }, price: 200 },
 ];
 export const SHOP_CHESTS = [
   { id: 'chest-wood', tier: 'wood', price: 90 },

@@ -246,7 +246,7 @@ test('world chests drop that world\'s marbles; completing a series grants its le
   assert.ok(store.data.coins > coins);
 });
 
-import { normalize, exportProgress, importProgress } from '../js/storage.js';
+import { normalize, exportProgress, importProgress, computeStats } from '../js/storage.js';
 
 test('save data: corrupted/partial saves are repaired, never crash', () => {
   const a = normalize({ coins: 'lots', levels: { unlocked: -4 }, skins: { owned: ['w0-sand'], equipped: 'nope' }, inbox: 5 });
@@ -351,4 +351,24 @@ test('every language has every text, with the same {placeholders}', () => {
     }
   }
   assert.deepEqual(Object.keys(S).sort(), ['en', 'es', 'fr']);
+});
+
+test('streak freezes bridge missed days without adding to the streak', () => {
+  store.reset();
+  const done = (k) => ['easy', 'medium', 'hard'].forEach((d) => store.setDailyEntry(k, d, { done: true, moves: 3, stars: 3 }));
+  ['2026-11-08', '2026-11-09', '2026-11-10'].forEach(done);
+  // Missed the 11th and the 12th; one freeze is not enough for two days.
+  assert.equal(store.booster('freeze'), 1);
+  assert.equal(store.useStreakFreezes('2026-11-13'), 0);
+  store.booster('freeze', 1);
+  assert.equal(store.useStreakFreezes('2026-11-13'), 2);
+  assert.equal(computeStats('2026-11-13').current, 3, 'frozen days keep the run but do not count');
+  assert.equal(store.booster('freeze'), 0);
+  done('2026-11-13');
+  assert.equal(computeStats('2026-11-13').current, 4);
+});
+
+import { perfectRunBonus } from '../js/levels.js';
+test('perfect run bonuses at 3, 5, 10, 15...', () => {
+  assert.deepEqual([1, 2, 3, 4, 5, 9, 10, 12, 15].map(perfectRunBonus), [0, 0, 15, 0, 30, 0, 60, 0, 60]);
 });

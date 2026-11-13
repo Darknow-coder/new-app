@@ -144,7 +144,7 @@ export function seasonSkinFor(k) {
 
 export function tierIcon(r, k) {
   if (r.kind === 'coins') return `<span class="sp-ico"><svg><use href="#i-coin"/></svg></span><b>${r.n}</b>`;
-  if (r.kind === 'hint' || r.kind === 'rewind') return `<span class="sp-ico ${r.kind}"><svg><use href="#i-${r.kind}"/></svg></span><b>×${r.n}</b>`;
+  if (r.kind === 'hint' || r.kind === 'rewind' || r.kind === 'freeze') return `<span class="sp-ico ${r.kind}"><svg><use href="#i-${r.kind}"/></svg></span><b>×${r.n}</b>`;
   if (r.kind === 'chest') return `<span class="sp-chest">${chestSVG(r.tier)}</span><b>${t(`chest_${r.tier}`)}</b>`;
   const sk = seasonSkinFor(k);
   return `<span class="sp-skin">${marbleHTML(sk ? sk.id : 'season-crown', k === 30 ? 2 : 3)}</span><b>${sk ? skinName(sk.id) : '+300'}</b>`;

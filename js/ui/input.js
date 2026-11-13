@@ -286,19 +286,4 @@ $('#btn-reset').addEventListener('click', () => {
   }
 });
 
-// Optional PWA install button.
-export let installEvt = null;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  installEvt = e;
-  $('#btn-install').hidden = false;
-});
-
-$('#btn-install').addEventListener('click', async () => {
-  if (!installEvt) return;
-  installEvt.prompt();
-  await installEvt.userChoice.catch(() => {});
-  installEvt = null;
-  $('#btn-install').hidden = true;
-});
+// The install button / card and in-app browser warning live in install.js.

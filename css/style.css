@@ -7907,3 +7907,188 @@ button.arch-day:active{ transform: scale(0.92); }
 }
 .lost-text{ color: var(--muted); font-weight: 600; margin: 0 0 14px; }
 .lost-actions{ display: grid; gap: 10px; }
+.ctrl.nudge-once, #btn-restart.nudge-once{ animation: nudge-once 0.6s var(--spring) 2; }
+@keyframes nudge-once{ 30%{ transform: scale(1.15) rotate(-8deg); } 60%{ transform: scale(1.05) rotate(6deg); } }
+
+/* ---------- game feel: stretch, dust, shockwave ---------- */
+.piece > *{ transition: scale 0.12s ease-out; }
+.piece.roll-x > *{ scale: 1.1 0.9; }
+.piece.roll-y > *{ scale: 0.9 1.1; }
+.dust{
+  position: absolute;
+  z-index: 2;
+  width: calc(var(--size) * 0.035);
+  height: calc(var(--size) * 0.035);
+  margin: calc(var(--size) * -0.0175);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+  animation: dust 0.5s ease-out forwards;
+}
+@keyframes dust{
+  from{ transform: scale(0.6); opacity: 0.9; }
+  to{ transform: translate(var(--dx), var(--dy)) scale(1.8); opacity: 0; }
+}
+.shockwave{
+  position: absolute;
+  z-index: 2;
+  width: calc(var(--size) * 0.16);
+  height: calc(var(--size) * 0.16);
+  margin: calc(var(--size) * -0.08);
+  border-radius: 50%;
+  border: 3px solid var(--col);
+  box-shadow: 0 0 12px var(--col), inset 0 0 8px var(--col);
+  pointer-events: none;
+  animation: shockwave 0.65s cubic-bezier(.2, .7, .3, 1) forwards;
+}
+@keyframes shockwave{
+  from{ transform: scale(0.5); opacity: 1; }
+  to{ transform: scale(2.6); opacity: 0; border-width: 1px; }
+}
+/* Victory: filled holes light up one after another. */
+.board.won .hole.filled::after{
+  content: '';
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 0 3px var(--col), 0 0 24px 6px var(--col);
+  opacity: 0;
+  animation: hole-glow 0.9s ease-out both;
+  animation-delay: var(--glow-delay, 0ms);
+}
+@keyframes hole-glow{ 30%{ opacity: 1; } to{ opacity: 0; } }
+@media (prefers-reduced-motion: reduce){ .piece.roll-x > *, .piece.roll-y > *{ scale: none; } }
+
+/* ---------- perfect run chip (result card) ---------- */
+.result-streak{
+  display: table;
+  margin: 6px auto 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 15px;
+  color: #3a1600;
+  background: linear-gradient(90deg, #ffd34d, #ff8a3d);
+  box-shadow: 0 3px 0 #b4530e;
+  animation: streak-in 0.5s 0.5s var(--spring) both;
+}
+.result-streak.is-milestone{ animation: streak-in 0.5s 0.5s var(--spring) both, streak-glow 1.4s 1s ease-in-out 2; }
+.result-streak.is-hold{
+  color: #fff;
+  background: color-mix(in srgb, #ff8a3d 30%, var(--surface-2));
+  box-shadow: inset 0 0 0 2px #ff8a3d;
+}
+@keyframes streak-in{ from{ transform: scale(0.3) rotate(-8deg); opacity: 0; } }
+@keyframes streak-glow{ 50%{ box-shadow: 0 3px 0 #b4530e, 0 0 24px #ffb04d; transform: scale(1.06); } }
+.streak-freeze{
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: color-mix(in srgb, #7fd3ff 25%, transparent);
+  color: #bfe9ff;
+}
+.sp-ico.freeze, .shop-icon.freeze{ color: #7fd3ff; }
+
+/* ---------- in-app browser warning ---------- */
+.iab-bar{
+  position: fixed;
+  z-index: 60;
+  left: 8px;
+  right: 8px;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 10px 14px;
+  border-radius: 16px;
+  background: #ffe9a8;
+  color: #3a2500;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.3;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  animation: iab-in 0.5s var(--spring) both;
+}
+.iab-bar[hidden]{ display: none; }
+.iab-bar span{ flex: 1; }
+.iab-copy{
+  flex: none;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: #3a2500;
+  color: #ffe9a8;
+  font-weight: 700;
+  font-size: 12px;
+}
+.iab-close{ flex: none; width: 28px; height: 28px; border-radius: 50%; color: #3a2500; font-size: 14px; }
+@keyframes iab-in{ from{ transform: translateY(-120%); } }
+
+/* ---------- install card ---------- */
+.install-card{ text-align: center; }
+.install-icon{
+  width: 96px;
+  height: 96px;
+  margin: 4px auto 10px;
+  border-radius: 24px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+  animation: install-bob 2.4s ease-in-out infinite;
+}
+@keyframes install-bob{ 50%{ transform: translateY(-6px) rotate(-3deg); } }
+.install-text{ color: var(--muted); font-weight: 600; margin: 0 0 14px; }
+.install-ios{
+  text-align: left;
+  margin: 0 0 14px;
+  padding: 12px 12px 12px 34px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  font-weight: 600;
+  line-height: 1.7;
+}
+.install-ios[hidden]{ display: none; }
+.ios-share{ width: 20px; height: 20px; vertical-align: -4px; color: #4aa8ff; }
+.install-actions{ display: grid; gap: 10px; }
+
+/* ---------- opt-in ads & packs (hidden unless enabled) ---------- */
+.price-ad, .price-iap{
+  gap: 6px;
+  background: linear-gradient(#6fe0ff, #2fa8e8);
+  color: #062a3d;
+  box-shadow: 0 4px 0 #1a6f9e;
+}
+.price-iap{ background: linear-gradient(#9cf08a, #3dbb5a); color: #0b3315; box-shadow: 0 4px 0 #237a38; }
+.price-ad svg{ width: 18px; height: 18px; }
+.shop-cardlet.is-ad{ border: 2px dashed color-mix(in srgb, #6fe0ff 50%, transparent); }
+.btn.btn-ad{ background: linear-gradient(#6fe0ff, #2fa8e8); color: #062a3d; box-shadow: 0 5px 0 #1a6f9e; }
+.btn.btn-ad:disabled{ opacity: 0.8; }
+.mz-demo{
+  border: 0;
+  padding: 0;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  animation: mz-in 0.25s ease-out;
+}
+.mz-demo[open]{ display: grid; }
+.mz-demo::backdrop{ background: rgba(0, 0, 0, 0.88); }
+.mz-demo-card{
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 28px 26px;
+  border-radius: 24px;
+  background: #1b1f47;
+  color: #fff;
+  text-align: center;
+  font-weight: 700;
+  max-width: 300px;
+}
+.mz-count{ font-size: 64px; line-height: 1; color: #6fe0ff; }
+.mz-demo small{ color: #a9acd6; font-weight: 600; }
+.mz-skip{ padding: 12px 18px; border-radius: 14px; background: #ffc23d; color: #3a2500; font-weight: 700; }
+.mz-skip:disabled{ opacity: 0.4; }
+@keyframes mz-in{ from{ opacity: 0; } }

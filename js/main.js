@@ -13,6 +13,7 @@ import { openSharedLevel, openEditor } from './ui/editor.js';
 import { openArchive } from './ui/archive.js';
 import { openLeaderboard } from './ui/leaderboard-ui.js';
 import { openFeedback } from './ui/feedback.js';
+import { checkInAppBrowser } from './ui/install.js';
 import { installSkinStyles } from './skins.js';
 import { initLite, installRipples, reducedMotion } from './fx.js';
 import { store } from './storage.js';
@@ -28,6 +29,7 @@ import { openMap } from './ui/mapview.js';
 import { openShop } from './ui/shop.js';
 
 initLite();
+checkInAppBrowser();
 
 applyStaticText();
 

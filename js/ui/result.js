@@ -1,7 +1,7 @@
 import { starsFor } from '../engine.js';
 import { burst, iris, replay } from '../fx.js';
 import { save, store } from '../storage.js';
-import { ARCHIVE_DAY_BONUS, adventureLevel, archiveReward, dailyReward, isBoss, levelReward, worldOf } from '../levels.js';
+import { ARCHIVE_DAY_BONUS, adventureLevel, archiveReward, dailyReward, isBoss, levelReward, perfectRunBonus, worldOf } from '../levels.js';
 import { track, xpNeeded } from '../progress.js';
 import { grantSkin, marbleHTML, pickSkin, skinName } from '../skins.js';
 import { sfx } from '../audio.js';
@@ -15,6 +15,7 @@ import { shareDay } from './settings.js';
 import { handleProgress, openDailyChest } from './common.js';
 import { openMap } from './mapview.js';
 import { renderHome } from './home.js';
+import { rewardedLeft, showRewarded } from '../monetization.js';
 import { syncRank } from './leaderboard-ui.js';
 
 export function onSolved() {
@@ -25,6 +26,7 @@ export function onSolved() {
   S.game.reward = 0;
   S.game.bonus = 0;
   els.board.classList.remove('intro');
+  els.board.querySelectorAll('.hole.filled').forEach((h, i) => h.style.setProperty('--glow-delay', `${120 + i * 120}ms`));
   replay(els.board, 'won');
   if (stars === 3) replay(els.board, 'par-flash');
   S.game.xpBefore = { ...store.data.player };
@@ -57,11 +59,33 @@ export function onSolved() {
     }
   } else if (S.game.mode === 'level') {
     const prev = store.recordLevel(S.game.n, stars);
+    if (prev === 0 && S.game.n <= 2) import('./install.js').then((m) => m.persistStorage());
     syncRank();
     S.game.newBest = prev > 0 && stars > prev;
     if (prev === 0 && store.data.levels.unlocked === S.game.n + 1) S.pendingUnlock = S.game.n + 1;
     S.game.reward = levelReward(prev, stars);
     if (S.game.reward) store.addCoins(S.game.reward);
+    // Perfect run: new levels won with 3★ in a row. Missing the 3★ puts the run on hold:
+    // replaying that same level for 3★ saves it, moving on loses it.
+    S.game.perfectRun = 0;
+    S.game.perfectHold = 0;
+    const pend = store.data.perfectPending;
+    if (prev === 0 || (pend && pend.n === S.game.n)) {
+      if (stars === 3) {
+        const run = (pend && pend.n === S.game.n ? pend.run : store.data.perfectRun || 0) + 1;
+        store.data.perfectRun = run;
+        store.data.perfectPending = null;
+        S.game.perfectRun = run;
+        S.game.bonus = perfectRunBonus(run);
+        if (S.game.bonus) store.addCoins(S.game.bonus);
+      } else if (prev === 0) {
+        const run = store.data.perfectRun || 0;
+        store.data.perfectPending = run >= 2 ? { n: S.game.n, run } : null;
+        store.data.perfectRun = 0;
+        S.game.perfectHold = run >= 2 ? run : 0;
+      }
+      save();
+    }
     S.game.prog = track('levelWin', { stars, first: prev === 0, newStars: Math.max(0, stars - prev), usedBooster: !!S.game.usedBooster });
     S.game.bossSkin = null;
     if (prev === 0 && isBoss(S.game.n)) {
@@ -171,7 +195,22 @@ export function showResult() {
     return;
   } else if (S.game.mode === 'level') {
     const n = S.game.n;
-    actions.push({ label: t('challengeFriend'), icon: 'i-share', keepOpen: true, wide: true, onClick: () => shareChallenge(n, S.game.moves, stars) });
+    // Opt-in rewarded ad: double the coins of this win (only when ads are enabled).
+    const won = S.game.reward || 0;
+    if (won > 0 && rewardedLeft('double')) {
+      actions.push({
+        label: t('adDouble', { n: won }), icon: 'i-video', keepOpen: true, wide: true, cls: 'btn-ad',
+        onClick: async (b) => {
+          b.disabled = true;
+          if (await showRewarded('double')) {
+            store.addCoins(won);
+            updateCoins(true);
+            sfx.coinRain();
+            b.querySelector('span').textContent = t('adDone', { n: won });
+          } else b.disabled = false;
+        },
+      });
+    } else actions.push({ label: t('challengeFriend'), icon: 'i-share', keepOpen: true, wide: true, onClick: () => shareChallenge(n, S.game.moves, stars) });
     actions.push({ label: t('map'), onClick: () => iris(openMap, worldHue(n)) });
     if (stars < 3) actions.push({ label: t('retry'), onClick: () => iris(() => startLevel(n), worldHue(n)) });
     actions.push({ label: t('nextLevel'), primary: true, icon: 'i-play', iconAfter: true, onClick: () => iris(() => startLevel(n + 1), worldHue(n + 1)), wide: true });
@@ -223,6 +262,14 @@ export function showResultCard({ stars, title, line, sub, actions, reward = 0 })
     setTimeout(() => sfx.epic(), 900);
   }
   $('#result-rays').classList.toggle('on', stars === 3);
+  const pr = $('#result-streak');
+  const run = S.game?.mode === 'level' ? S.game.perfectRun : 0;
+  const hold = S.game?.mode === 'level' ? S.game.perfectHold : 0;
+  pr.hidden = !(run >= 2 || hold);
+  pr.classList.toggle('is-hold', !!hold);
+  pr.classList.toggle('is-milestone', !!S.game?.bonus);
+  if (run >= 2) pr.textContent = S.game.bonus ? `${t('perfectRun', { n: run })} · ${t('perfectBonus', { b: S.game.bonus })}` : t('perfectRun', { n: run });
+  else if (hold) pr.textContent = t('perfectKeep', { n: hold });
   $('#new-best').hidden = !S.game?.newBest;
   const rewardEl = $('#result-reward');
   rewardEl.hidden = !reward;
@@ -263,13 +310,13 @@ export function showResultCard({ stars, title, line, sub, actions, reward = 0 })
   box.innerHTML = '';
   for (const a of actions) {
     const b = document.createElement('button');
-    b.className = `btn ${a.primary ? 'btn-primary' : 'btn-ghost'} ${a.wide ? 'btn-full' : ''}`;
+    b.className = `btn ${a.primary ? 'btn-primary' : 'btn-ghost'} ${a.wide ? 'btn-full' : ''} ${a.cls || ''}`;
     b.innerHTML = a.iconAfter
       ? `<span>${a.label}</span><svg class="next-arrow"><use href="#${a.icon}"/></svg>`
       : (a.icon ? `<svg><use href="#${a.icon}"/></svg>` : '') + `<span>${a.label}</span>`;
     b.addEventListener('click', () => {
       if (!a.keepOpen) closeModal('modal-result');
-      a.onClick();
+      a.onClick(b);
     });
     box.appendChild(b);
   }

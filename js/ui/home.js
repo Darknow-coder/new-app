@@ -58,9 +58,15 @@ export function renderHome() {
   });
 
   const stats = computeStats(S.today);
+  // Missed a day? A streak freeze saves the run (if the player has one).
+  const usedFreeze = store.useStreakFreezes(S.today);
+  if (usedFreeze) setTimeout(() => notify('i-freeze', t('freezeUsed'), t('freezeLeft', { n: store.booster('freeze') })), 900);
   const chip = $('#streak-chip');
   chip.classList.toggle('is-hot', stats.current > 0);
   $('#streak-text').textContent = stats.current > 0 ? t(stats.current === 1 ? 'streakOne' : 'streak', { n: stats.current }) : t('noStreak');
+  const fz = store.booster('freeze');
+  $('#streak-freeze').hidden = !fz || stats.current === 0;
+  $('#streak-freeze').textContent = `❄️${fz}`;
 
   $('#share-row').hidden = !store.dayComplete(S.today);
   const lvl = store.data.levels.unlocked;

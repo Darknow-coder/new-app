@@ -12,6 +12,39 @@ import { $, S, buzz, closeModal, fmtCountdown, openModal, toast, updateCoins } f
 import { renderHome } from './home.js';
 import { handleProgress, openChestFlow, openDailyChest } from './common.js';
 import { updateHud } from './game.js';
+import { PLACEMENTS, iapEnabled, productsForSale, purchase, rewardedLeft, showRewarded } from '../monetization.js';
+
+/** Opt-in rewarded offers at the top of the boosters tab (only when ads are enabled). */
+function rewardedRows() {
+  const rows = [];
+  if (rewardedLeft('hint')) rows.push({ id: 'hint', icon: 'i-hint', name: t('adHint'), left: rewardedLeft('hint') });
+  if (rewardedLeft('coins')) rows.push({ id: 'coins', icon: 'i-coin', name: t('adCoins', { n: PLACEMENTS.coins.coins }), left: rewardedLeft('coins') });
+  return rows
+    .map(
+      (r, i) => `
+      <div class="shop-cardlet is-ad" style="--i:${i}">
+        <span class="shop-icon ${r.id === 'hint' ? 'hint' : ''}"><svg><use href="#${r.icon}"/></svg></span>
+        <span class="shop-text"><strong>${r.name}</strong><small>${t('adLeft', { n: r.left })}</small></span>
+        <button class="price price-ad" data-rewarded="${r.id}"><svg><use href="#i-video"/></svg>${t('adWatch')}</button>
+      </div>`,
+    )
+    .join('');
+}
+
+/** Real-money packs (only when purchases are enabled). */
+function packsPanel() {
+  return productsForSale()
+    .map(
+      (p, i) => `
+      <div class="shop-cardlet is-pack ${p.tag ? `tag-${p.tag}` : ''}" style="--i:${i}">
+        ${p.tag ? `<span class="shop-tag">${t(`iapTag_${p.tag}`)}</span>` : ''}
+        <span class="shop-icon pack"><svg><use href="#${p.grant.skin ? 'i-star' : p.grant.hint ? 'i-gift' : 'i-coin'}"/></svg></span>
+        <span class="shop-text"><strong>${t(`iap_${p.id}`)}</strong><small>${t(`iapd_${p.id}`)}</small></span>
+        <button class="price price-iap" data-iap="${p.id}">${p.price}</button>
+      </div>`,
+    )
+    .join('');
+}
 
 export const itemsText = (items) =>
   Object.entries(items)
@@ -62,7 +95,7 @@ export function renderShop() {
   const panel = $('#shop-list');
   panel.dataset.tab = shopTab;
   if (shopTab === 'boost') {
-    panel.innerHTML = SHOP.map((item, i) => {
+    panel.innerHTML = rewardedRows() + SHOP.map((item, i) => {
       const kinds = Object.keys(item.items);
       const pack = kinds.length > 1;
       const icon = pack ? 'i-gift' : `i-${kinds[0]}`;
@@ -80,6 +113,8 @@ export function renderShop() {
           ${coinBtn(item.price, `data-buy="${item.id}"`)}
         </div>`;
     }).join('');
+  } else if (shopTab === 'packs') {
+    panel.innerHTML = packsPanel();
   } else if (shopTab === 'chests') {
     panel.innerHTML = SHOP_CHESTS.map(
       (c, i) => `
@@ -125,6 +160,9 @@ export function refreshShop() {
 
 export function openShop(tab) {
   if (typeof tab === 'string') shopTab = tab;
+  const packs = document.querySelector('.shop-tabs [data-tab="packs"]');
+  packs.hidden = !iapEnabled();
+  if (packs.hidden && shopTab === 'packs') shopTab = 'boost';
   renderShop();
   openModal('modal-shop');
 }
@@ -155,7 +193,37 @@ export function celebrateBuy(target, label) {
   });
 }
 
-$('#modal-shop').addEventListener('click', (e) => {
+$('#modal-shop').addEventListener('click', async (e) => {
+  const ad = e.target.closest('[data-rewarded]');
+  if (ad) {
+    ad.disabled = true;
+    if (await showRewarded(ad.dataset.rewarded)) {
+      if (ad.dataset.rewarded === 'hint') {
+        store.booster('hint', 1);
+        toast(t('bought', { q: 1, b: t('hintName') }));
+      } else {
+        store.addCoins(PLACEMENTS.coins.coins);
+        updateCoins(true);
+      }
+      sfx.coinRain();
+      if (S.game) updateHud(false);
+    }
+    renderShop();
+    return;
+  }
+  const iap = e.target.closest('[data-iap]');
+  if (iap) {
+    iap.disabled = true;
+    const g = await purchase(iap.dataset.iap);
+    if (g) {
+      sfx.upgrade();
+      toast(t('iapThanks'));
+      updateCoins(true);
+      renderHome();
+    }
+    renderShop();
+    return;
+  }
   const eqBtn = e.target.closest('[data-equip]');
   if (eqBtn) {
     equip(eqBtn.dataset.equip);

@@ -223,6 +223,7 @@ export function seasonInfo(day = dateKey()) {
 /** Reward of tier k (1..30). Kinds: coins, hint, rewind, chest, skin. */
 export function tierReward(k) {
   if (k === 15 || k === 30) return { kind: 'skin', big: k === 30 };
+  if (k === 7 || k === 22) return { kind: 'freeze', n: 1 };
   if (k % 10 === 0) return { kind: 'chest', tier: 'gold' };
   if (k % 5 === 0) return { kind: 'chest', tier: 'silver' };
   if (k % 4 === 0) return { kind: 'chest', tier: 'wood' };
@@ -278,7 +279,7 @@ export function claimTier(k) {
   const r = tierReward(k);
   store.data.season.claimed.push(k);
   if (r.kind === 'coins') store.data.coins += r.n;
-  if (r.kind === 'hint' || r.kind === 'rewind') store.data.boosters[r.kind] += r.n;
+  if (r.kind === 'hint' || r.kind === 'rewind' || r.kind === 'freeze') store.data.boosters[r.kind] = (store.data.boosters[r.kind] || 0) + r.n;
   save();
   return r;
 }
