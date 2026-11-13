@@ -8107,6 +8107,6 @@ button.arch-day:active{ transform: scale(0.92); }
 /* Player badge + chest inbox on mid-size phones: drop the XP text rather than crush it. */
 .hud-xp strong, .hud-xp small{ white-space: nowrap; }
 @media (max-width: 480px){
-  .hud:has(.inbox-btn:not([hidden])) .hud-xp{ display: none; }
-  .hud:has(.inbox-btn:not([hidden])) .hud-player{ flex: none; padding: 3px; }
+  .hud.has-inbox .hud-xp{ display: none; }
+  .hud.has-inbox .hud-player{ flex: none; padding: 3px; }
 }

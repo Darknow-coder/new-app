@@ -86,6 +86,7 @@ export function renderHome() {
   $('#ach-badge').textContent = achReady;
   const inbox = store.data.inbox;
   $('#inbox-btn').hidden = !inbox.length;
+  $('#inbox-btn').closest('.hud')?.classList.toggle('has-inbox', !!inbox.length);
   if (inbox.length) {
     $('#inbox-chest').innerHTML = chestSVG(inbox[0].tier);
     $('#inbox-count').textContent = inbox.length;
