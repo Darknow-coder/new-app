@@ -4487,20 +4487,6 @@ button{
   opacity: 0.55;
 }
 
-/* Islands of land under the road */
-
-.land{
-  position: absolute;
-  width: calc(var(--r) * 2);
-  height: calc(var(--r) * 1.3);
-  margin: calc(var(--r) * -0.65) 0 0 calc(var(--r) * -1);
-  border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--hue) 26%, transparent) 0%, color-mix(in srgb, var(--hue) 14%, transparent) 45%, transparent 70%);
-}
-.world.is-locked .land{
-  filter: grayscale(0.7);
-}
-
 /* The road */
 
 /* Nodes: more depth */
@@ -6372,69 +6358,6 @@ body{
 }
 /* the old CSS-shape decor and dashed polyline are gone */
 
-/* road */
-.map-scene path[class^='road']{
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.road-edge{
-  stroke: rgba(30, 20, 40, 0.35);
-  stroke-width: 34;
-}
-.road-fill{
-  stroke: var(--road);
-  stroke-width: 26;
-  opacity: 0.9;
-}
-.road-lit-edge{
-  stroke: #b8740c;
-  stroke-width: 34;
-}
-.road-lit{
-  stroke: #ffd35a;
-  stroke-width: 26;
-}
-.road-dots{
-  stroke: #fff6cf;
-  stroke-width: 5;
-  stroke-dasharray: 0.1 16;
-}
-/* props (only a few, cheap, animations — and none at all off-screen) */
-.mp .sway{
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: mp-sway 3.6s ease-in-out infinite;
-}
-.mp .bob{
-  animation: mp-bob 2.4s ease-in-out infinite;
-}
-.mp .blink{
-  animation: mp-blink 1.8s steps(1) infinite;
-}
-.mp .glow{
-  animation: mp-glow 1.6s ease-in-out infinite;
-}
-@keyframes mp-sway {
-  50% {
-    rotate: 4deg;
-  }
-}
-@keyframes mp-bob {
-  50% {
-    translate: 0 -5px;
-  }
-}
-@keyframes mp-blink {
-  50% {
-    opacity: 0.35;
-  }
-}
-@keyframes mp-glow {
-  50% {
-    opacity: 0.6;
-  }
-}
 /* nodes: static (no per-node infinite animation), outlined like the art */
 .node.is-done,
 .view-map.is-active .node.is-done{
@@ -7068,12 +6991,6 @@ body{
   background: var(--bg);
   box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.55);
 }
-.mp .spin {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: spin 6s linear infinite;
-}
-
 /* Shaped boards follow their silhouette */
 .board.shaped {
   background: none;
@@ -8112,4 +8029,633 @@ button.arch-day:active{ transform: scale(0.92); }
 @media (max-width: 760px){
   .hud.has-inbox .hud-xp{ display: none; }
   .hud.has-inbox .hud-player{ flex: none; padding: 3px; }
+}
+
+/* ==========================================================================
+   MAP v4 — premium illustrated road of trophies
+   (scenes are painted in SVG by js/map.js; this styles what sits on top)
+   ========================================================================== */
+.world{
+  margin-bottom: 0;
+  background: linear-gradient(to bottom, var(--g0), var(--g1));
+}
+.world-path{
+  isolation: isolate;
+}
+.map-scene{
+  z-index: 0;
+}
+
+/* ---------- world banner: a glossy plaque with the world's emblem ---------- */
+.world-head{
+  --plate: color-mix(in srgb, var(--hue) 50%, #231a52);
+  padding: 9px 12px 10px 10px;
+  border-radius: 20px;
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 46%),
+    linear-gradient(160deg, var(--plate), color-mix(in srgb, var(--hue) 18%, #150f36)) !important;
+  border: 2px solid color-mix(in srgb, var(--hue) 55%, #ffffff);
+  box-shadow:
+    0 4px 0 color-mix(in srgb, var(--hue) 30%, #0b0720),
+    0 12px 24px rgba(8, 5, 26, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -8px 16px rgba(0, 0, 0, 0.2);
+  color: #fff;
+}
+.world-head .wh-text small{
+  color: color-mix(in srgb, var(--hue) 55%, #ffffff);
+  letter-spacing: 0.1em;
+}
+.world-head .wh-text strong{
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+.wh-badge{
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 0 !important;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--hue) 35%, #ffffff), color-mix(in srgb, var(--hue) 75%, #2a2060) 75%) padding-box,
+    linear-gradient(160deg, #fff6cf, #ffcf4a 40%, #c98510 75%, #7a4300) border-box;
+  border: 3px solid transparent !important;
+  box-shadow: 0 3px 0 #6a3a00, 0 6px 10px rgba(0, 0, 0, 0.35), inset 0 -4px 6px rgba(0, 0, 0, 0.2);
+  overflow: visible;
+}
+.wh-emblem{
+  width: 40px;
+  height: 40px;
+  overflow: visible;
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.3));
+}
+.wh-badge b{
+  position: absolute;
+  right: -6px;
+  bottom: -5px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(#ffffff, #e6e2f6);
+  color: color-mix(in srgb, var(--hue) 45%, #1a1240);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+.wh-bar{
+  background: rgba(6, 4, 22, 0.45);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+.wh-bar i{
+  background: linear-gradient(to bottom, #ffe98a, #ffc22e 55%, #f08a10);
+}
+.world-head .world-stars{
+  font-weight: 700;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+.world-head .world-stars svg{
+  color: #ffd34d;
+  filter: drop-shadow(0 1px 0 #8a4a00);
+}
+.world-head .wh-set{
+  background: rgba(6, 4, 22, 0.35);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- level medallions ---------- */
+.node{
+  --ink: color-mix(in srgb, var(--hue) 35%, #120a26);
+  color: #fff;
+  font-size: 21px;
+  font-weight: 700;
+  text-shadow:
+    0 2.5px 0 var(--ink),
+    1.6px 1.6px 0 var(--ink),
+    -1.6px 1.6px 0 var(--ink),
+    1.6px -1.6px 0 var(--ink),
+    -1.6px -1.6px 0 var(--ink),
+    0 -1.8px 0 var(--ink),
+    1.8px 0 0 var(--ink),
+    -1.8px 0 0 var(--ink);
+}
+.node span{
+  position: relative;
+  z-index: 1;
+  translate: 0 -1px;
+}
+.node.is-done{
+  border: 4px solid transparent !important;
+  background:
+    radial-gradient(64% 40% at 50% 16%, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 72%) padding-box,
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--hue) 55%, #ffffff) 0, var(--hue) 52%, color-mix(in srgb, var(--hue) 58%, #000000) 100%) padding-box,
+    linear-gradient(165deg, #fff6cf 0%, #ffd24a 32%, #e09a14 62%, #8a5200 100%) border-box;
+  box-shadow: 0 5px 0 #6a3a00, 0 9px 12px rgba(0, 0, 0, 0.38), inset 0 -5px 8px rgba(0, 0, 0, 0.22) !important;
+  color: #fff;
+}
+.node.is-current{
+  --ink: #8a3c00;
+  text-shadow:
+    0 3px 0 var(--ink),
+    2.2px 2.2px 0 var(--ink),
+    -2.2px 2.2px 0 var(--ink),
+    2.2px -2.2px 0 var(--ink),
+    -2.2px -2.2px 0 var(--ink),
+    0 -2.4px 0 var(--ink),
+    2.4px 0 0 var(--ink),
+    -2.4px 0 0 var(--ink);
+  border: 4px solid transparent !important;
+  background:
+    radial-gradient(64% 40% at 50% 16%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 72%) padding-box,
+    radial-gradient(circle at 50% 45%, #fff8da 0, #ffd84f 52%, #f39a16 100%) padding-box,
+    linear-gradient(165deg, #ffffff 0%, #ffe79a 35%, #f0a628 65%, #9a5600 100%) border-box;
+  box-shadow: 0 6px 0 #7a4000, 0 0 0 6px rgba(255, 214, 90, 0.32), 0 0 26px rgba(255, 196, 60, 0.55), 0 12px 20px rgba(0, 0, 0, 0.4) !important;
+  color: #fff;
+  font-size: 25px;
+}
+.node.is-current::after{
+  border-color: rgba(255, 226, 120, 0.9);
+}
+.node.is-locked{
+  --ink: #4a4e66;
+  border: 3px solid transparent !important;
+  background:
+    radial-gradient(64% 40% at 50% 16%, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 72%) padding-box,
+    radial-gradient(circle at 50% 40%, #c4c7d8 0, #9195ad 58%, #666a84 100%) padding-box,
+    linear-gradient(165deg, #f2f3fa, #a6aac0 50%, #565a72) border-box;
+  box-shadow: 0 4px 0 #3c3f56, 0 7px 9px rgba(0, 0, 0, 0.32), inset 0 -4px 6px rgba(0, 0, 0, 0.18) !important;
+  color: #fff;
+}
+.node.is-locked svg{
+  width: 20px;
+  height: 20px;
+  color: #ffffff;
+  opacity: 1;
+  filter: drop-shadow(0 1.5px 0 #4a4e66);
+}
+.node.is-boss{
+  --hue: #ff4f6a;
+  --ink: #6a0820;
+}
+.node.is-boss.is-done{
+  background:
+    radial-gradient(64% 40% at 50% 16%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 72%) padding-box,
+    radial-gradient(circle at 50% 42%, #ff9fb0 0, #ec2c4c 55%, #7a0a24 100%) padding-box,
+    linear-gradient(165deg, #fff6cf 0%, #ffd24a 32%, #e09a14 62%, #8a5200 100%) border-box;
+}
+.node.is-boss.is-locked{
+  background:
+    radial-gradient(64% 40% at 50% 16%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 72%) padding-box,
+    radial-gradient(circle at 50% 40%, #b7a0b0 0, #8a6a80 58%, #5a4258 100%) padding-box,
+    linear-gradient(165deg, #f2e6ee, #b08aa2 50%, #5a3a52) border-box;
+}
+.node em{
+  top: -15px;
+  z-index: 2;
+  padding: 2px 8px 3px;
+  border-radius: 7px;
+  background: linear-gradient(to bottom, #ff6b81, #d6264a);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 0 #7a0a24, 0 4px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.node em.em-new{
+  background: linear-gradient(to bottom, #fff1a0, #ffc22e);
+  color: #6a3a00;
+  text-shadow: none;
+  box-shadow: 0 2px 0 #a86200, 0 4px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.node-stars{
+  bottom: -19px;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+.node-stars .stars{
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  font-size: 16px;
+}
+.node-stars svg{
+  color: rgba(255, 255, 255, 0.28);
+  stroke: rgba(40, 24, 70, 0.75);
+  stroke-width: 2.4px;
+  paint-order: stroke;
+  overflow: visible;
+}
+.node-stars svg.on{
+  color: #ffd84a;
+  stroke: #8a4a00;
+  stroke-width: 2.6px;
+}
+.node-stars svg:nth-child(1){
+  transform: translateY(-4px) rotate(-16deg);
+}
+.node-stars svg:nth-child(2){
+  transform: translateY(1px) scale(1.18);
+}
+.node-stars svg:nth-child(3){
+  transform: translateY(-4px) rotate(16deg);
+}
+
+/* ---------- the player's own marble marks the level to play ---------- */
+.you-are-here{
+  width: 34px;
+  height: 34px;
+  margin: -96px 0 0 -17px;
+  border-radius: 50%;
+  background: none;
+  box-shadow: none;
+}
+.you-are-here .marble-preview,
+.map-token .marble-preview{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.you-are-here .marble-preview{
+  filter: drop-shadow(0 5px 4px rgba(0, 0, 0, 0.4));
+}
+.you-are-here::after{
+  left: 50%;
+  bottom: -14px;
+  width: 16px;
+  height: 11px;
+  margin-left: -8px;
+  border: 0;
+  background: linear-gradient(to bottom, #fff1a0, #ffb020);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.map-token{
+  background: none;
+  box-shadow: none;
+}
+
+/* ---------- chests ---------- */
+.chest-label{
+  bottom: -11px;
+  padding: 2px 9px 3px;
+  border-radius: 9px;
+  background: linear-gradient(to bottom, #43347a, #261b52);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 0 rgba(10, 6, 30, 0.6), 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+.chest-label svg{
+  color: #ffd84a;
+}
+.chest-node.is-ready .chest-label{
+  background: linear-gradient(to bottom, #fff1a0, #ffc22e 60%, #f59a16);
+  color: #6a3a00;
+  border-color: #fff8d6;
+  box-shadow: 0 2px 0 #a85e00, 0 0 14px rgba(255, 200, 60, 0.7);
+}
+.chest-node.is-ready::after{
+  content: '';
+  position: absolute;
+  inset: -34px;
+  z-index: -1;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 238, 160, 0.6) 0deg 9deg, rgba(255, 238, 160, 0) 9deg 30deg);
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%);
+  mask: radial-gradient(circle, #000 18%, transparent 68%);
+  animation: spin 10s linear infinite;
+  pointer-events: none;
+}
+.chest-node.is-locked .chest-svg{
+  filter: saturate(0.35) brightness(0.92);
+  opacity: 0.92;
+}
+
+/* ---------- worlds still to unlock rest under clouds ---------- */
+.world-fog{
+  inset: -64px 0 0;
+  background: linear-gradient(to bottom, rgba(20, 14, 52, 0) 0, rgba(20, 14, 52, 0.18) 160px, rgba(20, 14, 52, 0.42) 520px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.world.is-locked .map-scene{
+  filter: none;
+}
+.world-fog span{
+  padding: 10px 16px 10px 12px;
+  border-radius: 16px;
+  background: linear-gradient(to bottom, #43347a, #261b52);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  box-shadow: 0 4px 0 #120a30, 0 12px 26px rgba(10, 6, 30, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.world-fog span svg{
+  color: #ffd84a;
+}
+
+/* ---------- life in the scenery ---------- */
+.map-scene .a-sway{
+  animation: m-sway 4.6s ease-in-out infinite;
+}
+.map-scene .a-bob{
+  animation: m-bob 3.4s ease-in-out infinite;
+}
+.map-scene .a-drift{
+  animation: m-drift 11s ease-in-out infinite;
+}
+@keyframes m-sway {
+  50% {
+    rotate: 2.6deg;
+  }
+}
+@keyframes m-bob {
+  50% {
+    translate: 0 -5px;
+  }
+}
+@keyframes m-drift {
+  50% {
+    translate: 16px 0;
+  }
+}
+.m-spin,
+.m-spinr{
+  animation: spin 7s linear infinite;
+}
+.m-spinr{
+  animation-direction: reverse;
+  animation-duration: 5s;
+}
+.m-flicker{
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: m-flicker 0.9s ease-in-out infinite alternate;
+}
+@keyframes m-flicker {
+  to {
+    scale: 0.9 1.08;
+  }
+}
+.m-glow,
+.m-blink,
+.m-beam{
+  animation: m-pulse 2.2s ease-in-out infinite;
+}
+@keyframes m-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* ambient particles (composited: only transform / opacity move) */
+.map-fx{
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.map-fx i{
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  scale: var(--s);
+  animation: fx-float var(--t) var(--d) ease-in-out infinite;
+  will-change: transform, opacity;
+}
+@keyframes fx-float {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(14px, -26px);
+  }
+}
+@keyframes fx-rise {
+  from {
+    transform: translate(0, 40px);
+    opacity: 0;
+  }
+  20%,
+  70% {
+    opacity: 1;
+  }
+  to {
+    transform: translate(10px, -120px);
+    opacity: 0;
+  }
+}
+@keyframes fx-fall {
+  from {
+    transform: translate(0, -60px) rotate(0);
+    opacity: 0;
+  }
+  20%,
+  75% {
+    opacity: 1;
+  }
+  to {
+    transform: translate(-18px, 110px) rotate(200deg);
+    opacity: 0;
+  }
+}
+@keyframes fx-twinkle {
+  0%,
+  100% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.fx-sparkle i,
+.fx-twinkle i{
+  width: 10px;
+  height: 10px;
+  border-radius: 0;
+  background: radial-gradient(circle, #fff 0 18%, transparent 22%), conic-gradient(from 45deg, transparent 0 20%, #fff 25%, transparent 30% 45%, #fff 50%, transparent 55% 70%, #fff 75%, transparent 80%);
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  background: #fff;
+  animation-name: fx-twinkle;
+}
+.fx-twinkle i{
+  background: #fff6c8;
+}
+.fx-dust i{
+  background: rgba(255, 240, 210, 0.8);
+  width: 4px;
+  height: 4px;
+}
+.fx-embers i,
+.fx-sparks i{
+  width: 4px;
+  height: 4px;
+  background: #ffb03a;
+  box-shadow: 0 0 6px 2px rgba(255, 140, 40, 0.6);
+  animation-name: fx-rise;
+}
+.fx-sparks i{
+  background: #ffd36b;
+}
+.fx-bubbles i{
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.9) 0 18%, rgba(255, 255, 255, 0.15) 30%, rgba(255, 255, 255, 0.05) 60%);
+  box-shadow: inset 0 0 0 1.4px rgba(230, 250, 255, 0.75);
+  animation-name: fx-rise;
+}
+.fx-snow i{
+  background: #fff;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+  animation-name: fx-fall;
+}
+.fx-fireflies i,
+.fx-motes i{
+  width: 5px;
+  height: 5px;
+  background: #f6ff9a;
+  box-shadow: 0 0 8px 3px rgba(230, 255, 120, 0.55);
+}
+.fx-motes i{
+  background: #fffbe0;
+  box-shadow: 0 0 8px 3px rgba(255, 246, 200, 0.5);
+}
+.fx-neon i{
+  width: 5px;
+  height: 5px;
+  background: #5df2ff;
+  box-shadow: 0 0 8px 3px rgba(93, 242, 255, 0.5);
+}
+.fx-neon i:nth-child(2n){
+  background: #ff4fd8;
+  box-shadow: 0 0 8px 3px rgba(255, 79, 216, 0.5);
+}
+.fx-petals i{
+  width: 8px;
+  height: 6px;
+  border-radius: 80% 0 80% 0;
+  background: #ffb3d0;
+  animation-name: fx-fall;
+}
+.fx-rain i{
+  width: 2px;
+  height: 14px;
+  border-radius: 2px;
+  background: linear-gradient(transparent, rgba(220, 235, 255, 0.85));
+  rotate: 18deg;
+  animation-name: fx-fall;
+  animation-duration: 1.4s;
+}
+.fx-clouds i{
+  width: 40px;
+  height: 14px;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0));
+}
+
+/* calm screens: no ambient motion */
+.lite .map-fx,
+.lite .map-scene [class^='a-'],
+.lite .m-spin,
+.lite .m-spinr,
+.lite .m-flicker,
+.lite .m-glow,
+.lite .m-blink,
+.lite .m-beam,
+.lite .chest-node.is-ready::after{
+  animation: none !important;
+}
+.lite .map-fx{
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-fx{
+    display: none;
+  }
+  .map-scene [class^='a-'],
+  .m-spin,
+  .m-spinr,
+  .m-flicker,
+  .m-glow,
+  .m-blink,
+  .m-beam,
+  .chest-node.is-ready::after{
+    animation: none !important;
+  }
+}
+
+/* baked scenery picture + live overlays */
+img.map-scene{
+  display: block;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.map-road{
+  position: absolute;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  overflow: visible;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 90px, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 90px, #000 calc(100% - 40px), transparent);
+}
+.map-sprites{
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.map-sprite{
+  position: absolute;
+  overflow: visible;
+  transform-origin: 0 0;
+}
+.map-sprite.a-sway{
+  animation: m-sway 4.6s ease-in-out infinite;
+}
+.map-sprite.a-bob{
+  animation: m-bob 3.4s ease-in-out infinite;
+}
+.map-sprite.a-drift{
+  animation: m-drift 11s ease-in-out infinite;
+}
+.lite .map-sprite{
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-sprite{
+    animation: none !important;
+  }
+}
+
+/* narrow phones: let the world's name breathe in its banner */
+@media (max-width: 370px) {
+  .world-head .wh-text strong{
+    font-size: 15px;
+  }
+  .wh-badge{
+    width: 38px;
+    height: 38px;
+  }
+  .wh-emblem{
+    width: 34px;
+    height: 34px;
+  }
 }

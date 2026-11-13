@@ -1,8 +1,8 @@
 import { LEVELS_PER_WORLD, WORLD_HUES, adventureLevel, introAt, isBoss, worldOf, bossShape } from '../levels.js';
 import { WORLD_CHESTS, chestId, chestSVG, isOpened } from '../chests.js';
 import { t } from '../i18n.js';
-import { hasSkin, marbleHTML, setSkins } from '../skins.js';
-import { MAP_THEMES, ensureMapDefs, roadD, worldScene } from '../map.js';
+import { equipped, hasSkin, marbleHTML, setSkins } from '../skins.js';
+import { MAP_THEMES, bakeWorld, ensureMapDefs, litRoad, roadD, spritesHTML, worldEmblem, worldFx } from '../map.js';
 import { store } from '../storage.js';
 import { setMusicTheme, sfx } from '../audio.js';
 import { burst, iris, reducedMotion, replay } from '../fx.js';
@@ -26,12 +26,26 @@ export function worldBanner(w, ws, first, unlocked) {
   }).join('');
   return `
     <header class="world-head">
-      <span class="wh-badge"><span>${w + 1}</span></span>
+      <span class="wh-badge">${worldEmblem(w)}<b>${w + 1}</b></span>
       <span class="wh-text"><small>${t('world', { n: w + 1 })}</small><strong>${worldName(w)}</strong></span>
       <span class="world-stars"><svg><use href="#i-star"/></svg>${ws}/${max}</span>
       ${w < 16 ? (() => { const list = setSkins(`w${w}`); const got = list.filter((x) => hasSkin(x.id)); return `<span class="wh-set">${marbleHTML(got.length ? got[got.length - 1].id : 'classic', w % 4, got.length ? '' : 'silhouette')}${got.length}/${list.length}</span>`; })() : ''}
       <span class="wh-bar"><i style="width:${(ws / max) * 100}%"></i>${marks}</span>
     </header>`;
+}
+
+/** The player's own marble, bobbing above the level to play. */
+const hereHTML = (x, y, extra = '') => `<i class="you-are-here ${extra}" style="left:${x}%;top:${y}px">${marbleHTML(equipped(), 0)}</i>`;
+
+/** A few drifting particles (snow, embers, bubbles...): HTML, so the compositor animates them. */
+function ambient(w, height) {
+  let seed = (w + 1) * 7919;
+  const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  let s = '';
+  for (let i = 0; i < 12; i++) {
+    s += `<i style="left:${(r() * 100).toFixed(1)}%;top:${Math.round(r() * (height - 120) + 40)}px;--d:${(-r() * 8).toFixed(2)}s;--t:${(5 + r() * 5).toFixed(2)}s;--s:${(0.6 + r() * 0.8).toFixed(2)}"></i>`;
+  }
+  return `<div class="map-fx fx-${worldFx(w)}" aria-hidden="true">${s}</div>`;
 }
 
 export let sceneIO = null;
@@ -83,7 +97,7 @@ export function renderMap({ hideUnlock = 0 } = {}) {
       const starRow = state === 'done' ? `<span class="node-stars">${starsHTML(stars)}</span>` : '';
       const tag = isBoss(n) ? '<em>BOSS</em>' : introAt(n) ? `<em class="em-new">${t('newShort')}</em>` : '';
       nodes += `<button class="node is-${state} ${isBoss(n) ? 'is-boss' : ''}" data-n="${n}" data-i="${i}" style="left:${x}%;top:${y}px;--i:${i}" aria-label="${t('level', { n })}${stars ? `, ${stars}/3` : ''}">${inner}${starRow}${tag}</button>`;
-      if (state === 'current') nodes += `<i class="you-are-here" style="left:${x}%;top:${y}px"></i>`;
+      if (state === 'current') nodes += hereHTML(x, y);
     }
     // Star chests along the road.
     for (const c of WORLD_CHESTS) {
@@ -114,16 +128,20 @@ export function renderMap({ hideUnlock = 0 } = {}) {
     const fog = locked
       ? `<div class="world-fog"><span><svg><use href="#i-lock"/></svg>${t('worldLocked', { n: w })}</span></div>`
       : '';
+    const fx = locked ? '' : ambient(w, height);
     sec.innerHTML = `
       ${worldBanner(w, ws, first, unlocked)}
       <div class="world-path" style="height:${height}px">
-        <svg class="map-scene" aria-hidden="true"></svg>
+        <img class="map-scene" alt="" aria-hidden="true" decoding="async">
+        <svg class="map-road" aria-hidden="true"></svg>
+        <div class="map-sprites"></div>
+        ${fx}
         ${nodes}
         ${fog}
       </div>`;
     sec.style.containIntrinsicSize = `auto ${height + 180}px`;
     map.appendChild(sec);
-    scenes.push({ sec, w, height, pts, lit, avoid, lastWorld: w === lastWorld });
+    scenes.push({ sec, w, height, pts, lit, avoid, locked, lastWorld: w === lastWorld });
   }
   // Second pass, now that sizes are known: draw scenery and road in real pixels.
   // Read layout once (all sections share the same banner height), then only write.
@@ -139,17 +157,20 @@ export function renderMap({ hideUnlock = 0 } = {}) {
     if (!sc.lastWorld) road.push([W / 2, sc.height]);
     const litN = sc.lit ? sc.lit + 1 + (sc.lit === sc.pts.length && !sc.lastWorld ? 1 : 0) : 0;
     const avoid = sc.avoid.map(([x, y, r]) => [(x / 100) * W, y, r]);
-    const svg = path.querySelector('.map-scene');
+    const stations = px.slice(0, LEVELS_PER_WORLD).map(([x, y], i) => [x, y, isBoss(sc.w * LEVELS_PER_WORLD + i + 1)]);
+    const art = bakeWorld({ w: sc.w, W, H: sc.height, top, road, avoid, stations, last: sc.lastWorld, locked: sc.locked });
+    const img = path.querySelector('.map-scene');
+    img.style.top = `${-top}px`;
+    img.style.height = `${sc.height + top}px`;
+    img.src = art.url;
+    const svg = path.querySelector('.map-road');
     svg.setAttribute('viewBox', `0 ${-top} ${W} ${sc.height + top}`);
     svg.style.top = `${-top}px`;
     svg.style.height = `${sc.height + top}px`;
     svg.dataset.road = JSON.stringify(road.map(([x, y]) => [Math.round(x), Math.round(y)]));
     svg.dataset.lit = litN;
-    const d = roadD(road);
-    const dLit = litN > 1 ? roadD(road.slice(0, litN)) : '';
-    svg.innerHTML = `${worldScene(sc.w, W, sc.height, road, avoid, top)}
-      <path class="road-edge" d="${d}"/><path class="road-fill" d="${d}"/>
-      <path class="road-lit-edge" d="${dLit}"/><path class="road-lit" d="${dLit}"/><path class="road-dots" d="${dLit}"/>`;
+    svg.innerHTML = litRoad(road, litN);
+    path.querySelector('.map-sprites').innerHTML = spritesHTML(art.sprites);
   };
   // Draw the scenery of the current world now, the others when they come near the screen.
   const cur = worldOf(unlocked);
@@ -236,27 +257,26 @@ export function playUnlock(u) {
       node.className = `node is-current ${isBoss(u) ? 'is-boss' : ''} just-unlocked`;
       node.innerHTML = `<span>${u}</span>${isBoss(u) ? '<em>BOSS</em>' : ''}`;
       const path = node.parentElement;
-      const here = document.createElement('i');
-      here.className = 'you-are-here arrive';
-      here.style.left = node.style.left;
-      here.style.top = node.style.top;
-      path.appendChild(here);
+      path.insertAdjacentHTML('beforeend', hereHTML(parseFloat(node.style.left), parseFloat(node.style.top), 'arrive'));
       // Extend the lit road to the new level, drawing it in.
-      const svg = path.querySelector('.map-scene');
-      if (svg) {
+      const svg = path.querySelector('.map-road');
+      if (svg?.dataset.road) {
         const road = JSON.parse(svg.dataset.road);
         const from = Number(svg.dataset.lit);
         const to = Number(node.dataset.i) + 2;
         const d = roadD(road.slice(0, to));
-        const lits = svg.querySelectorAll('.road-lit-edge, .road-lit, .road-dots');
+        const lits = [...svg.querySelectorAll('.road-lit-edge, .road-lit, .road-lit-hi')];
+        const dots = svg.querySelector('.road-dots');
         lits.forEach((p) => p.setAttribute('d', d));
         const len = lits[1].getTotalLength();
+        // the sparkle dots appear once the gold has been drawn in
+        setTimeout(() => dots?.setAttribute('d', d), 600);
         const tmp = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         tmp.setAttribute('d', roadD(road.slice(0, from)));
         svg.appendChild(tmp);
         const old = from > 1 ? tmp.getTotalLength() : 0;
         tmp.remove();
-        [lits[0], lits[1]].forEach((p) =>
+        lits.forEach((p) =>
           p.animate([{ strokeDasharray: `${len} ${len}`, strokeDashoffset: len - old }, { strokeDasharray: `${len} ${len}`, strokeDashoffset: 0 }], { duration: 650, easing: 'ease-out' }),
         );
         svg.dataset.lit = to;
@@ -277,6 +297,7 @@ export function playUnlock(u) {
   }
   const token = document.createElement('i');
   token.className = 'map-token';
+  token.innerHTML = marbleHTML(equipped(), 0);
   token.style.left = prev.style.left;
   token.style.top = prev.style.top;
   node.parentElement.appendChild(token);

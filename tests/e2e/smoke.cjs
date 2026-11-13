@@ -81,8 +81,14 @@ const assert = (c, m) => {
     });
     await step('map renders with scenery', async () => {
       await M(() => window.__marbl.openMap());
-      await page.waitForTimeout(1200);
-      assert((await page.locator('.map-scene use').count()) > 5, 'no map props drawn');
+      await page.waitForTimeout(2400); // includes the unlock animation (token rolls to level 3)
+      const scene = await M(() => {
+        const img = document.querySelector('.world.is-here img.map-scene');
+        return { w: img?.naturalWidth || 0, lit: document.querySelectorAll('.world.is-here .map-road .road-lit').length, here: !!document.querySelector('.you-are-here .marble-preview') };
+      });
+      assert(scene.w > 100, 'map scenery picture not loaded');
+      assert(scene.lit === 1, 'travelled road missing');
+      assert(scene.here, 'player marble missing on the current level');
       assert((await page.locator('.node').count()) >= 20, 'nodes missing');
     });
     await step('chest ceremony', async () => {

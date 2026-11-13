@@ -1,287 +1,729 @@
-// Adventure map artwork: one illustrated SVG scene per world (ground, landmarks,
-// outlined cartoon props) plus a smooth road. Props are shared <g> defs reused with
-// <use>, placed deterministically and kept clear of the road and the chests.
-import { hashString } from './engine.js';
+// Adventure map artwork. Each world is a painted scene built at runtime in SVG:
+// ground lighting and textures, large terrain features that hug the road, a road made of
+// the world's own material, platforms under every level, depth-sorted illustrated props,
+// foreground framing, atmosphere, and mist bands that stitch one world to the next.
+// Cheap to render: gradients instead of filters, props reused through <use>, many small
+// marks merged into single paths, and only a handful of (lite-mode aware) animations.
+import { ao, between, blob, closedD, dark, def, defsFor, ellD, f, flushDefs, glow, light, lin, mix, offsetD, pick, polyD, rad, rng, roadD, sampleRoad, shade } from './map-kit.js';
+import { C, E, L, P, PROP_CLIPS, PROPS1, R as RECT, ST, bloom, crown, crystal, hshade, op, rock, tuft } from './map-props.js';
+import { PROPS2 } from './map-props2.js';
+import { WORLD_ART } from './map-worlds.js';
 
-const OL = '#2b1d2e';
-const O = `stroke="${OL}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"`;
-const SH = (rx = 16) => `<ellipse cx="0" cy="0" rx="${rx}" ry="${rx * 0.28}" fill="rgba(0,0,0,.2)"/>`;
+export { roadD };
 
-function starPath(r1, r2, n = 5, cy = -14) {
-  let d = '';
-  for (let i = 0; i < n * 2; i++) {
-    const a = -Math.PI / 2 + (i * Math.PI) / n;
-    const r = i % 2 ? r2 : r1;
-    d += `${i ? 'L' : 'M'}${(Math.cos(a) * r).toFixed(1)} ${(cy + Math.sin(a) * r).toFixed(1)}`;
-  }
-  return `${d}Z`;
-}
+const PROPS = { ...PROPS1, ...PROPS2 };
+const art = (w) => WORLD_ART[w % WORLD_ART.length];
 
-/* ---------- prop artwork (base at 0,0, drawn upwards) ---------- */
-const PROPS = {
-  // beach
-  palm: `${SH(20)}<path d="M-4 0C-2-22 3-42 9-60L15-58C9-40 6-20 5 0Z" fill="#b97a3f" ${O}/>
-    <g class="sway"><path d="M12-60C0-74-16-70-26-58C-12-62-2-60 12-60Z" fill="#43c062" ${O}/>
-    <path d="M12-60C24-76 40-72 48-60C34-64 24-62 12-60Z" fill="#43c062" ${O}/>
-    <path d="M12-60C6-80 16-90 26-92C18-82 16-72 12-60Z" fill="#5bd477" ${O}/>
-    <path d="M12-60C-4-62-14-50-14-40C-6-50 2-56 12-60Z" fill="#36a853" ${O}/>
-    <path d="M12-60C28-62 36-50 34-40C28-50 20-56 12-60Z" fill="#36a853" ${O}/>
-    <circle cx="9" cy="-56" r="4" fill="#7a4a22" ${O}/><circle cx="16" cy="-55" r="4" fill="#7a4a22" ${O}/></g>`,
-  umbrella: `${SH(24)}<rect x="-20" y="-8" width="40" height="10" rx="3" fill="#4aa8ff" ${O}/>
-    <path d="M-1-2V-50" ${O} fill="none"/>
-    <path d="M-28-40Q0-66 28-40Z" fill="#fff" ${O}/>
-    <path d="M-28-40Q-18-56 0-58L-9-40ZM0-58Q18-56 28-40L9-40Z" fill="#ff5d73"/>
-    <path d="M-28-40Q0-66 28-40Z" fill="none" ${O}/>`,
-  starfish: `${SH(12)}<path d="${starPath(14, 6)}" fill="#ff8a5c" ${O}/><circle cx="-3" cy="-17" r="1.6" fill="#fff"/><circle cx="3" cy="-12" r="1.6" fill="#fff"/>`,
-  rock: `${SH(18)}<path d="M-18 0C-20-10-12-20 0-20C12-22 20-12 18 0Z" fill="#a3a1b4" ${O}/><path d="M-8-14C-4-17 2-17 6-15" stroke="#fff" stroke-width="2.5" fill="none" opacity=".6" stroke-linecap="round"/>`,
-  shell: `${SH(12)}<path d="M-12 0L0-22L12 0Z" fill="#ffd0dc" ${O}/><path d="M0-22L-6 0M0-22L0 0M0-22L6 0" stroke="#ff8fab" stroke-width="2"/><path d="M-12 0L0-22L12 0Z" fill="none" ${O}/>`,
-  // dunes
-  cactus: `${SH(16)}<path d="M-6 0V-46C-6-54 6-54 6-46V0Z" fill="#45b863" ${O}/>
-    <path d="M-6-22H-14C-18-22-18-26-18-28V-36C-18-42-10-42-10-36V-30H-6" fill="#45b863" ${O}/>
-    <path d="M6-28H14V-40C14-46 22-46 22-40V-30C22-24 18-22 14-22H6" fill="#45b863" ${O}/>
-    <path d="M-1-44V-6" stroke="#2f8f4a" stroke-width="2"/>`,
-  barrel: `${SH(14)}<ellipse cx="0" cy="-12" rx="13" ry="12" fill="#4dbf6a" ${O}/><path d="M-6-22V-2M0-24V0M6-22V-2" stroke="#2f8f4a" stroke-width="2"/><circle cx="0" cy="-25" r="4" fill="#ff6fa2" ${O}/>`,
-  pyramid: `${SH(32)}<path d="M-32 0L0-46L32 0Z" fill="#f5c76a" ${O}/><path d="M0-46L32 0H6Z" fill="#d99a3a"/><path d="M-32 0L0-46L32 0Z" fill="none" ${O}/><path d="M-20-16H20M-12-30H12" stroke="#c78a2e" stroke-width="2"/>`,
-  dunerock: `${SH(20)}<path d="M-20 0C-18-12-6-16 4-14C14-12 20-6 20 0Z" fill="#c98a4a" ${O}/>`,
-  // canyon
-  mesa: `${SH(34)}<path d="M-34 0L-24-44H24L34 0Z" fill="#d8703c" ${O}/><path d="M-30-14H30M-27-28H27" stroke="#a84b26" stroke-width="2.5"/><path d="M-24-44H24L22-38H-22Z" fill="#f09358"/><path d="M-34 0L-24-44H24L34 0Z" fill="none" ${O}/>`,
-  spire: `${SH(12)}<path d="M-12 0L-6-60L4-66L12 0Z" fill="#c45f32" ${O}/><path d="M-9-20H10M-7-40H8" stroke="#963f1d" stroke-width="2.2"/>`,
-  lava: `<ellipse cx="0" cy="-6" rx="26" ry="10" fill="#5a2414" ${O}/><ellipse class="glow" cx="0" cy="-6" rx="19" ry="6" fill="#ffb03a"/><ellipse cx="-4" cy="-7" rx="8" ry="2.5" fill="#fff3a0"/>`,
-  deadtree: `${SH(12)}<path d="M-3 0L-2-30L-12-44M-2-30L0-50L-4-60M0-42L10-52M-1-22L8-30" stroke="${OL}" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M-3 0L-2-30L-12-44M-2-30L0-50L-4-60M0-42L10-52M-1-22L8-30" stroke="#8a5a3a" stroke-width="3.5" fill="none" stroke-linecap="round"/>`,
-  // reef
-  seaweed: `<g class="sway"><path d="M-4 0C-12-14 4-24-4-38C-10-48 0-56-2-64" stroke="${OL}" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M-4 0C-12-14 4-24-4-38C-10-48 0-56-2-64" stroke="#3fcf7a" stroke-width="5" fill="none" stroke-linecap="round"/>
-    <path d="M6 0C0-12 12-20 6-32C2-40 8-46 8-50" stroke="${OL}" stroke-width="8" fill="none" stroke-linecap="round"/><path d="M6 0C0-12 12-20 6-32C2-40 8-46 8-50" stroke="#2fb066" stroke-width="4" fill="none" stroke-linecap="round"/></g>`,
-  coral: `${SH(16)}<path d="M0 0V-24M0-16L-12-30M-12-30V-40M0-24L10-38M-6-23L-16-22M6-30L16-32" stroke="${OL}" stroke-width="10" fill="none" stroke-linecap="round"/><path d="M0 0V-24M0-16L-12-30M-12-30V-40M0-24L10-38M-6-23L-16-22M6-30L16-32" stroke="#ff7b93" stroke-width="6" fill="none" stroke-linecap="round"/>`,
-  fish: `<g class="bob"><path d="M-14-30C-6-40 10-40 14-30C10-20-6-20-14-30Z" fill="#ffc23d" ${O}/><path d="M-14-30L-24-38V-22Z" fill="#ff9a3d" ${O}/><circle cx="7" cy="-32" r="2.2" fill="${OL}"/><path d="M-2-38V-22" stroke="#ff9a3d" stroke-width="2.5"/></g>`,
-  clam: `${SH(14)}<path d="M-14-4C-14-16 14-16 14-4Z" fill="#b58bff" ${O}/><circle cx="0" cy="-8" r="4" fill="#fff" ${O}/><path d="M-14-4H14L10 0H-10Z" fill="#8e65e0" ${O}/>`,
-  // peaks
-  mountain: `${SH(36)}<path d="M-38 0L-8-52L4-38L14-50L38 0Z" fill="#8f7ce6" ${O}/><path d="M-8-52L-18-34L-10-36L-4-30L4-38ZM14-50L8-40L14-42L20-36Z" fill="#fff"/><path d="M-38 0L-8-52L4-38L14-50L38 0Z" fill="none" ${O}/>`,
-  pine: `${SH(14)}<rect x="-3" y="-10" width="6" height="10" fill="#7a4a22" ${O}/><path d="M0-58L14-36H7L18-20H9L20-8H-20L-9-20H-18L-7-36H-14Z" fill="#3e8f63" ${O}/><path d="M0-58L-4-50L4-50Z" fill="#fff"/>`,
-  crystal: `${SH(14)}<path d="M-10 0L-14-18L-6-34L2-18Z" fill="#c9a6ff" ${O}/><path d="M0 0L-2-28L8-44L14-26L10 0Z" fill="#a77bff" ${O}/><path d="M8-44L4-28L-2-28" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/>`,
-  // glacier
-  iceberg: `${SH(30)}<path d="M-30 0L-20-26L-6-34L10-48L24-24L30 0Z" fill="#f2fbff" ${O}/><path d="M10-48L4-24L24-24ZM-20-26L-6-34L-8-14Z" fill="#bfe6fb"/><path d="M-30 0L-20-26L-6-34L10-48L24-24L30 0Z" fill="none" ${O}/>`,
-  penguin: `${SH(12)}<ellipse cx="0" cy="-18" rx="12" ry="18" fill="#2b2d42" ${O}/><ellipse cx="0" cy="-14" rx="7.5" ry="12" fill="#fff"/><circle cx="-4" cy="-26" r="2" fill="#fff"/><circle cx="4" cy="-26" r="2" fill="#fff"/><circle cx="-4" cy="-26" r="1" fill="${OL}"/><circle cx="4" cy="-26" r="1" fill="${OL}"/><path d="M-3-22L0-19L3-22Z" fill="#ffb02e"/><path d="M-6 0H-1M1 0H6" stroke="#ffb02e" stroke-width="3" stroke-linecap="round"/>`,
-  igloo: `${SH(28)}<path d="M-28 0C-28-34 28-34 28 0Z" fill="#f4fbff" ${O}/><path d="M-26-10H26M-18-20H18M-10 0V-10M8-10V-20M16 0V-10" stroke="#bcdcf0" stroke-width="2"/><path d="M-9 0C-9-14 9-14 9 0Z" fill="#5a7c99" ${O}/>`,
-  snowpile: `${SH(22)}<path d="M-22 0C-22-12-10-16-2-14C4-22 18-18 22 0Z" fill="#ffffff" ${O}/>`,
-  // woods
-  tree: `${SH(20)}<rect x="-4" y="-18" width="8" height="18" fill="#8a5a32" ${O}/><g class="sway"><circle cx="-10" cy="-30" r="13" fill="#3fa356" ${O}/><circle cx="10" cy="-30" r="13" fill="#3fa356" ${O}/><circle cx="0" cy="-44" r="15" fill="#4fbf63" ${O}/><circle cx="-5" cy="-48" r="4" fill="#7fe08e"/></g>`,
-  mushroom: `${SH(12)}<rect x="-4" y="-14" width="8" height="14" rx="3" fill="#fff4e0" ${O}/><path d="M-16-12C-16-30 16-30 16-12Z" fill="#ff5d5d" ${O}/><circle cx="-6" cy="-20" r="3" fill="#fff"/><circle cx="6" cy="-22" r="2.5" fill="#fff"/><circle cx="1" cy="-15" r="2" fill="#fff"/>`,
-  bush: `${SH(18)}<circle cx="-9" cy="-9" r="10" fill="#3c9a4e" ${O}/><circle cx="9" cy="-9" r="10" fill="#3c9a4e" ${O}/><circle cx="0" cy="-15" r="11" fill="#4cb860" ${O}/><circle cx="-4" cy="-13" r="2.5" fill="#ff6f8f"/><circle cx="6" cy="-17" r="2.5" fill="#ff6f8f"/>`,
-  stump: `${SH(14)}<path d="M-12 0V-14H12V0Z" fill="#9b6a3c" ${O}/><ellipse cx="0" cy="-14" rx="12" ry="5" fill="#d9a46a" ${O}/><ellipse cx="0" cy="-14" rx="5" ry="2" fill="none" stroke="#9b6a3c" stroke-width="1.5"/>`,
-  // neon
-  building: `${SH(22)}<rect x="-18" y="-64" width="36" height="64" rx="3" fill="#2a2457" ${O}/>
-    <path d="M-10-54h6M4-54h6M-10-42h6M4-42h6M-10-30h6M4-30h6M-10-18h6M4-18h6" stroke="#ffd36b" stroke-width="5"/>
-    <path d="M-10-42h6M4-18h6" stroke="#4a4580" stroke-width="5"/><path d="M0-64V-74" stroke="${OL}" stroke-width="2.5"/><circle class="blink" cx="0" cy="-76" r="3" fill="#ff4d8d"/>`,
-  sign: `${SH(16)}<path d="M-2 0V-24M10 0V-24" stroke="${OL}" stroke-width="3"/><rect x="-16" y="-48" width="38" height="24" rx="8" fill="#1b1440" stroke="#ff5dc8" stroke-width="3.5"/><rect class="blink" x="-10" y="-41" width="26" height="10" rx="5" fill="#5df2ff"/>`,
-  tower: `${SH(12)}<path d="M-10 0L-3-70H3L10 0Z" fill="#3a3270" ${O}/><path d="M-7-20H7M-5-40H5M-4-56H4" stroke="#6b62b8" stroke-width="2"/><circle class="blink" cx="0" cy="-74" r="4" fill="#5df2ff" ${O}/>`,
-  lamp: `${SH(10)}<path d="M0 0V-44Q0-50 8-50" stroke="${OL}" stroke-width="4" fill="none"/><path d="M0 0V-44Q0-50 8-50" stroke="#7a72c8" stroke-width="2" fill="none"/><circle cx="10" cy="-48" r="5" fill="#fff3a0" ${O}/>`,
-  // gardens
-  flower: `${SH(10)}<path d="M0 0V-20" stroke="${OL}" stroke-width="5"/><path d="M0 0V-20" stroke="#3fae55" stroke-width="2.5"/><g class="sway"><circle cx="-6" cy="-26" r="5" fill="#ff8fb8" ${O}/><circle cx="6" cy="-26" r="5" fill="#ff8fb8" ${O}/><circle cx="0" cy="-32" r="5" fill="#ff8fb8" ${O}/><circle cx="0" cy="-20" r="5" fill="#ff8fb8" ${O}/><circle cx="0" cy="-26" r="4" fill="#ffd34d" ${O}/></g>`,
-  hedge: `${SH(14)}<path d="M-9 0L-7-10H7L9 0Z" fill="#c4683a" ${O}/><circle cx="0" cy="-24" r="15" fill="#3fae55" ${O}/><circle cx="-5" cy="-29" r="4" fill="#6fd47f"/>`,
-  arrowsign: `${SH(10)}<path d="M0 0V-34" stroke="${OL}" stroke-width="6"/><path d="M0 0V-34" stroke="#a8743f" stroke-width="3"/><path d="M-14-44H8L16-36L8-28H-14Z" fill="#6fe0ff" ${O}/><path d="M-8-36H6M2-40L6-36L2-32" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
-  // sunset mesa
-  tumbleweed: `${SH(12)}<g class="bob"><circle cx="0" cy="-12" r="12" fill="#d9a35c" ${O}/><path d="M-8-16Q0-4 8-16M-8-8Q0-20 8-8M-10-12H10" stroke="#9a6a2e" stroke-width="2" fill="none"/></g>`,
-  // storm lagoon
-  buoy: `<g class="bob"><path d="M-12-4Q0 4 12-4L8-24H-8Z" fill="#ff5d5d" ${O}/><path d="M-10-14H10" stroke="#fff" stroke-width="5"/><path d="M0-24V-38" stroke="${OL}" stroke-width="3"/><circle class="blink" cx="0" cy="-40" r="4" fill="#fff3a0" ${O}/></g>`,
-  cloud: `<g class="bob"><path d="M-22-30C-26-40-14-48-6-42C-2-52 14-52 16-40C26-42 30-30 22-26H-18C-24-26-24-30-22-30Z" fill="#c9d4ea" ${O}/><path d="M-12-20L-16-10M0-20L-4-10M12-20L8-10" stroke="#7fb4ff" stroke-width="3" stroke-linecap="round"/></g>`,
-  lighthouse: `${SH(14)}<path d="M-10 0L-6-50H6L10 0Z" fill="#fff" ${O}/><path d="M-9-12H9M-7-30H7" stroke="#ff5d5d" stroke-width="7"/><path d="M-10 0L-6-50H6L10 0Z" fill="none" ${O}/><rect x="-8" y="-62" width="16" height="12" rx="3" fill="#fff3a0" ${O}/><path d="M-10-62L0-72L10-62Z" fill="#ff5d5d" ${O}/>`,
-  // starlight summit
-  star: `<path class="blink" d="${starPath(10, 4, 5, -26)}" fill="#fff3a0" ${O}/>`,
-  telescope: `${SH(14)}<path d="M0-20L-10 0M0-20L10 0M0-20V0" stroke="${OL}" stroke-width="3"/><g transform="rotate(-30 0 -24)"><rect x="-18" y="-30" width="36" height="12" rx="4" fill="#7a72c8" ${O}/><rect x="14" y="-32" width="8" height="16" rx="2" fill="#fff3a0" ${O}/></g>`,
-  // echo valley
-  arch: `${SH(32)}<path d="M-32 0V-30C-32-52 32-52 32-30V0H18V-28C18-40-18-40-18-28V0Z" fill="#b48e72" ${O}/><path d="M-26-36C-20-46 20-46 26-36" stroke="#fff" stroke-width="3" fill="none" opacity=".4" stroke-linecap="round"/>`,
-  pillar: `${SH(12)}<rect x="-9" y="-46" width="18" height="46" fill="#d7cfc0" ${O}/><rect x="-13" y="-52" width="26" height="8" rx="2" fill="#e8e1d4" ${O}/><path d="M-3-42V-4M3-42V-4" stroke="#b4aa98" stroke-width="2"/>`,
-  // floating isles
-  island: `<g class="bob"><path d="M-28-24H28L12 4L0-2L-14 6Z" fill="#9c6b4a" ${O}/><path d="M-30-24C-30-34 30-34 30-24Z" fill="#5fcf6f" ${O}/><circle cx="10" cy="-36" r="9" fill="#3fae55" ${O}/><path d="M10-28V-24" stroke="${OL}" stroke-width="3"/></g>`,
-  balloon: `<g class="bob"><path d="M0-26V-6" stroke="${OL}" stroke-width="1.5"/><ellipse cx="0" cy="-38" rx="12" ry="14" fill="#ff7bb0" ${O}/><path d="M-4-42Q-2-48 2-48" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/><rect x="-5" y="-8" width="10" height="8" rx="2" fill="#a8743f" ${O}/></g>`,
-  // clockwork caves
-  gear: `<g class="spin"><path d="${(() => { let d = ''; for (let i = 0; i < 16; i++) { const a = (i * Math.PI) / 8; const r = i % 2 ? 13 : 17; d += `${i ? 'L' : 'M'}${(Math.cos(a) * r).toFixed(1)} ${(Math.sin(a) * r - 20).toFixed(1)}`; } return `${d}Z`; })()}" fill="#c9a24a" ${O}/><circle cx="0" cy="-20" r="5" fill="#6b5a2e" ${O}/></g>`,
-  pipe: `${SH(16)}<path d="M-16 0V-30H8V-44" stroke="${OL}" stroke-width="13" fill="none" stroke-linejoin="round"/><path d="M-16 0V-30H8V-44" stroke="#b87a3c" stroke-width="8" fill="none" stroke-linejoin="round"/><rect x="2" y="-50" width="12" height="7" rx="2" fill="#d99a52" ${O}/>`,
-  lantern: `${SH(8)}<path d="M0 0V-30" stroke="${OL}" stroke-width="3"/><rect x="-7" y="-46" width="14" height="16" rx="3" fill="#ffd36b" ${O}/><circle class="blink" cx="0" cy="-38" r="9" fill="rgba(255,220,120,.35)"/>`,
-  // rainbow rift
-  rainbow: `${SH(30)}<path d="M-30 0A30 30 0 0 1 30 0" stroke="${OL}" stroke-width="22" fill="none"/><path d="M-27 0A27 27 0 0 1 27 0" stroke="#ff5d73" stroke-width="5" fill="none"/><path d="M-22 0A22 22 0 0 1 22 0" stroke="#ffc23d" stroke-width="5" fill="none"/><path d="M-17 0A17 17 0 0 1 17 0" stroke="#5ed36a" stroke-width="5" fill="none"/><path d="M-12 0A12 12 0 0 1 12 0" stroke="#4aa8ff" stroke-width="5" fill="none"/>`,
-  lollipop: `${SH(8)}<path d="M0 0V-24" stroke="${OL}" stroke-width="5"/><path d="M0 0V-24" stroke="#fff" stroke-width="2.5"/><circle cx="0" cy="-34" r="12" fill="#ff8fb8" ${O}/><path d="M0-34m-7 0a7 7 0 1 0 7-7a4 4 0 1 1-4 4" stroke="#fff" stroke-width="2.5" fill="none"/>`,
-};
+/** Colours the map view needs for each world (section background, legacy road var). */
+export const MAP_THEMES = WORLD_ART.map((a) => ({ g0: a.g0, g1: a.g1, road: a.path.base }));
 
+// Clip paths some props use (registered up front so every baked picture can include them).
+def('umbclip', PROP_CLIPS);
 
-/* ---------- world themes ---------- */
-export const MAP_THEMES = [
-  { g0: '#f7e2ae', g1: '#efcf8a', road: '#fff6df', detail: '#e2b874', props: [['palm', 3], ['umbrella', 2], ['starfish', 2], ['rock', 1], ['shell', 2]], land: 'sea-left' },
-  { g0: '#f6c47a', g1: '#e8a250', road: '#fff0d0', detail: '#d98a3c', props: [['cactus', 3], ['barrel', 2], ['pyramid', 1], ['dunerock', 2]], land: 'dunes' },
-  { g0: '#d27447', g1: '#a94a2a', road: '#ffd9b8', detail: '#8e3a1f', props: [['mesa', 2], ['spire', 3], ['lava', 2], ['deadtree', 2], ['rock', 1]], land: 'patches' },
-  { g0: '#3aa6cf', g1: '#1d6f9a', road: '#e9f7ff', detail: '#9fe3ff', props: [['seaweed', 3], ['coral', 3], ['fish', 2], ['clam', 1]], land: 'reef' },
-  { g0: '#8b78e0', g1: '#5d4bb6', road: '#f1ecff', detail: '#4a3a9c', props: [['mountain', 2], ['pine', 3], ['crystal', 2], ['rock', 1]], land: 'patches' },
-  { g0: '#dff3fc', g1: '#b5ddf2', road: '#ffffff', detail: '#9ccbe6', props: [['iceberg', 2], ['penguin', 2], ['igloo', 1], ['snowpile', 2], ['crystal', 1]], land: 'sea-right' },
-  { g0: '#69bd62', g1: '#3f8f45', road: '#f7eccc', detail: '#2f7a37', props: [['tree', 4], ['mushroom', 2], ['bush', 2], ['stump', 1]], land: 'pond' },
-  { g0: '#2c1d60', g1: '#140d36', road: '#d8d2ff', detail: '#4b3aa0', props: [['building', 3], ['sign', 2], ['tower', 2], ['lamp', 2]], land: 'grid' },
-  { g0: '#9fe0a0', g1: '#6cc27a', road: '#fff8e6', detail: '#4fa65e', props: [['flower', 4], ['hedge', 2], ['arrowsign', 2], ['bush', 1]], land: 'pond' }, // 9 Arrow Gardens
-  { g0: '#ffb27a', g1: '#e0705a', road: '#fff0dc', detail: '#c25a3c', props: [['mesa', 2], ['cactus', 2], ['tumbleweed', 2], ['spire', 1]], land: 'dunes' }, // 10 Sunset Mesa
-  { g0: '#5f8fb0', g1: '#35607f', road: '#eef6ff', detail: '#9cc4e6', props: [['buoy', 2], ['cloud', 2], ['lighthouse', 1], ['rock', 2]], land: 'sea-left' }, // 11 Storm Lagoon
-  { g0: '#2e2a66', g1: '#171440', road: '#e6e0ff', detail: '#fff3a0', props: [['star', 4], ['mountain', 2], ['telescope', 1], ['pine', 2]], land: 'patches' }, // 12 Starlight Summit
-  { g0: '#e3c9a8', g1: '#c39f7a', road: '#fff8ee', detail: '#a98462', props: [['arch', 1], ['pillar', 3], ['rock', 2], ['bush', 1]], land: 'patches' }, // 13 Echo Valley
-  { g0: '#a9dcff', g1: '#7cbcf0', road: '#ffffff', detail: '#ffffff', props: [['island', 3], ['balloon', 2], ['cloud', 2]], land: 'patches' }, // 14 Floating Isles
-  { g0: '#5a4a3e', g1: '#3a2f27', road: '#f3e6cf', detail: '#8a7560', props: [['gear', 3], ['pipe', 2], ['lantern', 2], ['crystal', 1]], land: 'patches' }, // 15 Clockwork Caves
-  { g0: '#f6c8ff', g1: '#b9a6ff', road: '#ffffff', detail: '#ffffff', props: [['rainbow', 1], ['lollipop', 3], ['crystal', 2], ['star', 2]], land: 'patches' }, // 16 Rainbow Rift
-];
-// Typical half-size of each prop, used for spacing.
-const SIZE = { arch: 34, island: 30, rainbow: 32, lighthouse: 22, mountain: 40, mesa: 36, pyramid: 34, iceberg: 32, igloo: 30, building: 24, palm: 30, umbrella: 28, tree: 26, lava: 26 };
-
-let defsDone = false;
 export function ensureMapDefs() {
-  if (defsDone || typeof document === 'undefined') return;
-  defsDone = true;
-  const holder = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  holder.setAttribute('width', '0');
-  holder.setAttribute('height', '0');
-  holder.setAttribute('aria-hidden', 'true');
-  holder.style.position = 'absolute';
-  holder.innerHTML = `<defs>${Object.entries(PROPS)
-    .map(([k, v]) => `<g id="mp-${k}">${v}</g>`)
-    .join('')}</defs>`;
-  document.body.appendChild(holder);
+  flushDefs();
 }
 
-/* ---------- geometry helpers ---------- */
-/** Smooth path through points (Catmull-Rom → cubic Bézier). */
-export function roadD(pts) {
-  if (pts.length < 2) return '';
-  let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[i + 2] || p2;
-    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
-    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
-    d += `C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
-  }
-  return d;
+/** Ambient particle kind of a world (rendered as cheap composited HTML). */
+export const worldFx = (w) => art(w).fx;
+
+/** Small emblem of a world (banner badge). */
+export function worldEmblem(w) {
+  const a = art(w);
+  const e = a.emblem;
+  const id = def(`em-${w % WORLD_ART.length}`, `<symbol id="em-${w % WORLD_ART.length}" viewBox="-24 -26 48 48"><g transform="translate(${e.x} ${e.y}) scale(${e.s})">${PROPS[e.k].draw(a.pal)}</g></symbol>`);
+  flushDefs();
+  return `<svg class="wh-emblem" viewBox="0 0 48 48" aria-hidden="true"><use href="#${id}" width="48" height="48"/></svg>`;
 }
 
-function distToSeg(px, py, a, b) {
-  const dx = b[0] - a[0];
-  const dy = b[1] - a[1];
-  const len = dx * dx + dy * dy || 1;
-  const t = Math.max(0, Math.min(1, ((px - a[0]) * dx + (py - a[1]) * dy) / len));
-  return Math.hypot(px - (a[0] + t * dx), py - (a[1] + t * dy));
-}
-
-/** Seeded random generator for one world. */
-function rng(seed) {
-  let s = hashString(seed) || 1;
-  return () => {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 4294967296;
+/* ---------------------------------------------------------------------------------- */
+/* scene context: road geometry, free-space queries, layers                            */
+/* ---------------------------------------------------------------------------------- */
+function context(o) {
+  const { w, W, H, top, road, avoid, stations } = o;
+  const A = art(w);
+  const S = sampleRoad(road, 6);
+  const SY = S.slice().sort((a, b) => a.y - b.y);
+  const ys = SY.map((p) => p.y);
+  const lower = (y) => {
+    let lo = 0;
+    let hi = ys.length;
+    while (lo < hi) {
+      const m = (lo + hi) >> 1;
+      if (ys[m] < y) lo = m + 1;
+      else hi = m;
+    }
+    return lo;
   };
+  const c = {
+    w,
+    A,
+    p: A.pal,
+    W,
+    H,
+    top,
+    y0: -top,
+    S,
+    hw: A.path.w / 2,
+    avoid,
+    stations,
+    R: rng(`map:v4:${w}`),
+    water: [], // predicates (x, y) → true when (x, y) is water
+    solid: [], // predicates (x, y) → true when land props must not go there
+    placed: [], // [x, y, r]
+    items: [], // { y, svg } depth-sorted props
+    sprites: [], // animated props drawn live on top of the baked scene
+    layers: { under: [], ground: [], marks: [], road: [], deco: [], pads: [], over: [], fg: [], air: [] },
+  };
+  /** Distance from (x, y) to the road centre line. */
+  c.rd = (x, y, reach = 140) => {
+    let best = 1e9;
+    for (let i = lower(y - reach); i < SY.length && SY[i].y <= y + reach; i++) {
+      const d = Math.hypot(SY[i].x - x, SY[i].y - y);
+      if (d < best) best = d;
+    }
+    return best;
+  };
+  /** Road centre x at height y. */
+  c.rx = (y) => {
+    const i = Math.min(SY.length - 1, Math.max(1, lower(y)));
+    const a = SY[i - 1];
+    const b = SY[i];
+    const t = b.y === a.y ? 0 : (y - a.y) / (b.y - a.y);
+    return a.x + (b.x - a.x) * Math.max(0, Math.min(1, t));
+  };
+  c.isWater = (x, y) => c.water.some((fn) => fn(x, y));
+  c.isSolid = (x, y) => c.solid.some((fn) => fn(x, y));
+  /** Room left around (x, y) for something of radius r (negative = collision). */
+  c.room = (x, y, r, gap = 0) => {
+    let m = c.rd(x, y) - c.hw - r - 14;
+    for (const [ax, ay, ar] of avoid) m = Math.min(m, Math.hypot(x - ax, y - ay) - ar - r);
+    for (const [sx, sy] of stations) m = Math.min(m, Math.hypot(x - sx, y - sy) - 36 - r);
+    for (const [px, py, pr] of c.placed) m = Math.min(m, Math.hypot(x - px, (y - py) * 1.3) - pr * (1 - gap) - r * (1 - gap));
+    return m;
+  };
+  return c;
 }
 
-/* ---------- scene ---------- */
-/**
- * Build the scenery SVG for one world.
- * W,H: pixel size of the path area; road: road points [[x,y]...] (pixels);
- * avoid: extra circles [x,y,r] to keep clear (chests); top: how far the scene extends above.
- */
-export function worldScene(w, W, H, road, avoid, top) {
-  const th = MAP_THEMES[w % MAP_THEMES.length];
-  const r = rng(`map:${w}`);
-  const parts = [];
-  const y0 = -top;
-  // Landmarks painted on the ground.
-  if (th.land === 'sea-left' || th.land === 'sea-right') {
-    const left = th.land === 'sea-left';
-    const edge = W * 0.075;
-    let d = left ? `M-20 ${y0}H${edge}` : `M${W + 20} ${y0}H${W - edge}`;
-    for (let y = y0; y < H + 40; y += 46) {
-      const x = left ? edge + 9 : W - edge - 9;
-      d += `Q${x} ${y + 23} ${left ? edge : W - edge} ${y + 46}`;
-    }
-    d += left ? `H-20Z` : `H${W + 20}Z`;
-    const sea = left ? '#3cc6e0' : '#5aaedb';
-    parts.push(`<path d="${d}" fill="${sea}" stroke="#fff" stroke-width="5" opacity=".95"/>`);
-    for (let i = 0; i < 6; i++) {
-      const y = y0 + r() * (H + top);
-      const x = left ? 6 + r() * (edge - 18) : W - edge + 8 + r() * (edge - 18);
-      parts.push(`<path d="M${x.toFixed(0)} ${y.toFixed(0)}q5-5 10 0" stroke="#fff" stroke-width="2.5" fill="none" opacity=".7" stroke-linecap="round"/>`);
+/** Place a prop instance (depth-sorted later). */
+function put(c, kind, x, y, s = 1, opt = {}) {
+  const d = PROPS[kind];
+  if (!d) return;
+  const key = `mp-${kind}-${c.w % WORLD_ART.length}`;
+  def(key, `<g id="${key}">${d.draw(c.p)}</g>`);
+  const flip = opt.flip ?? (c.R() < 0.5 ? -1 : 1);
+  const r = d.r * s;
+  let sh = '';
+  if (d.water) sh = `<ellipse cx="${f(x)}" cy="${f(y - 1)}" rx="${f(r * 1.15)}" ry="${f(r * 0.28)}" fill="none" stroke="#ffffff" stroke-width="1.6" opacity=".45"/>`;
+  else if (d.air) sh = ao(x + r * 0.2, y + 10, r * 0.8, r * 0.22, c.A.shadow, 0.22);
+  else if (c.A.longShadow && !d.flat) sh = ao(x + r * 1.1, y + 1, r * 2.1, Math.max(4, r * 0.3), c.A.shadow, 0.38);
+  else if (!d.flat) sh = ao(x + r * 0.22, y + 1, r * 1.1, Math.max(4, r * 0.34), c.A.shadow, 0.42);
+  else sh = ao(x + 1, y + 1, r * 0.95, r * 0.3, c.A.shadow, 0.25);
+  const sx = f(s * flip * 100) / 100;
+  const sy = f(s * 100) / 100;
+  // A few animated props per world live outside the baked picture (moved by the compositor).
+  if (!opt.still && d.anim && c.sprites.length < 6) {
+    c.sprites.push({ key, x: f(x), y: f(y), sx, sy, anim: d.anim, delay: f(-c.R() * 4) });
+    c.items.push({ y: y + (opt.z || 0), svg: sh });
+  } else {
+    c.items.push({ y: y + (opt.z || 0), svg: `${sh}<use href="#${key}" transform="translate(${f(x)} ${f(y)}) scale(${sx} ${sy})"/>` });
+  }
+  c.placed.push([x, y - d.h * 0.25 * s, r * (opt.tight ? 0.6 : 0.85)]);
+}
+
+/** Try to place a prop near (x, y); returns true when placed. */
+function tryPut(c, kind, x, y, s, gap = 0, opt = {}) {
+  const d = PROPS[kind];
+  if (!d) return false;
+  const r = d.r * s;
+  if (x < -r * 0.25 || x > c.W + r * 0.25 || y > c.H - 4 || y < c.y0 + 30) return false;
+  const water = !!d.water;
+  if (water !== c.isWater(x, y) || water !== c.isWater(x - r * 0.7, y) || water !== c.isWater(x + r * 0.7, y)) return false;
+  if (!water && (c.isSolid(x, y) || c.isSolid(x - r * 0.6, y) || c.isSolid(x + r * 0.6, y))) return false;
+  if (c.room(x, y - d.h * 0.25 * s, r * 0.85, gap) < 0) return false;
+  // tall things must not hide the road behind them
+  if (d.h * s > 40 && c.rd(x, y - d.h * 0.7 * s) < c.hw + r * 0.5) return false;
+  put(c, kind, x, y, s, opt);
+  return true;
+}
+
+const bag = (list) => list.flatMap(([k, n]) => Array(n).fill(k));
+
+function populate(c) {
+  const { A, R, W, H } = c;
+  const mixx = A.props;
+  // 1. Landmarks: one every ~420 px, each kind at most twice, never twice in a row.
+  const marks = (mixx.landmarks || []).map((m) => (Array.isArray(m) ? m : [m, 1]));
+  if (marks.length) {
+    const n = Math.min(marks.length * 2, Math.max(2, Math.round((H + c.top) / 430)));
+    for (let b = 0; b < n; b++) {
+      const [kind, ks] = marks[b % marks.length];
+      const d = PROPS[kind];
+      let best = null;
+      for (let t = 0; t < 90; t++) {
+        const y = c.y0 + 90 + ((b + R()) / n) * (H + c.top - 130);
+        const x = between(R, d.r * 0.7 * ks, W - d.r * 0.7 * ks);
+        const water = !!d.water;
+        if (water !== c.isWater(x, y)) continue;
+        if (!water && (c.isSolid(x, y) || c.isSolid(x - d.r * 0.7 * ks, y) || c.isSolid(x + d.r * 0.7 * ks, y))) continue;
+        const room = c.room(x, y - d.h * 0.3 * ks, d.r * ks);
+        if (room > 0 && (!best || room > best.room)) best = { x, y, room };
+      }
+      if (best) put(c, kind, best.x, best.y, ks * Math.min(1.12, 0.95 + best.room / 220), { flip: R() < 0.5 ? -1 : 1 });
     }
   }
-  if (th.land === 'dunes' || th.land === 'patches' || th.land === 'pond' || th.land === 'reef') {
-    const n = th.land === 'dunes' ? 9 : 7;
-    for (let i = 0; i < n; i++) {
-      const cx = r() * W;
-      const cy = y0 + r() * (H + top);
-      const rx = 80 + r() * 90;
-      const light = i % 2 === 0;
-      const col = th.land === 'reef' ? (light ? '#f0dba2' : '#2a86b3') : light ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.08)';
-      if (th.land === 'dunes') {
-        parts.push(`<path d="M${(cx - rx).toFixed(0)} ${cy.toFixed(0)}Q${cx.toFixed(0)} ${(cy - rx * 0.45).toFixed(0)} ${(cx + rx).toFixed(0)} ${cy.toFixed(0)}Z" fill="${light ? '#fbd38f' : '#dc9446'}" opacity=".75"/>`);
-      } else {
-        parts.push(`<ellipse cx="${cx.toFixed(0)}" cy="${cy.toFixed(0)}" rx="${rx.toFixed(0)}" ry="${(rx * 0.45).toFixed(0)}" fill="${col}" opacity="${th.land === 'reef' ? 0.35 : 1}"/>`);
+  // 2. Clusters of the world's signature vegetation / objects.
+  const cl = bag(mixx.cluster || []);
+  if (cl.length) {
+    const count = Math.round(((H + c.top) / 1000) * (mixx.clusters || 7));
+    for (let i = 0; i < count * 3 && i < 80; i++) {
+      const cx = between(R, -10, W + 10);
+      const cy = between(R, c.y0 + 60, H - 20);
+      if (c.room(cx, cy, 26) < 0) continue;
+      const kind = pick(R, cl);
+      const m = 2 + Math.floor(R() * 4);
+      let got = 0;
+      for (let k = 0; k < m * 3 && got < m; k++) {
+        const a = R() * Math.PI * 2;
+        const dist = k ? 14 + R() * 30 : 0;
+        if (tryPut(c, kind, cx + Math.cos(a) * dist, cy + Math.sin(a) * dist * 0.6, between(R, 0.75, 1.15), 0.35, { tight: 1 })) got++;
       }
     }
   }
-  if (th.land === 'reef') {
+  // 3. Water props.
+  const wa = bag(mixx.water || []);
+  if (wa.length) for (let i = 0; i < 70; i++) tryPut(c, pick(R, wa), between(R, 0, W), between(R, c.y0 + 40, H - 10), between(R, 0.8, 1.1));
+  // 4. Scattered smaller things.
+  const sc = bag(mixx.scatter || []);
+  if (sc.length) {
+    const count = Math.round(((H + c.top) / 1000) * (mixx.density || 26));
+    let got = 0;
+    for (let i = 0; i < count * 4 && got < count; i++) {
+      if (tryPut(c, pick(R, sc), between(R, 4, W - 4), between(R, c.y0 + 40, H - 8), between(R, 0.8, 1.15), 0.1)) got++;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------------- */
+/* ground: soft patches, marks (ripples, tufts, cracks...), light                      */
+/* ---------------------------------------------------------------------------------- */
+export function patches(c, colors, n = 8, size = [70, 150], alpha = 0.5) {
+  const { R, W } = c;
+  let s = '';
+  for (let i = 0; i < n; i++) {
+    const col = colors[i % colors.length];
+    const x = between(R, -40, W + 40);
+    const y = between(R, c.y0, c.H);
+    const r = between(R, size[0], size[1]);
+    s += `<ellipse cx="${f(x)}" cy="${f(y)}" rx="${f(r)}" ry="${f(r * 0.62)}" fill="${rad([[0, col, 1], [0.6, col, 0.55], [1, col, 0]])}" opacity="${alpha}"/>`;
+  }
+  c.layers.ground.push(s);
+}
+
+/** Many tiny marks merged into one path. kind: dot | tuft | ripple | crack | sparkle | pebble | leaf | dash | star */
+export function marks(c, kind, color, n, o = {}) {
+  const { R, W } = c;
+  let d = '';
+  const width = o.w ?? (kind === 'dot' ? 3 : 1.6);
+  for (let i = 0; i < n; i++) {
+    const x = between(R, 0, W);
+    const y = between(R, c.y0, c.H);
+    if (!o.onRoad && c.rd(x, y) < c.hw + 6) continue;
+    if (o.where && !o.where(x, y)) continue;
+    const s = o.s ? between(R, o.s[0], o.s[1]) : 1;
+    if (kind === 'dot') d += `M${f(x)} ${f(y)}h.1`;
+    else if (kind === 'dash') d += `M${f(x)} ${f(y)}h${f(5 * s)}`;
+    else if (kind === 'tuft') d += `M${f(x - 3 * s)} ${f(y)}q1 -4 -1 -7M${f(x)} ${f(y)}q0 -6 1 -9M${f(x + 3 * s)} ${f(y)}q0 -4 3 -6`;
+    else if (kind === 'ripple') d += `M${f(x - 9 * s)} ${f(y)}q${f(4.5 * s)} ${f(-3 * s)} ${f(9 * s)} 0t${f(9 * s)} 0`;
+    else if (kind === 'crack') d += `M${f(x)} ${f(y)}l${f(5 * s)} ${f(2 * s)}l${f(3 * s)} ${f(-3 * s)}l${f(6 * s)} ${f(1 * s)}m${f(-6 * s)} ${f(-1 * s)}l${f(1 * s)} ${f(-5 * s)}`;
+    else if (kind === 'sparkle') d += `M${f(x - 3 * s)} ${f(y)}h${f(6 * s)}M${f(x)} ${f(y - 3 * s)}v${f(6 * s)}`;
+    else if (kind === 'pebble') d += ellD(x, y, 2.6 * s, 1.7 * s);
+    else if (kind === 'leaf') d += `M${f(x)} ${f(y)}q${f(3 * s)} ${f(-4 * s)} ${f(7 * s)} ${f(-1 * s)}q${f(-3 * s)} ${f(4 * s)} ${f(-7 * s)} ${f(1 * s)}`;
+    else if (kind === 'star') d += `M${f(x)} ${f(y - 3.4 * s)}l${f(0.9 * s)} ${f(2.5 * s)}l${f(2.5 * s)} ${f(0.9 * s)}l${f(-2.5 * s)} ${f(0.9 * s)}l${f(-0.9 * s)} ${f(2.5 * s)}l${f(-0.9 * s)} ${f(-2.5 * s)}l${f(-2.5 * s)} ${f(-0.9 * s)}l${f(2.5 * s)} ${f(-0.9 * s)}Z`;
+  }
+  if (!d) return;
+  const fillKinds = { pebble: 1, leaf: 1, star: 1 };
+  c.layers[o.layer || 'marks'].push(
+    fillKinds[kind]
+      ? `<path d="${d}" fill="${color}"${o.a ? ` opacity="${o.a}"` : ''}/>`
+      : `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"${o.a ? ` opacity="${o.a}"` : ''}/>`,
+  );
+}
+
+/** Coast along one side: the sea follows the road at a respectful distance. */
+export function sea(c, side, o) {
+  const { W, R } = c;
+  const left = side === 'left';
+  const base = o.base ?? W * 0.3;
+  const ph = R() * 10;
+  const coast = (y) => {
+    const want = base + Math.sin(y / 140 + ph) * 26 + Math.sin(y / 53 + ph * 2) * 9;
+    const rx = c.rx(y);
+    let lim = left ? rx - c.hw - (o.gap ?? 34) : W - rx - c.hw - (o.gap ?? 34);
+    for (const [ax, ay, ar] of c.avoid) {
+      const dy = Math.abs(y - ay);
+      if (dy < ar + 30 && (left ? ax < W / 2 : ax > W / 2)) lim = Math.min(lim, (left ? ax : W - ax) - Math.sqrt(Math.max(0, (ar + 30) ** 2 - dy * dy)));
+    }
+    return Math.max(o.min ?? 10, Math.min(want, lim));
+  };
+  // smooth the coast so it never jumps
+  const pts = [];
+  for (let y = c.y0 - 20; y <= c.H + 30; y += 14) pts.push([coast(y), y]);
+  for (let k = 0; k < 3; k++) for (let i = 1; i < pts.length - 1; i++) pts[i][0] = Math.min(pts[i][0], (pts[i - 1][0] + pts[i][0] * 2 + pts[i + 1][0]) / 4);
+  const X = (x) => (left ? x : W - x);
+  const edge = pts.map(([x, y]) => [X(x), y]);
+  const at = (y) => {
+    const i = Math.max(0, Math.min(pts.length - 1, Math.round((y - (c.y0 - 20)) / 14)));
+    return pts[i][0];
+  };
+  c.water.push((x, y) => (left ? x < at(y) - 4 : x > W - at(y) + 4));
+  const far = left ? -30 : W + 30;
+  const poly = (off) => polyD([[far, c.y0 - 20], ...pts.map(([x, y]) => [X(Math.max(0, x + off)), y]), [far, c.H + 30]], true);
+  const g = c.layers.under;
+  // wet sand, then water bands from shallow to deep
+  g.push(`<path d="${poly(16)}" fill="${o.wet}" opacity=".55"/>`);
+  g.push(`<path d="${poly(0)}" fill="${o.shallow}"/>`);
+  g.push(`<path d="${poly(-14)}" fill="${lin(left ? [o.deep, o.mid] : [o.mid, o.deep], 0, 0, 1, 0)}"/>`);
+  g.push(`<path d="${poly(-46)}" fill="${o.deep}" opacity=".55"/>`);
+  // foam line along the shore, and a second fainter one
+  g.push(`<path d="${polyD(edge)}" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-dasharray="26 7 12 9" opacity=".9"/>`);
+  g.push(`<path d="${polyD(pts.map(([x, y]) => [X(Math.max(0, x - 9)), y + 4]))}" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-dasharray="14 18" opacity=".55"/>`);
+  // wave glints
+  let wv = '';
+  for (let i = 0; i < 26; i++) {
+    const y = between(R, c.y0, c.H);
+    const cx = at(y);
+    if (cx < 26) continue;
+    const x = X(between(R, 6, cx - 16));
+    wv += `M${f(x - 6)} ${f(y)}q3 -3 6 0t6 0`;
+  }
+  g.push(`<path d="${wv}" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" opacity=".55"/>`);
+  return { at, X };
+}
+
+/** A pond / lake with a shore and lily pads. */
+export function pond(c, x, y, rx, ry, o) {
+  const { R } = c;
+  const d0 = blob(R, x, y, rx + 6, ry + 5, 10, 0.1);
+  const d1 = blob(R, x, y, rx, ry, 10, 0.1);
+  c.layers.under.push(`<path d="${d0}" fill="${o.shore}"/>`, `<path d="${d1}" fill="${lin([o.deep, o.water], 0, 0, 0.3, 1)}"/>`, `<ellipse cx="${f(x - rx * 0.3)}" cy="${f(y - ry * 0.35)}" rx="${f(rx * 0.35)}" ry="${f(ry * 0.14)}" fill="#ffffff" opacity=".35"/>`);
+  if (o.lily) {
     for (let i = 0; i < 4; i++) {
-      const x = r() * W;
-      parts.push(`<path d="M${x.toFixed(0)} ${y0}L${(x + 40).toFixed(0)} ${y0}L${(x - 60).toFixed(0)} ${H}L${(x - 120).toFixed(0)} ${H}Z" fill="#fff" opacity=".06"/>`);
+      const a = R() * Math.PI * 2;
+      const lx = x + Math.cos(a) * rx * 0.55;
+      const ly = y + Math.sin(a) * ry * 0.5;
+      c.layers.under.push(`<path d="M${f(lx)} ${f(ly)}m-6 0a6 3.4 0 1 0 12 0a6 3.4 0 1 0 -12 0" fill="${o.lily}"/>`);
+      if (i % 2) c.layers.under.push(C(lx + 2, ly - 1.5, 1.8, '#ff9fc2'));
     }
   }
-  if (th.land === 'grid') {
-    let g = '';
-    for (let y = y0; y < H; y += 44) g += `M0 ${y}H${W}`;
-    for (let x = 0; x < W; x += 44) g += `M${x} ${y0}V${H}`;
-    parts.push(`<path d="${g}" stroke="#6a4fd8" stroke-width="1" opacity=".25"/>`);
-  }
-  // Small ground details (sand dots, grass tufts, sparkles...).
-  let det = '';
-  for (let i = 0; i < 46; i++) {
-    const x = r() * W;
-    const y = y0 + r() * (H + top);
-    if (w % 16 === 6) det += `M${x.toFixed(0)} ${y.toFixed(0)}l3-7l2 7l3-6`;
-    else if (w % 16 === 5) det += `M${(x - 4).toFixed(0)} ${y.toFixed(0)}h8m-4-4v8`;
-    else det += `M${x.toFixed(0)} ${y.toFixed(0)}h0.1`;
-  }
-  parts.push(`<path d="${det}" stroke="${th.detail}" stroke-width="${w % 16 === 6 || w % 16 === 5 ? 2 : 5}" stroke-linecap="round" fill="none" opacity=".55"/>`);
-  if (th.land === 'pond') {
-    // a pond in the widest free spot is placed below among props
-  }
+  c.water.push((px, py) => ((px - x) / rx) ** 2 + ((py - y) / ry) ** 2 < 1);
+  c.placed.push([x, y, Math.max(rx, ry) * 0.9]);
+}
 
-  // Props, kept away from the road, the chests and each other.
-  const bag = th.props.flatMap(([k, n]) => Array(n).fill(k));
-  const placed = [];
-  const clearOfRoad = (x, y, rad) => {
-    for (let i = 0; i < road.length - 1; i++) if (distToSeg(x, y, road[i], road[i + 1]) < rad + 40) return false;
-    for (const [ax, ay, ar] of avoid) if (Math.hypot(x - ax, y - ay) < rad + ar) return false;
-    for (const [px, py, pr] of placed) if (Math.hypot(x - px, y - py) < rad + pr + 6) return false;
-    return true;
-  };
-  const items = [];
-  if (th.land === 'pond') {
-    for (let tries = 0; tries < 60; tries++) {
-      const x = 60 + r() * (W - 120);
-      const y = 80 + r() * (H - 160);
-      if (clearOfRoad(x, y, 46)) {
-        placed.push([x, y, 46]);
-        items.push({ y, svg: `<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="46" ry="22" fill="#4fb8e8" stroke="${OL}" stroke-width="2.6"/><ellipse cx="${(x - 12).toFixed(0)}" cy="${(y - 6).toFixed(0)}" rx="14" ry="4" fill="#bfe9ff"/><ellipse cx="${(x + 22).toFixed(0)}" cy="${(y + 4).toFixed(0)}" rx="7" ry="3" fill="#5fd06a" stroke="${OL}" stroke-width="2"/>` });
-        break;
+/** Find the roomiest spot for a terrain feature of radius r (or null). */
+export function roomiest(c, r, tries = 160, yr = null) {
+  let best = null;
+  for (let t = 0; t < tries; t++) {
+    const y = yr ? between(c.R, yr[0], yr[1]) : between(c.R, c.y0 + 80, c.H - 60);
+    const x = between(c.R, r * 0.6, c.W - r * 0.6);
+    if (c.isWater(x, y)) continue;
+    const room = c.room(x, y, r);
+    if (!best || room > best.room) best = { x, y, room };
+  }
+  return best && best.room > 0 ? best : null;
+}
+
+/** A mass hugging one edge (forest canopy, cliffs, cave walls...). draw(d) gets the outline path. */
+export function edgeMass(c, side, depth, gap, draw) {
+  const { W, R } = c;
+  const left = side === 'left';
+  const ph = R() * 9;
+  const pts = [];
+  for (let y = c.y0 - 30; y <= c.H + 40; y += 16) {
+    const rx = c.rx(y);
+    let lim = (left ? rx : W - rx) - c.hw - gap;
+    for (const [ax, ay, ar] of c.avoid) {
+      const dy = Math.abs(y - ay);
+      if (dy < ar + 26 && (left ? ax < W / 2 : ax > W / 2)) lim = Math.min(lim, (left ? ax : W - ax) - Math.sqrt(Math.max(0, (ar + 26) ** 2 - dy * dy)));
+    }
+    const want = depth + Math.sin(y / 90 + ph) * depth * 0.3 + Math.sin(y / 31 + ph) * 6;
+    pts.push([Math.max(0, Math.min(want, lim)), y]);
+  }
+  for (let k = 0; k < 2; k++) for (let i = 1; i < pts.length - 1; i++) pts[i][0] = Math.min(pts[i][0], (pts[i - 1][0] + pts[i][0] * 2 + pts[i + 1][0]) / 4);
+  const X = (x) => (left ? x : W - x);
+  const at = (y) => pts[Math.max(0, Math.min(pts.length - 1, Math.round((y - (c.y0 - 30)) / 16)))][0];
+  c.solid.push((x, y) => (left ? x < at(y) + 6 : x > W - at(y) - 6));
+  draw({ pts, X, at, left });
+  return at;
+}
+
+/** A wall of big props along one edge (forest, cotton-candy trees, pines...). */
+export function edgeForest(c, side, kinds, o = {}) {
+  const left = side === 'left';
+  const at = edgeMass(c, side, o.depth ?? c.W * 0.12, o.gap ?? 20, ({ pts, X }) => {
+    if (!o.under) return;
+    const far = left ? -20 : c.W + 20;
+    c.layers.ground.push(`<path d="${polyD([[far, c.y0 - 30], ...pts.map(([x, y]) => [X(Math.max(0, x - 4)), y]), [far, c.H + 40]], true)}" fill="${o.under}"/>`);
+  });
+  for (let y = c.y0 + 14; y < c.H + 40; y += o.step ?? 36) {
+    const kind = pick(c.R, kinds);
+    const d = PROPS[kind];
+    const s = between(c.R, o.s?.[0] ?? 1.15, o.s?.[1] ?? 1.6);
+    const r = d.r * s;
+    const b = Math.min(at(y), at(y - d.h * s * 0.6), at(y - d.h * s * 0.3));
+    if (b < r * 0.15) continue;
+    const x = left ? b - r * 0.6 + between(c.R, -6, 3) : c.W - b + r * 0.6 + between(c.R, -3, 6);
+    put(c, kind, x, y + between(c.R, -6, 6), s, { still: true, tight: 1 });
+  }
+  return at;
+}
+
+/** Two rows of mountains along one edge (back row darker), with snow caps. */
+export function edgePeaks(c, side, col) {
+  const { R } = c;
+  return edgeMass(c, side, c.W * 0.15, 26, ({ pts, X, left }) => {
+    const far = left ? -20 : c.W + 20;
+    let back = '';
+    let front = '';
+    const peak = (x, y, w, h, body, shadow, snow) => {
+      const tx = x + (left ? -w * 0.12 : w * 0.12);
+      let s = `<path d="M${f(x - w)} ${f(y)}L${f(tx)} ${f(y - h)}L${f(x + w)} ${f(y)}Z" fill="${body}"/>`;
+      s += `<path d="M${f(tx)} ${f(y - h)}L${f(x + w)} ${f(y)}H${f(tx + w * 0.15)}Q${f(tx + w * 0.05)} ${f(y - h * 0.4)} ${f(tx)} ${f(y - h)}Z" fill="${shadow}"/>`;
+      s += `<path d="M${f(tx)} ${f(y - h)}L${f(tx - w * 0.36)} ${f(y - h * 0.62)}L${f(tx - w * 0.14)} ${f(y - h * 0.68)}L${f(tx + w * 0.02)} ${f(y - h * 0.58)}L${f(tx + w * 0.2)} ${f(y - h * 0.7)}L${f(tx + w * 0.34)} ${f(y - h * 0.64)}Z" fill="${snow}"/>`;
+      return s;
+    };
+    for (let i = 0; i < pts.length; i += 5) {
+      const [bx, y] = pts[i];
+      const w = between(R, 46, 66);
+      back += peak(X(Math.max(0, bx - 34)), y + 4, w, w * between(R, 1.25, 1.7), col.back, col.backShade, col.snow2);
+    }
+    for (let i = 2; i < pts.length; i += 4) {
+      const [bx, y] = pts[i];
+      const w = between(R, 26, 38);
+      front += peak(X(Math.max(0, bx - 12)), y + 12, w, w * between(R, 1.1, 1.45), col.front, col.frontShade, col.snow);
+    }
+    const fill = polyD([[far, c.y0 - 30], ...pts.map(([x, y]) => [X(Math.max(0, x - 18)), y + 12]), [far, c.H + 40]], true);
+    c.layers.ground.push(`<path d="${fill}" fill="${col.base}"/>` + back + front);
+  });
+}
+
+/* ---------------------------------------------------------------------------------- */
+/* road                                                                                */
+/* ---------------------------------------------------------------------------------- */
+function buildRoad(c, d) {
+  const { A, S } = c;
+  const r = A.path;
+  const w = r.w;
+  const out = [];
+  const g = (s) => out.push(s);
+  const stroke = (col, width, extra = '') => `<path d="${d}" fill="none" stroke="${col}" stroke-width="${f(width)}" stroke-linecap="round" stroke-linejoin="round"${extra}/>`;
+  const flat = (col, width, dash, extra = '') => `<path d="${d}" fill="none" stroke="${col}" stroke-width="${f(width)}" stroke-dasharray="${dash}"${extra}/>`;
+  const side = (off, col, width, extra = '') => `<path d="${offsetD(S, off)}" fill="none" stroke="${col}" stroke-width="${f(width)}" stroke-linecap="round" stroke-linejoin="round"${extra}/>`;
+  // soft shadow, dark edge (bottom-right), lit rim (top-left), body
+  g(stroke(A.shadow, w + 18, ` opacity=".16" transform="translate(4 8)"`));
+  if (r.style !== 'rope') {
+    g(stroke(r.edge, w + 7, ' transform="translate(1.2 2.4)"'));
+    g(stroke(r.hi, w + 1, ' transform="translate(-1 -1.6)"'));
+    g(stroke(r.base, w - 1));
+  }
+  const st = r.style;
+  if (st === 'planks' || st === 'pier') {
+    g(flat(r.a, w - 3, '9 1.8'));
+    g(flat(r.b, w - 3, '1.8 9', ' opacity=".9"'));
+    g(flat(dark(r.base, 0.12), w - 3, '10.8 32.4', ' opacity=".35"'));
+    g(side(w / 2 - 4, r.b, 2, ' stroke-dasharray="0.1 10.8" opacity=".9"'));
+    g(side(-w / 2 + 4, r.b, 2, ' stroke-dasharray="0.1 10.8" opacity=".9"'));
+    if (st === 'pier') {
+      g(side(w / 2 + 2, r.post, 6, ' stroke-dasharray="0.1 54"'));
+      g(side(-w / 2 - 2, r.post, 6, ' stroke-dasharray="0.1 54"'));
+    }
+  } else if (st === 'rope') {
+    g(flat(r.edge, w - 2, '7 4', ' transform="translate(1 2)"'));
+    g(flat(r.base, w - 4, '7 4'));
+    g(flat(r.hi, w - 4, '2 9', ' opacity=".5"'));
+    for (const s of [1, -1]) {
+      g(side(s * (w / 2 - 1), dark(r.rope, 0.35), 3.6));
+      g(side(s * (w / 2 - 1), r.rope, 2));
+      g(side(s * (w / 2 + 1), r.post, 6, ' stroke-dasharray="0.1 64"'));
+    }
+  } else if (st === 'cobble' || st === 'stairs') {
+    for (const [off, dash] of [
+      [w / 4, '6 4.2'],
+      [-w / 4, '3 4.2 6 4.2'],
+    ]) {
+      g(side(off, r.a, w / 2 - 4, ` stroke-dasharray="${dash}"`));
+      g(side(off - 0.6, r.hi, w / 2 - 9, ` stroke-dasharray="${dash}" opacity=".55"`));
+    }
+  } else if (st === 'slabs') {
+    g(flat(r.a, w - 3, '1.6 15 1.6 21 1.6 12'));
+    g(side(0, r.a, 1.4, ' stroke-dasharray="15 9 21 6" opacity=".8"'));
+    g(stroke(r.hi, 2, ' opacity=".35" transform="translate(-4 -2)"'));
+  } else if (st === 'bricks') {
+    g(flat(r.a, w - 3, '1.4 6.6'));
+    g(side(0, r.a, 1.4));
+    g(side(w / 4, r.base, w / 2 - 3, ' stroke-dasharray="4 4" opacity=".55"'));
+  } else if (st === 'rails') {
+    g(flat(r.tie, w + 2, '5 6'));
+    g(flat(light(r.tie, 0.25), 1.6, '5 6', ' transform="translate(-0.5 -1)"'));
+    for (const s of [1, -1]) {
+      g(side(s * w * 0.27, '#3a3f4c', 4.2));
+      g(side(s * w * 0.27 - 0.7, '#d9dde8', 1.4));
+    }
+  } else if (st === 'rainbow') {
+    r.bands.forEach((col, i) => g(stroke(col, w - 1 - i * ((w - 6) / r.bands.length))));
+    g(stroke('#ffffff', 2, ' stroke-dasharray="0.1 17" opacity=".9"'));
+  } else if (st === 'neon') {
+    g(side(w / 2 - 3, r.glow, 7, ' opacity=".25"'));
+    g(side(-w / 2 + 3, r.glow, 7, ' opacity=".25"'));
+    g(side(w / 2 - 3, r.glow, 2));
+    g(side(-w / 2 + 3, r.glow2, 2));
+    g(stroke(r.line, 2.2, ' stroke-dasharray="9 9"'));
+  } else if (st === 'snow' || st === 'trail' || st === 'sand') {
+    // footprints / speckles
+    let pr = '';
+    S.forEach((p, i) => {
+      if (i % 3) return;
+      const o = (i % 6 ? 1 : -1) * 4;
+      pr += ellD(p.x + p.nx * o, p.y + p.ny * o, 2.2, 1.6);
+    });
+    g(`<path d="${pr}" fill="${r.a}" opacity="${st === 'snow' ? 0.55 : 0.4}"/>`);
+    g(stroke(r.hi, 3, ' opacity=".45" transform="translate(-5 -3)"'));
+  } else if (st === 'ice') {
+    g(side(w / 5, '#ffffff', 2.4, ' stroke-dasharray="22 14 6 18" opacity=".8"'));
+    g(side(-w / 4, '#ffffff', 1.4, ' stroke-dasharray="10 30" opacity=".6"'));
+    g(flat(r.a, w - 6, '1 23', ' opacity=".45"'));
+  }
+  return out.join('');
+}
+
+/** Small things along both road sides (posts, pebbles, tufts, lanterns...). */
+function roadsideDeco(c) {
+  const { A, S, R } = c;
+  const e = A.edge;
+  if (!e) return;
+  const near = (x, y) => c.stations.some(([sx, sy]) => Math.hypot(x - sx, y - sy) < 40) || c.avoid.some(([ax, ay, ar]) => Math.hypot(x - ax, y - ay) < ar + 6);
+  let fill = '';
+  let fill2 = '';
+  let strk = '';
+  let strk2 = '';
+  const glows = [];
+  for (let i = 4; i < S.length - 2; i += e.every || 4) {
+    const p = S[i];
+    if (p.y < c.y0 + 20) continue;
+    for (const sd of [1, -1]) {
+      if (R() < (e.skip ?? 0.35)) continue;
+      const off = sd * (c.hw + (e.off ?? 6) + R() * (e.jitter ?? 6));
+      const x = p.x + p.nx * off;
+      const y = p.y + p.ny * off;
+      if (near(x, y) || c.isWater(x, y)) continue;
+      const s = between(R, 0.8, 1.2);
+      if (e.kind === 'pebbles') {
+        fill += ellD(x, y, 3.2 * s, 2.2 * s);
+        fill2 += ellD(x - 0.9 * s, y - 0.8 * s, 1.3 * s, 0.8 * s);
+      } else if (e.kind === 'tufts') {
+        strk += `M${f(x - 3)} ${f(y)}q1 -5 -2 -8M${f(x)} ${f(y)}q0 -7 1 -10M${f(x + 3)} ${f(y)}q0 -5 3 -7`;
+        if (R() < 0.3) fill += ellD(x + 2, y - 9, 2.2, 2.2);
+      } else if (e.kind === 'stones') {
+        fill += ellD(x, y, 4.4 * s, 3 * s);
+        fill2 += ellD(x - 1.2, y - 1.1, 2 * s, 1.2 * s);
+      } else if (e.kind === 'posts') {
+        strk += `M${f(x)} ${f(y)}v${f(-10 * s)}`;
+        fill2 += ellD(x, y - 10 * s, 2.2, 1.4);
+      } else if (e.kind === 'lanterns') {
+        strk += `M${f(x)} ${f(y)}v-13`;
+        fill += ellD(x, y - 15, 3, 3.6);
+        glows.push(glow(x, y - 15, 13, 13, e.glow, 0.55));
+      } else if (e.kind === 'crystals') {
+        fill += `M${f(x - 3)} ${f(y)}l1 -9l2 -3l2 3l1 9Z`;
+        fill2 += `M${f(x - 1)} ${f(y - 2)}l.6 -8l1.4 -2v10Z`;
+      } else if (e.kind === 'flowers') {
+        strk += `M${f(x)} ${f(y)}v-6`;
+        fill += ellD(x, y - 7, 2.6, 2.4);
+        fill2 += ellD(x, y - 7, 1, 1);
+      } else if (e.kind === 'snowbank') {
+        fill += ellD(x, y - 1, 7 * s, 3.4 * s);
+        fill2 += ellD(x - 1.6, y - 2.2, 3.4 * s, 1.4 * s);
+      } else if (e.kind === 'shells') {
+        fill += ellD(x, y, 2.4 * s, 1.8 * s);
+        if (R() < 0.4) fill2 += ellD(x + 4, y + 1, 1.6, 1.2);
       }
     }
   }
-  const step = 34;
-  for (let y = y0 + 40; y < H - 10; y += step) {
-    for (let k = 0; k < 3; k++) {
-      if (r() < 0.25) continue;
-      const kind = bag[Math.floor(r() * bag.length)];
-      const s = 0.8 + r() * 0.45;
-      const rad = (SIZE[kind] || 20) * s;
-      const x = 14 + r() * (W - 28);
-      const yy = y + r() * step;
-      if (x - rad * 0.6 < 0 || x + rad * 0.6 > W) continue;
-      if (!clearOfRoad(x, yy - rad * 0.6, rad)) continue;
-      placed.push([x, yy - rad * 0.6, rad]);
-      const flip = r() < 0.5 ? -1 : 1;
-      items.push({ y: yy, svg: `<use href="#mp-${kind}" class="mp mp-${kind}" transform="translate(${x.toFixed(0)} ${yy.toFixed(0)}) scale(${(s * flip).toFixed(2)} ${s.toFixed(2)})" style="--d:${(-r() * 4).toFixed(1)}s"/>` });
-    }
-  }
-  items.sort((a, b) => a.y - b.y);
-  return parts.join('') + items.map((i) => i.svg).join('');
+  const o = [];
+  if (fill) o.push(`<path d="${fill}" fill="${e.c1}"/>`);
+  if (fill2) o.push(`<path d="${fill2}" fill="${e.c2}"${e.a2 ? ` opacity="${e.a2}"` : ''}/>`);
+  if (strk) o.push(`<path d="${strk}" fill="none" stroke="${e.s1 || e.c1}" stroke-width="${e.sw || 2}" stroke-linecap="round"/>`);
+  if (strk2) o.push(`<path d="${strk2}" fill="none" stroke="${e.c2}" stroke-width="1.4" stroke-linecap="round"/>`);
+  c.layers.deco.push(o.join('') + glows.join(''));
 }
+
+/* ---------------------------------------------------------------------------------- */
+/* platforms under levels and chests                                                   */
+/* ---------------------------------------------------------------------------------- */
+/** Boss arena: a crimson glow and two pennants framing the platform. */
+function bossArena(c, x, y) {
+  const flag = (fx, dir) =>
+    `<path d="M${f(fx)} ${f(y + 22)}V${f(y - 26)}" stroke="#3a2a2a" stroke-width="3" stroke-linecap="round"/>` +
+    `<path d="M${f(fx)} ${f(y - 26)}l${dir * 20} 6l${dir * -20} 7Z" fill="${lin(['#ff6b81', '#c81e3e'])}"/>` +
+    `<circle cx="${f(fx)}" cy="${f(y - 27)}" r="2.6" fill="#ffd34d"/>`;
+  return glow(x, y + 18, 74, 34, '#ff3d5a', 0.32) + ao(x - 50, y + 23, 8, 3, c.A.shadow, 0.4) + ao(x + 50, y + 23, 8, 3, c.A.shadow, 0.4) + flag(x - 52, -1) + flag(x + 52, 1);
+}
+
+function pad(c, x, y, rx, big = false) {
+  const k = c.A.pad;
+  const ry = rx * 0.4;
+  const cy = y + (big ? 20 : 15);
+  const t = k.depth ?? 7;
+  const sideD = `M${f(x - rx)} ${f(cy)}A${f(rx)} ${f(ry)} 0 0 0 ${f(x + rx)} ${f(cy)}V${f(cy + t)}A${f(rx)} ${f(ry)} 0 0 1 ${f(x - rx)} ${f(cy + t)}Z`;
+  if (k.kind === 'isle') {
+    // a little floating island: rocky underside hanging below the grass top
+    const under = `M${f(x - rx)} ${f(cy)}Q${f(x - rx * 0.7)} ${f(cy + ry * 2.2)} ${f(x - rx * 0.2)} ${f(cy + ry * 2.6)}L${f(x + rx * 0.05)} ${f(cy + ry * 3.6)}L${f(x + rx * 0.3)} ${f(cy + ry * 2.4)}Q${f(x + rx * 0.8)} ${f(cy + ry * 2)} ${f(x + rx)} ${f(cy)}Z`;
+    return (
+      ao(x + 14, cy + 40, rx * 0.9, ry * 0.7, c.A.shadow, 0.18) +
+      `<path d="${under}" fill="${lin(['#b08060', '#6a4a3a', '#4a3028'])}"/>` +
+      `<ellipse cx="${f(x)}" cy="${f(cy)}" rx="${f(rx)}" ry="${f(ry)}" fill="${lin(['#a6ec8a', '#5fbf5a'])}"/>` +
+      `<ellipse cx="${f(x)}" cy="${f(cy + 2)}" rx="${f(rx)}" ry="${f(ry)}" fill="none" stroke="#3f8a3a" stroke-width="2" stroke-dasharray="${f(rx * 1.6)} ${f(rx * 9)}" stroke-dashoffset="${f(-rx * 0.2)}"/>`
+    );
+  }
+  let s = ao(x + 5, cy + t + 3, rx * 1.18, ry * 1.25, c.A.shadow, 0.5);
+  s += `<path d="${sideD}" fill="${lin([k.side, dark(k.side, 0.3)], 0, 0, 1, 0)}"/>`;
+  if (k.kind === 'candy') {
+    let drips = '';
+    for (let i = -3; i <= 3; i++) drips += ellD(x + i * rx * 0.27, cy + ry * 0.9 + (i % 2 ? 5 : 3), 3.4, i % 2 ? 6 : 4);
+    s += `<path d="${drips}" fill="${k.top}"/>`;
+  }
+  s += `<ellipse cx="${f(x)}" cy="${f(cy)}" rx="${f(rx)}" ry="${f(ry)}" fill="${shade(k.top, 0.18)}"/>`;
+  if (k.kind === 'wood') {
+    let pl = '';
+    for (let i = -2; i <= 2; i++) pl += `M${f(x + i * rx * 0.36 - rx * 0.05)} ${f(cy - ry * 0.95)}L${f(x + i * rx * 0.36 + rx * 0.05)} ${f(cy + ry * 0.95)}`;
+    s += `<path d="${pl}" stroke="${dark(k.top, 0.3)}" stroke-width="1.2" opacity=".55" clip-path="none"/>`;
+  } else if (k.kind === 'stone') {
+    s += `<path d="M${f(x - rx * 0.5)} ${f(cy - ry * 0.4)}l${f(rx * 0.25)} ${f(ry * 0.3)}l${f(rx * 0.2)} ${f(-ry * 0.1)}M${f(x + rx * 0.2)} ${f(cy + ry * 0.4)}l${f(rx * 0.3)} ${f(-ry * 0.3)}" fill="none" stroke="${dark(k.top, 0.3)}" stroke-width="1.3" opacity=".6"/>`;
+  } else if (k.kind === 'neon') {
+    s += `<ellipse cx="${f(x)}" cy="${f(cy)}" rx="${f(rx - 3)}" ry="${f(ry - 2)}" fill="none" stroke="${k.ring}" stroke-width="2.4" opacity=".9"/>`;
+  } else if (k.kind === 'grass') {
+    s += `<ellipse cx="${f(x)}" cy="${f(cy)}" rx="${f(rx - 4)}" ry="${f(ry - 2.5)}" fill="none" stroke="${light(k.top, 0.25)}" stroke-width="1.6" stroke-dasharray="3 4" opacity=".8"/>`;
+  } else if (k.kind === 'gear') {
+    s += `<ellipse cx="${f(x)}" cy="${f(cy)}" rx="${f(rx + 2)}" ry="${f(ry + 1)}" fill="none" stroke="${dark(k.side, 0.2)}" stroke-width="3" stroke-dasharray="4 4"/>`;
+  }
+  s += `<ellipse cx="${f(x)}" cy="${f(cy)}" rx="${f(rx)}" ry="${f(ry)}" fill="none" stroke="${k.rim}" stroke-width="1.6" opacity=".75" stroke-dasharray="${f(rx * 1.6)} ${f(rx * 9)}" stroke-dashoffset="${f(rx * 2.4)}"/>`;
+  return s;
+}
+
+/* ---------------------------------------------------------------------------------- */
+/* atmosphere & world-to-world mist                                                    */
+/* ---------------------------------------------------------------------------------- */
+function mistBand(seed, W, y, color, alpha = 0.92) {
+  const R = rng(`mist:${seed}`);
+  const soft = rad([[0, color, 1], [0.5, color, 0.75], [1, color, 0]]);
+  let s = `<rect x="-20" y="${f(y - 34)}" width="${W + 40}" height="68" fill="${lin([[0, color, 0], [0.5, color, alpha * 0.85], [1, color, 0]])}"/>`;
+  const n = Math.ceil(W / 46) + 2;
+  for (let i = 0; i < n; i++) {
+    const x = -30 + (i + R() * 0.6) * ((W + 60) / n);
+    const r = 34 + R() * 30;
+    s += `<ellipse cx="${f(x)}" cy="${f(y + (R() - 0.5) * 30)}" rx="${f(r * 1.3)}" ry="${f(r * 0.75)}" fill="${soft}" opacity="${f(alpha * 100) / 100}"/>`;
+  }
+  return s;
+}
+
+/** Locked worlds sleep under a bank of clouds. */
+function cloudCover(c) {
+  const R = rng(`cover:${c.w}`);
+  const tint = mix(c.A.mist, '#ffffff', 0.55);
+  const soft = rad([[0, '#ffffff', 1], [0.55, tint, 0.85], [1, tint, 0]]);
+  const h = c.H - c.y0;
+  let s = `<rect x="-20" y="${f(c.y0 + 160)}" width="${c.W + 40}" height="${f(h)}" fill="${lin([[0, tint, 0], [0.12, tint, 0.9], [1, mix(tint, '#b9bce0', 0.35), 0.96]])}"/>`;
+  for (let i = 0; i < 40; i++) {
+    const y = c.y0 + 70 + (i / 40) * (h - 70);
+    const r = between(R, 46, 90);
+    s += `<ellipse cx="${f(between(R, -30, c.W + 30))}" cy="${f(y)}" rx="${f(r * 1.45)}" ry="${f(r * 0.72)}" fill="${soft}" opacity="${f(Math.min(1, 0.55 + (i / 40) * 0.8) * 100) / 100}"/>`;
+  }
+  return s;
+}
+
+function atmosphere(c) {
+  const { A, W, H, y0 } = c;
+  const h = H - y0;
+  // light from the left, shade on the right, framed edges
+  c.layers.air.push(
+    `<rect x="0" y="${y0}" width="${W}" height="${h}" fill="${lin([[0, A.light, 0.32], [0.38, A.light, 0], [0.7, A.shadow, 0], [1, A.shadow, 0.2]], 0, 0, 1, 0)}" pointer-events="none"/>`,
+    `<rect x="0" y="${y0}" width="${W}" height="${h}" fill="${lin([[0, A.shadow, 0.28], [0.08, A.shadow, 0], [0.92, A.shadow, 0], [1, A.shadow, 0.32]], 0, 0, 1, 0)}"/>`,
+  );
+}
+
+/* ---------------------------------------------------------------------------------- */
+/* the scene                                                                           */
+/* ---------------------------------------------------------------------------------- */
+/**
+ * Build one world's static scenery.
+ * o = { w, W, H, top, road: [[x,y]...] px, avoid: [[x,y,r]] chests,
+ *       stations: [[x,y,boss]] level points, last, locked }
+ * Returns { svg (markup in path coordinates), sprites }.
+ */
+export function worldScene(o) {
+  const c = context(o);
+  const { A, W, H, y0 } = c;
+  // 1. ground
+  c.layers.under.push(`<rect x="-20" y="${y0}" width="${W + 40}" height="${H - y0}" fill="${lin([A.g0, A.g1])}"/>`);
+  A.terrain(c, { patches, marks, sea, pond, roomiest, edgeMass, edgeForest, edgePeaks, put, tryPut, mix, light, dark, lin, rad, glow, ao, blob, closedD, polyD, ellD, f, between, pick, C, E, L, P, RECT, ST, bloom, crown, crystal, hshade, op, rock, tuft, shade });
+  // 2. road
+  c.layers.road.push(buildRoad(c, roadD(o.road)));
+  roadsideDeco(c);
+  // 3. platforms
+  for (const [x, y, boss] of o.stations) c.layers.pads.push((boss ? bossArena(c, x, y) : '') + pad(c, x, y, boss ? 46 : 40));
+  for (const [x, y] of o.avoid) c.layers.pads.push(pad(c, x, y, 44, true));
+  // 4. props
+  populate(c);
+  c.items.sort((a, b) => a.y - b.y);
+  // 5. atmosphere, mist bands shared with the neighbours
+  atmosphere(c);
+  if (o.locked) c.layers.air.push(cloudCover(c));
+  const mistTop = o.w ? mistBand(`${o.w - 1}|${o.w}`, W, y0, mix(art(o.w - 1).mist, A.mist, 0.5)) : '';
+  const mistBottom = o.last ? '' : mistBand(`${o.w}|${o.w + 1}`, W, H, mix(A.mist, art(o.w + 1).mist, 0.5));
+  const L_ = c.layers;
+  const svg =
+    L_.under.join('') +
+    L_.ground.join('') +
+    L_.marks.join('') +
+    L_.road.join('') +
+    L_.deco.join('') +
+    L_.pads.join('') +
+    L_.over.join('') +
+    c.items.map((i) => i.svg).join('') +
+    L_.fg.join('') +
+    L_.air.join('') +
+    mistTop +
+    mistBottom;
+  return { svg, sprites: c.sprites };
+}
+
+/** The golden "travelled" ribbon, drawn live over the baked scene (animated on unlock). */
+export function litRoad(road, litN) {
+  const d = litN > 1 ? roadD(road.slice(0, litN)) : '';
+  return `<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path class="road-lit-edge" d="${d}" stroke="#7a4300" stroke-opacity=".9" stroke-width="13"/>
+    <path class="road-lit" d="${d}" stroke="#ffc93a" stroke-width="8.5"/>
+    <path class="road-lit-hi" d="${d}" stroke="#fff3b0" stroke-width="2.2" transform="translate(-1 -1.4)"/>
+    <path class="road-dots" d="${d}" stroke="#ffffff" stroke-width="3.4" stroke-dasharray="0.1 16"/></g>`;
+}
+
+/* Baked scenes: one standalone SVG picture per world, cached as a blob URL so the browser
+   paints it like any image (no thousands of live elements to style, paint and layerize). */
+const baked = new Map();
+export function bakeWorld(o) {
+  const key = `${o.w}|${o.W}|${o.H}|${o.top}|${o.last ? 1 : 0}|${o.locked ? 1 : 0}|${o.avoid.map((a) => a.map(Math.round).join(',')).join(';')}`;
+  let b = baked.get(key);
+  if (!b) {
+    const { svg, sprites } = worldScene(o);
+    const doc = `<svg xmlns="http://www.w3.org/2000/svg" width="${o.W}" height="${o.H + o.top}" viewBox="0 ${-o.top} ${o.W} ${o.H + o.top}">${defsFor(svg)}${svg}</svg>`;
+    const url = typeof URL !== 'undefined' && URL.createObjectURL && typeof Blob !== 'undefined' ? URL.createObjectURL(new Blob([doc], { type: 'image/svg+xml' })) : '';
+    b = { url, sprites, size: doc.length };
+    baked.set(key, b);
+    flushDefs(); // the live sprites use the shared defs
+  }
+  return b;
+}
+
+/** Markup of the live animated sprites (inline SVG, positioned in path coordinates). */
+export const spritesHTML = (sprites) =>
+  sprites.map((p) => `<svg class="map-sprite a-${p.anim}" style="left:${p.x}px;top:${p.y}px;animation-delay:${p.delay}s" width="1" height="1" overflow="visible" aria-hidden="true"><use href="#${p.key}" transform="scale(${p.sx} ${p.sy})"/></svg>`).join('');

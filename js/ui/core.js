@@ -79,7 +79,7 @@ export function announce(msg) {
 export const ENTER = {
   home: '.view-home .topbar > *, .hero > *, .adventure-hero, .season-card, .daily-list > li, .share-row, .countdown, .quests-card, .quest, .footer-note, .bottom-nav > *',
   game: '.game-topbar > *, .tip, .controls > .ctrl',
-  map: '.view-map .topbar > *, .world-head',
+  map: '.view-map .topbar > *, .world.is-here .world-head',
   editor: '.view-editor .topbar > *, .ed-status, .ed-colors, .ed-tools > *, .ed-actions > *',
 };
 
