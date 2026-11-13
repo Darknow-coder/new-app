@@ -506,6 +506,14 @@ export function move(dir, fromQueue = false) {
         }
         el.style.transition = `transform ${segMs}ms ${k > 0 && segs[k - 1].turn ? 'linear' : 'cubic-bezier(0.45, 0, 0.9, 0.65)'}`;
         setPos(el, sg.to);
+        // The drawing inside the marble turns as it rolls (about a quarter turn per cell).
+        const ball = el.firstElementChild;
+        if (ball?.classList.contains('ball') && sg.dist) {
+          S.game.spin = S.game.spin || [];
+          S.game.spin[i] = (S.game.spin[i] || 0) + Math.sign(sg.to - sg.from) * sg.dist * 80;
+          ball.style.setProperty('--roll', `${segMs}ms`);
+          ball.style.setProperty('--spin', `${S.game.spin[i]}deg`);
+        }
         // Stretch along the motion while rolling (squash comes on impact).
         if (sg.dist >= 2) {
           const horiz = Math.floor(sg.from / S.game.level.w) === Math.floor(sg.to / S.game.level.w);
