@@ -237,6 +237,8 @@ export function startGame(opts) {
   S.animating = false;
   S.queue = [];
   S.after = null;
+  clearTimeout(S.draining);
+  S.draining = 0;
   if (opts.mode === 'level') {
     buildScenery($('#scenery-game'), worldOf(opts.n) % WORLD_HUES.length, worldHue(opts.n));
     setMusicTheme(worldOf(opts.n) % WORLD_HUES.length);
@@ -426,11 +428,18 @@ export function baseRollMs(dist) {
   return Math.round(95 * Math.sqrt(dist) + 45);
 }
 
-export function move(dir) {
+/** Play the next queued tilt (used between animations). */
+function drain() {
+  S.draining = 0;
+  if (!S.animating && S.queue.length && S.game && !S.game.done) move(S.queue.shift(), true);
+}
+
+export function move(dir, fromQueue = false) {
   if (!S.game || S.game.done) return;
-  if (S.animating) {
-    // Fast swipers: keep every tilt, in order (a few at most, so the board never lags far behind).
+  // Fast swipers: keep every tilt, in order. While earlier tilts wait, new ones go behind them.
+  if (S.animating || (!fromQueue && S.queue.length)) {
     if (S.queue.length < 12) S.queue.push(dir);
+    if (!S.animating && !S.draining) S.draining = setTimeout(drain, 0);
     return;
   }
   unlockAudio();
@@ -440,6 +449,8 @@ export function move(dir) {
     sfx.thud();
     buzz(15);
     announce(t('nothingMoved'));
+    // A queued tilt that moves nothing must not stall the tilts queued after it.
+    if (S.queue.length && !S.draining) S.draining = setTimeout(drain, 60);
     return;
   }
 
@@ -579,11 +590,21 @@ export function move(dir) {
     if (isSolved(S.game.level, S.game.state)) {
       onSolved();
     } else if (S.after) {
+      // Undo / restart asked during the roll; tilts made after it then play in order.
       const f = S.after;
       S.after = null;
+      const later = S.queue; // tilts made after the undo / restart was pressed
       f();
+      S.queue = later;
+      if (S.queue.length) {
+        S.animating = true;
+        setTimeout(() => {
+          S.animating = false;
+          if (S.queue.length) move(S.queue.shift(), true);
+        }, 270);
+      }
     } else if (S.queue.length) {
-      move(S.queue.shift());
+      move(S.queue.shift(), true);
     }
   }, Math.max(longest, Math.round(160 * pace)));
 }
@@ -675,6 +696,7 @@ function whenSettled(fn) {
 
 export function undo() {
   if (!S.game || S.game.done || whenSettled(undo) || !S.game.history.length) return;
+  S.queue = [];
   sfx.undo();
   S.game.state = S.game.history.pop();
   S.game.path.pop();
@@ -687,6 +709,8 @@ export function undo() {
 /* ---------- "lost" screen (marble in a pit) ---------- */
 function showLost() {
   const m = $('#modal-lost');
+  S.queue = []; // tilts made while the marble was falling must not replay later
+  S.after = null;
   if (S.game.mode === 'level') count('p', S.game.n);
   sfx.thud();
   openModal('modal-lost');
@@ -739,6 +763,7 @@ $('#lost-undo').addEventListener('click', () => {
 
 export function restart() {
   if (!S.game || S.game.done || whenSettled(restart) || !S.game.history.length) return;
+  S.queue = [];
   sfx.undo();
   S.game.history = [];
   S.game.path = [];

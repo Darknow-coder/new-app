@@ -151,6 +151,26 @@ const assert = (c, m) => {
       await solve();
       assert(await M(() => window.__marbl.game.done), 'shared level not solved');
     });
+    await step('fast tilts: queued in order, a no-op tilt does not stall the queue', async () => {
+      await M(() => window.__marbl.startLevel(6));
+      await page.waitForTimeout(1300);
+      await M(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+      // a tilt that moves nothing, then the whole solution, all faster than the animations
+      const plan = await M(async () => {
+        const E = await import('./js/engine.js');
+        const g = window.__marbl.game;
+        const after1 = E.tilt(g.level, g.state, g.level.solution[0]).state;
+        const noop = ['up', 'down', 'left', 'right'].find((d) => E.tilt(g.level, after1, d).state.join() === after1.join());
+        return [...(noop ? [g.level.solution[0], noop] : []), ...g.level.solution.slice(noop ? 1 : 0)];
+      });
+      for (const d of plan) {
+        await M((d) => window.__marbl.move(d), d);
+        await page.waitForTimeout(110);
+      }
+      await page.waitForTimeout(3500);
+      assert(await M(() => window.__marbl.game.done), `fast tilts lost or reordered (${plan.join(',')})`);
+      await M(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+    });
     await step('pit: lost screen, take back (marble visible), retry', async () => {
       await M(() => window.__marbl.startLevel(11));
       await page.waitForTimeout(1500);
