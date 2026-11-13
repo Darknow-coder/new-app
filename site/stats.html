@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Marbl · Statistiques</title>
+  <link rel="icon" href="../icons/icon.svg" type="image/svg+xml" />
+  <style>
+    @font-face { font-family: Fredoka; src: url(../fonts/fredoka-latin.woff2) format('woff2'); font-weight: 300 700; }
+    :root { --bg: #11142b; --card: #1d2250; --line: #ffffff1a; --text: #fff; --muted: #a9acd6; --good: #1fd1b9; --bad: #ff5d73; --warn: #ffc23d; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: Fredoka, system-ui, sans-serif; }
+    main { width: min(980px, 100% - 32px); margin: 0 auto; padding: 28px 0 60px; }
+    h1 { margin: 0 0 4px; font-size: 32px; }
+    .sub { color: var(--muted); margin: 0 0 20px; font-weight: 500; }
+    .bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .bar button { font: inherit; font-weight: 700; color: var(--muted); background: #ffffff12; border: 0; padding: 8px 14px; border-radius: 12px; cursor: pointer; }
+    .bar button[aria-pressed='true'] { background: var(--good); color: #062a24; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
+    .tile { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
+    .tile b { display: block; font-size: 30px; }
+    .tile small { color: var(--muted); font-weight: 600; }
+    h2 { font-size: 20px; margin: 26px 0 8px; }
+    .note { color: var(--muted); font-size: 14px; margin: 0 0 10px; font-weight: 500; }
+    .scroll { overflow-x: auto; border-radius: 16px; border: 1px solid var(--line); }
+    table { width: 100%; border-collapse: collapse; background: var(--card); font-variant-numeric: tabular-nums; }
+    th, td { padding: 9px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--muted); font-size: 13px; font-weight: 600; position: sticky; top: 0; background: #262c63; }
+    tr.friction td { background: #ff5d7314; }
+    tr.friction td:first-child::after { content: ' ⚠️'; }
+    .rate { font-weight: 700; }
+    .rate.bad { color: var(--bad); } .rate.mid { color: var(--warn); } .rate.good { color: var(--good); }
+    .empty { padding: 30px; text-align: center; color: var(--muted); background: var(--card); border-radius: 16px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Statistiques de Marbl</h1>
+    <p class="sub">Compteurs anonymes envoyés par le jeu (aucune donnée personnelle). Mis à jour toutes les quelques minutes.</p>
+    <div class="bar" id="range">
+      <button data-d="1">Aujourd'hui</button><button data-d="7" aria-pressed="true">7 jours</button><button data-d="14">14 jours</button><button data-d="30">30 jours</button>
+    </div>
+    <div class="tiles" id="tiles"></div>
+    <h2>Puzzles du jour</h2>
+    <div id="daily"></div>
+    <h2>Niveaux de l'aventure</h2>
+    <p class="note">⚠️ = point de friction : beaucoup de joueurs le commencent mais peu le réussissent. C'est là qu'ils risquent d'abandonner.</p>
+    <div id="levels"></div>
+  </main>
+  <script type="module">
+    import { FIREBASE } from '../js/online-config.js';
+    const DOCS = `https://firestore.googleapis.com/v1/projects/${FIREBASE.projectId}/databases/(default)/documents`;
+    const pad = (n) => String(n).padStart(2, '0');
+    const key = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const fmt = (n) => n.toLocaleString('fr-FR');
+
+    async function fetchDay(day) {
+      const r = await fetch(`${DOCS}/metrics/${day}?key=${FIREBASE.apiKey}`);
+      if (!r.ok) return {};
+      const j = await r.json();
+      return Object.fromEntries(Object.entries(j.fields || {}).map(([k, v]) => [k, Number(v.integerValue || 0)]));
+    }
+
+    async function load(days) {
+      const keys = [];
+      for (let i = 0; i < days; i++) { const d = new Date(); d.setDate(d.getDate() - i); keys.push(key(d)); }
+      const all = await Promise.all(keys.map(fetchDay));
+      const sum = {};
+      for (const o of all) for (const [k, n] of Object.entries(o)) sum[k] = (sum[k] || 0) + n;
+      render(sum);
+    }
+
+    function render(m) {
+      const levels = new Map();
+      for (const [k, n] of Object.entries(m)) {
+        const mm = k.match(/^([swxph])(\d+)$/);
+        if (!mm) continue;
+        const L = levels.get(+mm[2]) || { s: 0, w: 0, x: 0, p: 0, h: 0 };
+        L[mm[1]] += n;
+        levels.set(+mm[2], L);
+      }
+      const starts = [...levels.values()].reduce((a, L) => a + L.s, 0);
+      const wins = [...levels.values()].reduce((a, L) => a + L.w, 0);
+      const dailyWins = ['easy', 'medium', 'hard'].reduce((a, d) => a + (m[`dw_${d}`] || 0), 0);
+      document.getElementById('tiles').innerHTML = [
+        [m.open || 0, 'ouvertures du jeu'], [m.tut || 0, 'tutoriels terminés'], [starts, 'niveaux commencés'], [wins, 'niveaux réussis'], [dailyWins, 'puzzles du jour réussis'],
+      ].map(([v, l]) => `<div class="tile"><b>${fmt(v)}</b><small>${l}</small></div>`).join('');
+      const daily = ['easy', 'medium', 'hard'].map((d) => ({ d, s: m[`ds_${d}`] || 0, w: m[`dw_${d}`] || 0 }));
+      document.getElementById('daily').innerHTML = daily.some((x) => x.s) ? `<div class="scroll"><table><tr><th>Difficulté</th><th>Commencés</th><th>Réussis</th><th>Taux</th></tr>${daily.map((x) => `<tr><td>${{ easy: 'Facile', medium: 'Moyen', hard: 'Difficile' }[x.d]}</td><td>${fmt(x.s)}</td><td>${fmt(x.w)}</td>${rate(x.w, x.s)}</tr>`).join('')}</table></div>` : '<div class="empty">Pas encore de données.</div>';
+      const rows = [...levels.entries()].sort((a, b) => a[0] - b[0]);
+      document.getElementById('levels').innerHTML = rows.length
+        ? `<div class="scroll"><table><tr><th>Niveau</th><th>Commencés</th><th>Réussis</th><th>Taux</th><th>3 ★</th><th>Gouffres</th><th>Indices</th></tr>${rows.map(([n, L]) => {
+            const friction = L.s >= 5 && L.w / L.s < 0.5;
+            return `<tr class="${friction ? 'friction' : ''}"><td>${n}</td><td>${fmt(L.s)}</td><td>${fmt(L.w)}</td>${rate(L.w, L.s)}<td>${fmt(L.x)}</td><td>${fmt(L.p)}</td><td>${fmt(L.h)}</td></tr>`;
+          }).join('')}</table></div>`
+        : '<div class="empty">Pas encore de données : elles arrivent dès que des joueurs jouent.</div>';
+    }
+    function rate(w, s) {
+      if (!s) return '<td>–</td>';
+      const r = Math.min(1, w / s);
+      return `<td class="rate ${r < 0.5 ? 'bad' : r < 0.75 ? 'mid' : 'good'}">${Math.round(r * 100)} %</td>`;
+    }
+
+    document.getElementById('range').addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      document.querySelectorAll('#range button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      load(Number(b.dataset.d));
+    });
+    load(7);
+  </script>
+</body>
+</html>

@@ -14,6 +14,7 @@ import { openArchive } from './ui/archive.js';
 import { openLeaderboard } from './ui/leaderboard-ui.js';
 import { openFeedback } from './ui/feedback.js';
 import { checkInAppBrowser } from './ui/install.js';
+import { count } from './metrics.js';
 import { installSkinStyles } from './skins.js';
 import { initLite, installRipples, reducedMotion } from './fx.js';
 import { store } from './storage.js';
@@ -30,6 +31,7 @@ import { openShop } from './ui/shop.js';
 
 initLite();
 checkInAppBrowser();
+count('open');
 
 applyStaticText();
 

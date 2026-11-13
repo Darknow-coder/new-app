@@ -14,6 +14,11 @@ module.exports = async function fakeFirebase(ctx, seed = []) {
     if (url.includes(':commit')) {
       const u = body.writes[0].update;
       const f = u.fields;
+      if (u.name.includes('/metrics/')) {
+        docs.metrics = docs.metrics || {};
+        for (const tr of body.writes[0].updateTransforms || []) docs.metrics[tr.fieldPath] = (docs.metrics[tr.fieldPath] || 0) + Number(tr.increment.integerValue);
+        return json(r, {});
+      }
       if (u.name.includes('/feedback/')) {
         docs.feedback = docs.feedback || [];
         docs.feedback.push({ rating: num(f.rating), text: f.text.stringValue, levels: num(f.levels) });

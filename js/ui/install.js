@@ -8,7 +8,7 @@ import { t } from '../i18n.js';
 import { save, store } from '../storage.js';
 import { sfx } from '../audio.js';
 import { shareBase } from '../site.js';
-import { $, closeModal, openModal, toast } from './core.js';
+import { $, anyModalOpen, closeModal, openModal, toast } from './core.js';
 
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -76,12 +76,14 @@ function canOfferInstall() {
 /** Called back on the map after a win: offer the install card from the 4th level on. */
 export function maybeOfferInstall() {
   if ((store.data.stats.levelsWon || 0) < 4 || !canOfferInstall()) return false;
-  s2().installAsked = (s2().installAsked || 0) + 1;
-  s2().installAt = Date.now();
-  save();
-  $('#install-ios').hidden = !!installEvt || !isIOS();
-  $('#install-go').hidden = !installEvt;
   setTimeout(() => {
+    // Only on a calm map: not over a level preview, a game or another window.
+    if (anyModalOpen() || !document.querySelector('#view-map.is-active')) return;
+    s2().installAsked = (s2().installAsked || 0) + 1;
+    s2().installAt = Date.now();
+    save();
+    $('#install-ios').hidden = !!installEvt || !isIOS();
+    $('#install-go').hidden = !installEvt;
     sfx.epic();
     openModal('modal-install');
   }, 900);

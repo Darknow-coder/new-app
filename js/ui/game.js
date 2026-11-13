@@ -10,6 +10,7 @@ import { equipped } from '../skins.js';
 import { track } from '../progress.js';
 import { $, S, announce, buzz, closeModal, els, openModal, showView, toast, worldHue, worldName } from './core.js';
 import { onSolved } from './result.js';
+import { count } from '../metrics.js';
 import { shareBase } from '../site.js';
 import { handleProgress } from './common.js';
 import { openShop } from './shop.js';
@@ -20,6 +21,7 @@ export function startDaily(diff, day = S.today) {
   const level = dailyLevel(day, diff);
   const entry = archive ? store.anyEntry(day, diff) : store.dailyEntry(day, diff);
   const review = !!entry?.done;
+  if (!review) count('ds_', diff);
   startGame({
     mode: 'daily',
     diff,
@@ -147,6 +149,7 @@ export async function shareChallenge(n, moves, stars) {
 
 export function startLevel(n) {
   sfx.tap();
+  count('s', n);
   const level = adventureLevel(n);
   const mech = introAt(n);
   const best = store.levelStars(n);
@@ -160,12 +163,14 @@ export function startLevel(n) {
     tip: mech ? t(`mech_${mech}_desc`) : null,
   });
   if (mech && !store.data.seenMech[mech]) setTimeout(() => showMechanic(mech), 500);
+  // A perfect run at stake on a new level (or one that can still be saved here).
+  const pend = store.data.perfectPending;
+  const run = pend && pend.n === n ? pend.run : best ? 0 : store.data.perfectRun || 0;
+  const sub = $('#game-sub');
+  if (run >= 2) sub.insertAdjacentHTML('beforeend', ` <span class="run-chip" title="${t('perfectRun', { n: run })}">🔥${run}</span>`);
   // Let curious players know a combo is hiding in this level.
   setTimeout(() => {
-    if (S.game?.level === level && comboReachable(level)) {
-      const sub = $('#game-sub');
-      sub.innerHTML = `${sub.textContent} <span class="combo-chip">✨ ${t('comboPossible')}</span>`;
-    }
+    if (S.game?.level === level && comboReachable(level)) sub.insertAdjacentHTML('beforeend', ` <span class="combo-chip">✨ ${t('comboPossible')}</span>`);
   }, 900);
 }
 
@@ -231,6 +236,7 @@ export function startGame(opts) {
   els.restart.hidden = opts.mode === 'tutorial' && opts.tut === 0;
   S.animating = false;
   S.queue = [];
+  S.after = null;
   if (opts.mode === 'level') {
     buildScenery($('#scenery-game'), worldOf(opts.n) % WORLD_HUES.length, worldHue(opts.n));
     setMusicTheme(worldOf(opts.n) % WORLD_HUES.length);
@@ -561,6 +567,7 @@ export function move(dir) {
       // A marble fell into a pit: the attempt is lost. Offer a fresh retry, or to take
       // the move back (it still counts).
       S.queue = [];
+      S.after = null;
       replay(els.board, 'shake');
       S.animating = true;
       setTimeout(() => {
@@ -571,6 +578,10 @@ export function move(dir) {
     }
     if (isSolved(S.game.level, S.game.state)) {
       onSolved();
+    } else if (S.after) {
+      const f = S.after;
+      S.after = null;
+      f();
     } else if (S.queue.length) {
       move(S.queue.shift());
     }
@@ -654,8 +665,16 @@ export function sparks(cell, color) {
   }
 }
 
+/** Undo / restart pressed while pieces still roll: drop the queued tilts and act right after. */
+function whenSettled(fn) {
+  if (!S.animating) return false;
+  S.queue = [];
+  S.after = fn;
+  return true;
+}
+
 export function undo() {
-  if (!S.game || S.game.done || S.animating || !S.game.history.length) return;
+  if (!S.game || S.game.done || whenSettled(undo) || !S.game.history.length) return;
   sfx.undo();
   S.game.state = S.game.history.pop();
   S.game.path.pop();
@@ -668,6 +687,7 @@ export function undo() {
 /* ---------- "lost" screen (marble in a pit) ---------- */
 function showLost() {
   const m = $('#modal-lost');
+  if (S.game.mode === 'level') count('p', S.game.n);
   sfx.thud();
   openModal('modal-lost');
   $('#lost-retry').focus();
@@ -718,7 +738,7 @@ $('#lost-undo').addEventListener('click', () => {
 });
 
 export function restart() {
-  if (!S.game || S.game.done || S.animating || !S.game.history.length) return;
+  if (!S.game || S.game.done || whenSettled(restart) || !S.game.history.length) return;
   sfx.undo();
   S.game.history = [];
   S.game.path = [];
@@ -757,6 +777,7 @@ export function hint() {
   }
   const sol = { path: [next] };
   if (!useBooster('hint')) return;
+  count('h', S.game.n);
   S.game.hintKey = key;
   updateHud(false);
   const rot = { up: 0, right: 90, down: 180, left: 270 }[sol.path[0]];

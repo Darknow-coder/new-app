@@ -178,6 +178,18 @@ export async function sendFeedback({ rating, text, levels, lang, version }) {
   );
 }
 
+/** Add anonymous counters to metrics/{day} (one write for a whole batch; no player id). */
+export async function sendMetrics(day, counts) {
+  await token();
+  const updateTransforms = Object.entries(counts).map(([k, n]) => ({ fieldPath: k, increment: int(n) }));
+  if (!updateTransforms.length) return;
+  await http(
+    `${DOCS()}:commit?key=${FIREBASE.apiKey}`,
+    { writes: [{ update: { name: `projects/${FIREBASE.projectId}/databases/(default)/documents/metrics/${day}`, fields: {} }, updateMask: { fieldPaths: [] }, updateTransforms }] },
+    { auth: true },
+  );
+}
+
 const cache = { top: null, at: 0 };
 /** Top players (cached for a minute to stay well inside the free quota). */
 export async function top(limit = 50) {

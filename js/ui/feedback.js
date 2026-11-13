@@ -4,7 +4,7 @@ import { LANG, t } from '../i18n.js';
 import { save, store } from '../storage.js';
 import { sfx } from '../audio.js';
 import { onlineEnabled, sendFeedback } from '../leaderboard.js';
-import { $, closeModal, openModal, toast } from './core.js';
+import { $, anyModalOpen, closeModal, openModal, toast } from './core.js';
 import { APP_VERSION } from './input.js';
 import { myProgress } from './leaderboard-ui.js';
 
@@ -37,7 +37,10 @@ export function openFeedback() {
 export function maybeAskFeedback() {
   if (!onlineEnabled() || store.data.settings2.fbAsked) return;
   if (myProgress().levels < AUTO_ASK_LEVEL) return;
-  setTimeout(openFeedback, 1200);
+  setTimeout(() => {
+    if (anyModalOpen() || !document.querySelector('#view-map.is-active')) return;
+    openFeedback();
+  }, 1200);
 }
 
 $('#fb-send').addEventListener('click', async () => {

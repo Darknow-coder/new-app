@@ -18,6 +18,13 @@ service cloud.firestore {
         && (resource == null || request.time > resource.data.updated + duration.value(5, 's'));
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
+    // Anonymous play counters, one document per day (fields like s216 = starts of level 216).
+    match /metrics/{day} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.size() < 3000;
+    }
     // Player feedback: anyone signed in (anonymously) can send; nobody can read it from the game.
     match /feedback/{id} {
       allow create: if request.auth != null

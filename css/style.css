@@ -8092,3 +8092,14 @@ button.arch-day:active{ transform: scale(0.92); }
 .mz-skip{ padding: 12px 18px; border-radius: 14px; background: #ffc23d; color: #3a2500; font-weight: 700; }
 .mz-skip:disabled{ opacity: 0.4; }
 @keyframes mz-in{ from{ opacity: 0; } }
+.run-chip{
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.95em;
+  color: #3a1600;
+  background: linear-gradient(90deg, #ffd34d, #ff8a3d);
+  animation: run-flicker 1.6s ease-in-out infinite;
+}
+@keyframes run-flicker{ 50%{ filter: brightness(1.15); transform: scale(1.06); } }

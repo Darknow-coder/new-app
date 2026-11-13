@@ -16,6 +16,7 @@ import { handleProgress, openDailyChest } from './common.js';
 import { openMap } from './mapview.js';
 import { renderHome } from './home.js';
 import { rewardedLeft, showRewarded } from '../monetization.js';
+import { count } from '../metrics.js';
 import { syncRank } from './leaderboard-ui.js';
 
 export function onSolved() {
@@ -40,6 +41,7 @@ export function onSolved() {
     store.addCoins(S.game.reward);
     S.game.prog = track('archiveWin', { stars });
   } else if (S.game.mode === 'daily' && !S.game.review) {
+    count('dw_', S.game.diff);
     store.setDailyEntry(S.game.day, S.game.diff, {
       done: true,
       moves: S.game.moves,
@@ -59,6 +61,8 @@ export function onSolved() {
     }
   } else if (S.game.mode === 'level') {
     const prev = store.recordLevel(S.game.n, stars);
+    count('w', S.game.n);
+    if (stars === 3) count('x', S.game.n);
     if (prev === 0 && S.game.n <= 2) import('./install.js').then((m) => m.persistStorage());
     syncRank();
     S.game.newBest = prev > 0 && stars > prev;
@@ -110,6 +114,7 @@ export function onTutorialStep() {
     return;
   }
   store.data.tutorialDone = true;
+  count('tut');
   save();
   showResultCard({
     stars: 3,
