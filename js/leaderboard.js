@@ -7,7 +7,7 @@
 import { FIREBASE } from './online-config.js';
 
 const KEY = 'marbl:online';
-const MAX_LEVELS = 320;
+const MAX_LEVELS = 100000; // must match docs/firestore.rules
 export const NAME_ADJ = 24;
 export const NAME_ANIMAL = 24;
 

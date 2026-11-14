@@ -8,7 +8,7 @@ l'autre, les rappeler chaque jour, et mesurer ce qu'ils font.
 ## Ce qui peut le faire grandir
 - **Un concept qui se comprend en une seconde**, en vidéo comme en jeu : on incline, tout roule, plop.
   La règle « tout bouge en même temps » donne de la profondeur sans écran d'explication.
-- **Du contenu sans fin** : 320 niveaux en 16 mondes, et 3 puzzles du jour identiques pour tout le
+- **Du contenu sans fin** : 2 000 niveaux (16 mondes illustrés qui reviennent en tours de plus en plus durs), et 3 puzzles du jour identiques pour tout le
   monde (le moteur des jeux comme Wordle).
 - **Toutes les boucles de retour des jeux qui marchent** : série quotidienne + gel de série, saison
   gratuite de 4 semaines, quêtes du jour, coffres, collection de 97 billes, série parfaite 🔥,

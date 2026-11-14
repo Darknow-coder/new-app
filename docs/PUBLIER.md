@@ -49,7 +49,7 @@ Incline le plateau, toutes les billes roulent en même temps… jusqu'à heurter
 trouver l'ordre parfait pour faire tomber chaque bille dans le trou de sa couleur, en un
 minimum de coups.
 
-✦ 320 niveaux répartis dans 16 mondes illustrés, avec un boss à chaque fin de monde
+✦ 2 000 niveaux dans 16 mondes illustrés, avec un boss à chaque fin de monde
 ✦ 3 nouveaux puzzles chaque jour (facile, moyen, difficile) + le calendrier des jours passés
 ✦ Des mécaniques qui se renouvellent : gouffres, sable, portes de cristal, portails, flèches
 ✦ Coffres, collection de 97 billes, saison gratuite, succès et quêtes du jour
@@ -70,7 +70,7 @@ Tilt the board, roll the marbles and drop each one into its matching hole!
 Tilt the board and every marble rolls at once… until it hits a wall. Find the perfect order
 to drop each marble into the hole of its colour, in as few moves as possible.
 
-✦ 320 levels across 16 illustrated worlds, with a boss at the end of each one
+✦ 2,000 levels across 16 illustrated worlds, with a boss at the end of each one
 ✦ 3 fresh puzzles every day (easy, medium, hard) + a calendar of past days
 ✦ Mechanics that keep changing: pits, sand, crystal gates, portals, arrows
 ✦ Chests, a collection of 97 marbles, a free season pass, achievements and daily quests

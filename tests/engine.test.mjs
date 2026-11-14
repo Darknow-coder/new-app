@@ -372,3 +372,4 @@ import { perfectRunBonus } from '../js/levels.js';
 test('perfect run bonuses at 3, 5, 10, 15...', () => {
   assert.deepEqual([1, 2, 3, 4, 5, 9, 10, 12, 15].map(perfectRunBonus), [0, 0, 15, 0, 30, 0, 60, 0, 60]);
 });
+

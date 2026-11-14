@@ -27,7 +27,7 @@ Marbl #7 🔥4
   upgrade mid-shake, a coin shower and flip-over reward cards by rarity. Tap a chest on the map to preview its odds.
 - **Collection** — 9 marble skins (common / rare / epic) found only in chests. Skins change the pattern,
   never the gameplay colour.
-- **Content** — 320 pre-computed levels (16 worlds), each verified solvable with an optimal par by the
+- **Content** — 2,000 pre-computed levels (16 illustrated worlds, then harder laps; `js/levels-more.js` holds 321+ and loads after start-up), each verified solvable with an optimal par by the
   test suite; the generator keeps going beyond that.
 - **Mechanics** — sand traps (World 2), crystal gates (World 3), portals (World 4), arrows (World 9), pits from level 11 onwards (263 of 320 levels), shaped boards from World 6, then remixes. Each is
   introduced by a hand-made level and a discovery card; generated levels must genuinely need their tiles.

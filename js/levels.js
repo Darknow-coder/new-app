@@ -18,6 +18,9 @@ const TIERS = [
   { size: 7, marbles: 3, stones: 1, walls: [6, 10], par: [8, 10] },
   { size: 7, marbles: 3, stones: 1, walls: [6, 10], par: [10, 12] },
   { size: 7, marbles: 3, stones: 2, walls: [6, 10], par: [10, 13] },
+  // Beyond the first 16 worlds (level 321+): longer solutions, then a fourth marble.
+  { size: 7, marbles: 3, stones: 2, walls: [7, 11], par: [12, 14] },
+  { size: 7, marbles: 4, stones: 2, walls: [7, 11], par: [12, 15] },
 ];
 
 // World names / colours (names are i18n keys: world0..world7, then they cycle).
@@ -41,12 +44,20 @@ const WORLD_RAMP = [
   [5, 9], // worlds 10+
 ];
 
+/** Start/end tier of a world. After the 16 named worlds, every new lap of 16 worlds climbs higher. */
+function rampOf(world) {
+  if (world < 16) return WORLD_RAMP[Math.min(world, WORLD_RAMP.length - 1)];
+  const lap = Math.floor(world / 16);
+  const top = TIERS.length - 2;
+  return [Math.min(5 + lap, top - 2), Math.min(9 + lap, top)];
+}
+
 export function tierFor(n) {
   const world = worldOf(n);
   const idx = (n - 1) % LEVELS_PER_WORLD;
   // Very first levels are deliberately trivial so new players win fast.
   if (n <= 3) return 0;
-  const [from, to] = WORLD_RAMP[Math.min(world, WORLD_RAMP.length - 1)];
+  const [from, to] = rampOf(world);
   if (isBoss(n)) return Math.min(to + 1, TIERS.length - 1);
   // A step every few levels (plateaus of 3-5 similar levels feel fair, not grindy).
   return Math.min(TIERS.length - 1, from + Math.floor(((to - from + 1) * idx) / 19));
@@ -99,9 +110,16 @@ export const MECHANIC_INTROS = {
   161: { mech: 'arrows', rows: ['A...,', '.....', '....a', '.....', '#....'] },
 };
 
+/** Mechanics of a world: the 16 named worlds have their own; later laps remix worlds 5-16. */
+function worldFeatures(world) {
+  if (world < WORLD_FEATURES.length) return WORLD_FEATURES[world];
+  const pool = WORLD_FEATURES.length - 4;
+  return WORLD_FEATURES[4 + ((world - WORLD_FEATURES.length) * 5) % pool];
+}
+
 export function featuresFor(n) {
   const world = worldOf(n);
-  const f = WORLD_FEATURES[Math.min(world, WORLD_FEATURES.length - 1)];
+  const f = worldFeatures(world);
   const idx = (n - 1) % LEVELS_PER_WORLD;
   if (world === 0) return idx >= 10 ? f : null; // levels 1-10: just the basics
   // Right after an intro, keep the new mechanic in every level; later, ~75% of levels.
@@ -154,10 +172,30 @@ function decode(entry) {
 
 export const PRECOMPUTED_LEVELS = LEVEL_DATA.length;
 
+// Levels after the main pack ship in a second file, fetched once the game is running.
+// The generator is deterministic, so a level built on the phone before it arrives is identical.
+let more = null;
+let moreStart = Infinity;
+let moreLoading = null;
+export function loadMoreLevels() {
+  moreLoading ||= import('./levels-more.js')
+    .then((m) => {
+      more = m.MORE_DATA;
+      moreStart = m.MORE_START;
+    })
+    .catch(() => {
+      moreLoading = null; // offline before it was cached: try again later
+    });
+  return moreLoading;
+}
+/** How many levels are ready-made (the rest are built on the device). */
+export const readyLevels = () => (more ? moreStart + more.length - 1 : LEVEL_DATA.length);
+
 const cache = new Map();
 export function adventureLevel(n) {
   if (!cache.has(n)) {
-    const level = n <= LEVEL_DATA.length ? decode(LEVEL_DATA[n - 1]) : generateAdventureLevel(n);
+    const k = n - moreStart;
+    const level = n <= LEVEL_DATA.length ? decode(LEVEL_DATA[n - 1]) : more && k >= 0 && k < more.length ? decode(more[k]) : generateAdventureLevel(n);
     cache.set(n, level);
     if (cache.size > 30) cache.delete(cache.keys().next().value);
   }

@@ -18,6 +18,7 @@ import { count } from './metrics.js';
 import { installSkinStyles } from './skins.js';
 import { initLite, installRipples, reducedMotion } from './fx.js';
 import { store } from './storage.js';
+import { loadMoreLevels } from './levels.js';
 import { quests, season, track } from './progress.js';
 import { openChest } from './chests.js';
 import { $, S, applyStaticText, notify, showView } from './ui/core.js';
@@ -30,6 +31,8 @@ import { openMap } from './ui/mapview.js';
 import { openShop } from './ui/shop.js';
 
 initLite();
+// Levels after the first 320: fetched in the background (right away for players close to them).
+setTimeout(loadMoreLevels, store.data.levels.unlocked > 260 ? 0 : 8000);
 checkInAppBrowser();
 count('open');
 
@@ -64,7 +67,7 @@ if (sharedLevel) {
   history.replaceState(null, '', location.pathname);
   showView('home');
   setTimeout(() => openSharedLevel(sharedLevel), 300);
-} else if (chN >= 1 && chN <= 320 && chC >= 1 && chC <= 99) {
+} else if (chN >= 1 && chN <= 100000 && chC >= 1 && chC <= 99) {
   history.replaceState(null, '', location.pathname);
   showView('home');
   setTimeout(() => startChallenge(chN, chC), 300);
