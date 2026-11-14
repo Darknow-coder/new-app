@@ -34,9 +34,9 @@ export const joined = () => !!session.joined;
 export const optedOut = () => !!session.optedOut;
 export const me = () => session;
 
-const DOCS = () => `https://firestore.googleapis.com/v1/projects/${FIREBASE.projectId}/databases/(default)/documents`;
+export const DOCS = () => `https://firestore.googleapis.com/v1/projects/${FIREBASE.projectId}/databases/(default)/documents`;
 
-async function http(url, body, { method = 'POST', auth = false, form = false } = {}) {
+export async function http(url, body, { method = 'POST', auth = false, form = false } = {}) {
   const headers = { 'Content-Type': form ? 'application/x-www-form-urlencoded' : 'application/json' };
   if (auth) headers.Authorization = `Bearer ${await token()}`;
   const res = await fetch(url, { method, headers, body: form ? body : body && JSON.stringify(body) });
@@ -45,7 +45,7 @@ async function http(url, body, { method = 'POST', auth = false, form = false } =
   return data;
 }
 
-async function token() {
+export async function token() {
   const now = Date.now();
   if (session.idToken && session.exp > now + 60000) return session.idToken;
   if (session.refreshToken) {

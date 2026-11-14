@@ -42,6 +42,7 @@
         <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
         <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#ffc23d"/><circle cx="12" cy="12" r="10" fill="none" stroke="#d48a0c" stroke-width="1.6"/><circle cx="12" cy="12" r="6.2" fill="none" stroke="#e39b12" stroke-width="1.6"/><path d="M8.2 7.6a5.4 5.4 0 013.8-1.6" fill="none" stroke="#fff3cf" stroke-width="1.6" stroke-linecap="round"/></symbol>
         <symbol id="i-rewind" viewBox="0 0 24 24"><path d="M11 6L4.5 12 11 18zM19.5 6L13 12l6.5 6z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+        <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.4 9.1 4.75 4.75 0 0 0 7 18.5z" fill="currentColor"/><path d="M12 15.5V10m0 0l-2.4 2.4M12 10l2.4 2.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/></symbol>
         <symbol id="i-gift" viewBox="0 0 24 24"><path d="M4 10h16v3H4zM5.5 13h13v7.5h-13zM12 10v10.5M12 10c-1.5-3.5-6-4.5-6-1.8C6 10 9.5 10 12 10zm0 0c1.5-3.5 6-4.5 6-1.8 0 1.8-3.5 1.8-6 1.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
         <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="currentColor"/><path d="M8 10.5V8a4 4 0 018 0v2.5" fill="none" stroke="currentColor" stroke-width="2.2"/></symbol>
         <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4.5c4-2 7 2 12 0v8c-5 2-8-2-12 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -433,6 +434,18 @@
       </div>
     </dialog>
 
+    <dialog class="modal" id="modal-restore">
+      <div class="modal-card restore-card">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <span class="cloud-ico big"><svg><use href="#i-cloud"/></svg></span>
+        <h2 data-i18n="cloudRestore"></h2>
+        <p class="restore-lead" data-i18n="restoreLead"></p>
+        <input class="restore-input" id="restore-code" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="XXXX-XXXX-XXXX" />
+        <p class="restore-msg" id="restore-msg"></p>
+        <div class="modal-actions"><button class="btn btn-primary btn-full" id="restore-go" type="button" data-i18n="restoreFind"></button></div>
+      </div>
+    </dialog>
+
     <dialog class="modal" id="modal-wheel">
       <div class="modal-card wheel-card">
         <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
@@ -512,6 +525,12 @@
         <div class="lang-row"><span data-i18n="language"></span><div class="seg" id="set-lang" role="radiogroup"><button type="button" data-l="auto" data-i18n="langAuto" role="radio"></button><button type="button" data-l="fr" role="radio" lang="fr">Français</button><button type="button" data-l="en" role="radio" lang="en">English</button><button type="button" data-l="es" role="radio" lang="es">Español</button></div></div>
         <button class="btn btn-ghost btn-wide" id="btn-install" hidden data-i18n="install"></button>
         <button class="btn btn-primary btn-wide" id="btn-feedback" data-i18n="fbButton" hidden></button>
+        <section class="cloud-box" id="cloud-box" hidden>
+          <div class="cloud-head"><span class="cloud-ico"><svg><use href="#i-cloud"/></svg></span><span class="cloud-title"><strong data-i18n="cloudTitle"></strong><small id="cloud-status"></small></span></div>
+          <div class="cloud-code"><code id="cloud-code"></code><button class="btn btn-ghost" id="cloud-copy" type="button" data-i18n="cloudCopy"></button></div>
+          <p class="cloud-help" data-i18n="cloudHelp"></p>
+          <button class="btn btn-ghost btn-wide" id="cloud-restore" type="button" data-i18n="cloudRestore"></button>
+        </section>
         <button class="btn btn-ghost btn-wide" id="btn-export" data-i18n="exportSave"></button>
         <button class="btn btn-ghost btn-wide" id="btn-import" data-i18n="importSave"></button>
         <button class="btn btn-ghost btn-wide" id="btn-about" data-i18n="about"></button>

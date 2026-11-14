@@ -1,6 +1,6 @@
 // In-memory stand-in for Firebase Auth + Firestore REST, for Playwright.
-module.exports = async function fakeFirebase(ctx, seed = []) {
-  const docs = new Map(seed.map((d, i) => [`seed${i}`, d]));
+module.exports = async function fakeFirebase(ctx, seed = [], shared = null) {
+  const docs = shared || new Map(seed.map((d, i) => [`seed${i}`, d]));
   let uid = 0;
   await ctx.route('**/js/online-config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: "export const FIREBASE = { apiKey: 'test', projectId: 'demo' };" }));
   const json = (r, body) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
@@ -19,13 +19,18 @@ module.exports = async function fakeFirebase(ctx, seed = []) {
         for (const tr of body.writes[0].updateTransforms || []) docs.metrics[tr.fieldPath] = (docs.metrics[tr.fieldPath] || 0) + Number(tr.increment.integerValue);
         return json(r, {});
       }
+      if (u.name.includes('/saves/')) {
+        docs.saves = docs.saves || {};
+        docs.saves[u.name.split('/').pop()] = { data: f.data.stringValue, levels: num(f.levels), updated: new Date().toISOString() };
+        return json(r, {});
+      }
       if (u.name.includes('/feedback/')) {
         docs.feedback = docs.feedback || [];
         docs.feedback.push({ rating: num(f.rating), text: f.text.stringValue, levels: num(f.levels) });
         return json(r, {});
       }
       const d = { a: num(f.a), b: num(f.b), n: num(f.n), levels: num(f.levels), stars: num(f.stars) };
-      if (d.stars > d.levels * 3 || d.levels > 320 || num(f.score) !== d.levels * 1000 + d.stars) return r.fulfill({ status: 403, body: '{"error":{"message":"PERMISSION_DENIED"}}' });
+      if (d.stars > d.levels * 3 || d.levels > 100000 || num(f.score) !== d.levels * 1000 + d.stars) return r.fulfill({ status: 403, body: '{"error":{"message":"PERMISSION_DENIED"}}' });
       docs.set(u.name.split('/').pop(), d);
       return json(r, {});
     }
@@ -40,6 +45,11 @@ module.exports = async function fakeFirebase(ctx, seed = []) {
       const min = w ? Number(w.fieldFilter.value.integerValue) : -1;
       const c = [...docs.values()].filter((d) => score(d) > min).length;
       return json(r, [{ result: { aggregateFields: { c: { integerValue: String(c) } } } }]);
+    }
+    if (req.method() === 'GET' && url.includes('/saves/')) {
+      const sv = docs.saves?.[url.split('/saves/')[1].split('?')[0]];
+      if (!sv) return r.fulfill({ status: 404, contentType: 'application/json', body: '{"error":{"code":404,"message":"Document not found.","status":"NOT_FOUND"}}' });
+      return json(r, { fields: { data: { stringValue: sv.data }, levels: { integerValue: String(sv.levels) }, updated: { timestampValue: sv.updated } } });
     }
     return r.fulfill({ status: 404, body: '{}' });
   });

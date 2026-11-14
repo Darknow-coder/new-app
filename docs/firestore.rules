@@ -18,6 +18,21 @@ service cloud.firestore {
         && (resource == null || request.time > resource.data.updated + duration.value(5, 's'));
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
+    // Cloud saves. The document id is the player's secret 12-character recovery code:
+    // documents can be fetched by code but never listed, so a code cannot be guessed.
+    match /saves/{code} {
+      allow get: if request.auth != null && code.matches('^[2-9A-HJKMNP-Z]{12}$');
+      allow list: if false;
+      allow create, update: if request.auth != null
+        && code.matches('^[2-9A-HJKMNP-Z]{12}$')
+        && request.resource.data.keys().hasOnly(['v', 'data', 'levels', 'updated'])
+        && request.resource.data.v is int
+        && request.resource.data.data is string && request.resource.data.data.size() < 400000
+        && request.resource.data.levels is int && request.resource.data.levels >= 0 && request.resource.data.levels <= 100000
+        && request.resource.data.updated == request.time
+        // at most one backup every 20 seconds per code
+        && (resource == null || request.time > resource.data.updated + duration.value(20, 's'));
+    }
     // Anonymous play counters, one document per day (fields like s216 = starts of level 216).
     match /metrics/{day} {
       allow read: if true;

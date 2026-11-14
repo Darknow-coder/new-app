@@ -29,6 +29,7 @@ import { handleProgress } from './ui/common.js';
 import { shareText } from './ui/settings.js';
 import { openMap } from './ui/mapview.js';
 import { openShop } from './ui/shop.js';
+import './ui/cloudui.js';
 
 initLite();
 // Levels after the first 320: fetched in the background (right away for players close to them).

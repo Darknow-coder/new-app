@@ -248,6 +248,46 @@ const assert = (c, m) => {
       assert(docs.size === 30, 'player re-added after leaving');
       await ctx2.close();
     });
+    await step('cloud save: back up, then recover on another device', async () => {
+      const ctxA = await browser.newContext({ ...devices['Pixel 7'], locale: 'fr-FR' });
+      const docs = await fakeFirebase(ctxA);
+      const pa = await ctxA.newPage();
+      pa.on('pageerror', (e) => errors.push(`cloudA: ${e}`));
+      await pa.addInitScript(() => {
+        if (!localStorage.getItem('marbl:v1')) localStorage.setItem('marbl:v1', JSON.stringify({ tutorialDone: true, coins: 777, levels: { unlocked: 12, best: Object.fromEntries(Array.from({ length: 11 }, (_, i) => [i + 1, 2])) } }));
+      });
+      await pa.goto(base);
+      await pa.waitForTimeout(2000);
+      await pa.click('#btn-settings');
+      await pa.waitForTimeout(1200);
+      const code = (await pa.textContent('#cloud-code')).trim();
+      assert(/^[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}$/.test(code), `bad code ${code}`);
+      assert(docs.saves?.[code.replace(/-/g, '')]?.levels === 11, 'save not uploaded');
+      await ctxA.close();
+      const ctxB = await browser.newContext({ ...devices['Pixel 7'], locale: 'fr-FR' });
+      await fakeFirebase(ctxB, [], docs);
+      const pb = await ctxB.newPage();
+      pb.on('pageerror', (e) => errors.push(`cloudB: ${e}`));
+      await pb.addInitScript(() => {
+        if (!localStorage.getItem('marbl:v1')) localStorage.setItem('marbl:v1', JSON.stringify({ tutorialDone: true, levels: { unlocked: 1, best: {} } }));
+      });
+      await pb.goto(base);
+      await pb.waitForTimeout(2000);
+      await pb.click('#btn-settings');
+      await pb.waitForTimeout(500);
+      await pb.click('#cloud-restore');
+      await pb.waitForTimeout(500);
+      await pb.fill('#restore-code', code.toLowerCase().replace(/-/g, ' '));
+      await pb.click('#restore-go');
+      await pb.waitForTimeout(800);
+      assert(/11/.test(await pb.textContent('#restore-msg')), 'save not found');
+      pb.once('dialog', (d) => d.accept());
+      await pb.click('#restore-go');
+      await pb.waitForTimeout(2600);
+      const got = await pb.evaluate(() => ({ u: window.__marbl.store.data.levels.unlocked, c: window.__marbl.store.data.coins }));
+      assert(got.u === 12 && got.c === 777, `restore failed ${JSON.stringify(got)}`);
+      await ctxB.close();
+    });
     await step('save export / import', async () => {
       const ok2 = await M(async () => {
         const s = await import('./js/storage.js');

@@ -97,7 +97,11 @@ function load() {
 }
 
 let lastBackupDay = null;
+/** Called after every save (the cloud backup listens, and decides when to upload). */
+export const afterSave = new Set();
+
 export function save() {
+  for (const fn of afterSave) fn();
   try {
     const json = JSON.stringify(data);
     localStorage.setItem(KEY, json);

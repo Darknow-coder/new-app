@@ -10259,3 +10259,115 @@ img.map-scene{
 .preview-chest .chest-svg .chest-sparkle{
   animation: sparkle 1.6s ease-in-out infinite;
 }
+
+/* ---------- online save (settings) and recovery window ---------- */
+.cloud-box{
+  margin: 14px 0 10px;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, color-mix(in srgb, #4aa8ff 16%, var(--surface-2)), var(--surface-2));
+  border: 1px solid color-mix(in srgb, #4aa8ff 35%, var(--line));
+}
+.cloud-head{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cloud-ico{
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  font-size: 26px;
+  color: #fff;
+  background: linear-gradient(160deg, #7fd0ff, #2f86e0);
+  box-shadow: 0 3px 0 #1b5a9e, inset 0 2px 0 rgba(255, 255, 255, 0.45);
+}
+.cloud-ico.big{
+  width: 64px;
+  height: 64px;
+  margin: 4px auto 8px;
+  border-radius: 20px;
+  font-size: 42px;
+}
+.cloud-title{
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cloud-title small{
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.cloud-code{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.cloud-code code{
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  padding: 10px 8px;
+  border-radius: 12px;
+  background: rgba(4, 2, 18, 0.28);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: clamp(14px, 4.4vw, 18px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  user-select: all;
+}
+.cloud-code .btn{
+  min-height: 44px;
+  padding: 0 14px;
+}
+.cloud-help{
+  margin: 10px 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.restore-card{
+  text-align: center;
+}
+.restore-lead{
+  color: var(--muted);
+  font-weight: 600;
+}
+.restore-input{
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 2px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.restore-input:focus{
+  outline: none;
+  border-color: #4aa8ff;
+}
+.restore-msg{
+  min-height: 1.4em;
+  margin: 10px 0 0;
+  font-weight: 700;
+  font-size: 14px;
+}
+.restore-msg.is-ok{
+  color: #2fd27e;
+}
+.restore-msg.is-bad{
+  color: var(--danger);
+}
