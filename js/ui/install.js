@@ -41,7 +41,9 @@ export function persistStorage() {
 /* ---------- in-app browser banner ---------- */
 export function checkInAppBrowser() {
   const app = inAppBrowser();
-  if (!app || sessionStorage.getItem('marbl:iab')) return;
+  // Not during the tutorial: a newcomer from a TikTok link plays first, and hears about
+  // keeping their progress once there is some (shown from the home screen).
+  if (!app || !store.data.tutorialDone || sessionStorage.getItem('marbl:iab')) return;
   const bar = $('#iab-bar');
   $('#iab-text').textContent = t('iabText', { app: app === 'app' ? t('iabApp') : app });
   bar.hidden = false;

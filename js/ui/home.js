@@ -18,9 +18,11 @@ import { renderPlayerStrip, renderQuests, renderSeasonCard } from './progressui.
 import { giftToday } from './shop.js';
 import { archiveTodo } from './archive.js';
 import { renderRankCard, syncRank } from './leaderboard-ui.js';
+import { checkInAppBrowser } from './install.js';
 
 export function renderHome() {
   S.today = dateKey();
+  checkInAppBrowser();
   const n = puzzleNumber(S.today);
   const dateFmt = new Intl.DateTimeFormat(LANG, { weekday: 'long', month: 'long', day: 'numeric' });
   $('#home-date').textContent = dateFmt.format(new Date());

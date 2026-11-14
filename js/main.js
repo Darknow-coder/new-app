@@ -13,7 +13,6 @@ import { openSharedLevel, openEditor } from './ui/editor.js';
 import { openArchive } from './ui/archive.js';
 import { openLeaderboard } from './ui/leaderboard-ui.js';
 import { openFeedback } from './ui/feedback.js';
-import { checkInAppBrowser } from './ui/install.js';
 import { count } from './metrics.js';
 import { installSkinStyles } from './skins.js';
 import { initLite, installRipples, reducedMotion } from './fx.js';
@@ -34,7 +33,6 @@ import './ui/cloudui.js';
 initLite();
 // Levels after the first 320: fetched in the background (right away for players close to them).
 setTimeout(loadMoreLevels, store.data.levels.unlocked > 260 ? 0 : 8000);
-checkInAppBrowser();
 count('open');
 
 applyStaticText();
