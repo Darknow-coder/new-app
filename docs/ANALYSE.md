@@ -53,3 +53,18 @@ l'autre, les rappeler chaque jour, et mesurer ce qu'ils font.
 - Une pub n'est jamais imposée : toujours un bouton 🎬 choisi par le joueur, jamais pendant un puzzle.
 - Les puzzles du jour restent identiques et sans bonus payant pour tout le monde.
 - Rien d'indispensable à acheter : les achats font gagner du temps ou des objets décoratifs.
+
+## Où on en est (mise à jour du 14 novembre 2026)
+- ✅ **Mesurer** : compteurs anonymes par niveau, page `site/stats.html`.
+- ✅ **Sauvegarde dans le cloud** : automatique, avec un code de récupération de 12 caractères
+  (Réglages → Sauvegarde en ligne). Règles Firestore à publier : `docs/firestore.rules`.
+- ✅ **Du contenu pour longtemps** : 2 000 niveaux prêts, 3 nouvelles mécaniques après le monde 16
+  (miroirs, ressorts, sens uniques), difficulté qui continue de monter.
+- ✅ **Un rendez-vous chaque semaine** : l'événement du lundi (7 étapes à thème, coffre d'or).
+- ✅ **Un rendez-vous chaque jour** : puzzles du jour, roue de la chance, quêtes, cadeau de connexion.
+- ✅ **Une politique de confidentialité publique** : `site/privacy.html` (exigée par les stores).
+- ⏳ **Google Play** (25 $ une fois) via l'appli « coque » du site : il faudra y ajouter ton nom ou
+  pseudo d'éditeur et une adresse e-mail de contact (exigés par Google).
+- ⏳ **Le rappel quotidien** : demande un petit serveur d'envoi (pas gratuit au-delà d'un certain volume).
+- ⏳ **La monétisation** : la couche technique est prête (`docs/MONETISATION.md`), à activer quand
+  il y aura du trafic.

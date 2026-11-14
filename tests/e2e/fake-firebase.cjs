@@ -10,7 +10,11 @@ module.exports = async function fakeFirebase(ctx, seed = [], shared = null) {
     const url = req.url();
     const body = req.postDataJSON?.() || null;
     const num = (f) => Number(f.integerValue);
-    if (req.method() === 'DELETE') { docs.delete(url.split('/players/')[1].split('?')[0]); return json(r, {}); }
+    if (req.method() === 'DELETE') {
+      if (url.includes('/saves/')) delete docs.saves?.[url.split('/saves/')[1].split('?')[0]];
+      else docs.delete(url.split('/players/')[1].split('?')[0]);
+      return json(r, {});
+    }
     if (url.includes(':commit')) {
       const u = body.writes[0].update;
       const f = u.fields;

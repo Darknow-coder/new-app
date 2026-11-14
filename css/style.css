@@ -10644,3 +10644,23 @@ img.map-scene{
     transform-origin: 50% 100%;
   }
 }
+.cloud-delete{
+  display: block;
+  margin: 10px auto 0;
+  padding: 4px 8px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+.cloud-box.is-off .cloud-code,
+.cloud-box.is-off .cloud-help,
+.cloud-box.is-off #cloud-restore{
+  display: none;
+}
+.about-link{
+  color: var(--accent);
+  font-weight: 700;
+}

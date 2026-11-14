@@ -231,7 +231,7 @@ hapticBox.addEventListener('change', () => {
   buzz(20);
 });
 
-export const APP_VERSION = '1.0.0-beta';
+export const APP_VERSION = '1.1.0';
 
 $('#btn-export').addEventListener('click', async () => {
   const code = exportProgress();

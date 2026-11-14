@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#11142b" />
+  <title>Marbl · Confidentialité</title>
+  <meta name="description" content="Politique de confidentialité du jeu Marbl : quelles données sont utilisées, pourquoi, et comment les supprimer." />
+  <link rel="icon" href="../icons/icon.svg" type="image/svg+xml" />
+  <style>
+    @font-face { font-family: Fredoka; src: url(../fonts/fredoka-latin.woff2) format('woff2'); font-weight: 300 700; font-display: swap; }
+    @font-face { font-family: Fredoka; src: url(../fonts/fredoka-latin-ext.woff2) format('woff2'); font-weight: 300 700; font-display: swap; unicode-range: U+0100-024F, U+1E00-1EFF; }
+    :root { --bg: #11142b; --card: #1d2250; --line: #ffffff1a; --text: #fff; --muted: #b4b7df; --accent: #ffc23d; }
+    @media (prefers-color-scheme: light) { :root { --bg: #f6f3ff; --card: #ffffff; --line: #2a1f5520; --text: #1d1846; --muted: #5a5680; --accent: #c98510; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: Fredoka, system-ui, sans-serif; line-height: 1.55; }
+    main { width: min(760px, 100% - 32px); margin: 0 auto; padding: 32px 0 64px; }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    header img { width: 48px; height: 48px; }
+    h1 { margin: 0; font-size: 30px; }
+    h2 { margin: 30px 0 8px; font-size: 21px; }
+    p, li { color: var(--muted); font-weight: 500; }
+    strong { color: var(--text); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 6px 20px 14px; margin-top: 18px; }
+    table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 15px; }
+    th, td { text-align: left; vertical-align: top; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+    th { color: var(--text); font-weight: 600; }
+    td { color: var(--muted); font-weight: 500; }
+    .lang { display: inline-flex; gap: 6px; margin: 10px 0 0; }
+    .lang a { color: var(--accent); font-weight: 700; text-decoration: none; padding: 4px 10px; border: 1px solid var(--line); border-radius: 99px; }
+    a { color: var(--accent); }
+    .small { font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header><img src="../icons/icon.svg" alt="" /><h1>Marbl · Confidentialité</h1></header>
+    <p class="small">Dernière mise à jour : 14 novembre 2026</p>
+    <div class="lang"><a href="#fr">Français</a><a href="#en">English</a></div>
+
+    <section id="fr">
+      <div class="card">
+        <h2>En bref</h2>
+        <p><strong>Pas de compte, pas de publicité, pas de traceur, aucune donnée personnelle.</strong> Le jeu n'a jamais besoin de ton nom, de ton e-mail ou de ton numéro. Quelques informations de jeu, anonymes, passent par Google Firebase pour le classement, la sauvegarde en ligne et l'amélioration des niveaux.</p>
+      </div>
+
+      <h2>Ce que le jeu utilise</h2>
+      <table>
+        <tr><th>Donnée</th><th>Où</th><th>Pourquoi</th></tr>
+        <tr><td>Ta progression (niveaux, étoiles, pièces, billes, réglages…)</td><td>Sur ton appareil (stockage du navigateur)</td><td>Faire fonctionner le jeu, même hors ligne.</td></tr>
+        <tr><td>Une copie de ta progression, rangée sous ton code de récupération</td><td>Google Firebase</td><td>La sauvegarde en ligne : retrouver ta partie sur un autre appareil. Seul quelqu'un qui connaît le code peut la lire.</td></tr>
+        <tr><td>Un nom tiré au hasard (ex. « Loutre Jaune 18 »), ton nombre de niveaux et d'étoiles</td><td>Google Firebase</td><td>Le classement mondial.</td></tr>
+        <tr><td>Des compteurs anonymes (combien de fois chaque niveau est commencé, réussi…)</td><td>Google Firebase</td><td>Repérer les niveaux trop durs. Aucun identifiant de joueur ni d'appareil n'y est attaché.</td></tr>
+        <tr><td>Les avis que tu choisis d'envoyer (note, texte, langue, version)</td><td>Google Firebase</td><td>Améliorer le jeu.</td></tr>
+        <tr><td>Un identifiant anonyme technique</td><td>Google Firebase Authentication</td><td>Protéger les données ci-dessus (chacun ne modifie que les siennes). Il n'est lié à aucune identité.</td></tr>
+      </table>
+      <p>Le site est hébergé par GitHub Pages, qui peut conserver des journaux techniques (adresse IP) pour la sécurité, comme tout hébergeur. Le jeu n'utilise <strong>aucun cookie publicitaire ni outil de mesure d'audience</strong>.</p>
+
+      <h2>Tes choix</h2>
+      <ul>
+        <li><strong>Quitter le classement</strong> : Classement → « Quitter le classement » supprime ton entrée et ne la recrée plus.</li>
+        <li><strong>Supprimer la sauvegarde en ligne</strong> : Réglages → Sauvegarde en ligne → « Supprimer ma sauvegarde en ligne ». La copie en ligne est effacée et la sauvegarde automatique s'arrête.</li>
+        <li><strong>Tout effacer sur l'appareil</strong> : Réglages → « Effacer la progression », ou vider les données du site dans ton navigateur.</li>
+      </ul>
+
+      <h2>Durée de conservation</h2>
+      <p>Les données en ligne restent tant que tu ne les supprimes pas. Les compteurs anonymes sont regroupés par jour et peuvent être gardés pour suivre l'évolution du jeu.</p>
+
+      <h2>Enfants</h2>
+      <p>Marbl convient à tous les âges et ne demande aucune donnée personnelle. Les avis envoyés ne doivent pas contenir d'informations personnelles.</p>
+
+      <h2>Contact</h2>
+      <p>Pour toute question ou demande sur tes données, écris-nous depuis le jeu : Réglages → « Donner mon avis ». Indique ton code de sauvegarde si ta demande concerne ta sauvegarde en ligne.</p>
+    </section>
+
+    <section id="en">
+      <h1 style="margin-top:48px">Privacy (English)</h1>
+      <div class="card">
+        <h2>In short</h2>
+        <p><strong>No account, no ads, no trackers, no personal data.</strong> The game never needs your name, e-mail or phone number. A few anonymous game facts go through Google Firebase for the leaderboard, the online save and improving the levels.</p>
+      </div>
+      <h2>What the game uses</h2>
+      <table>
+        <tr><th>Data</th><th>Where</th><th>Why</th></tr>
+        <tr><td>Your progress (levels, stars, coins, marbles, settings…)</td><td>On your device (browser storage)</td><td>To run the game, even offline.</td></tr>
+        <tr><td>A copy of your progress, stored under your recovery code</td><td>Google Firebase</td><td>Online save: get your game back on another device. Only someone who knows the code can read it.</td></tr>
+        <tr><td>A random name (e.g. “Yellow Otter 18”), your number of levels and stars</td><td>Google Firebase</td><td>The world leaderboard.</td></tr>
+        <tr><td>Anonymous counters (how often each level is started, won…)</td><td>Google Firebase</td><td>Finding levels that are too hard. No player or device id is attached.</td></tr>
+        <tr><td>Feedback you choose to send (rating, text, language, version)</td><td>Google Firebase</td><td>Improving the game.</td></tr>
+        <tr><td>An anonymous technical id</td><td>Google Firebase Authentication</td><td>Protecting the data above (everyone can only change their own). Not linked to any identity.</td></tr>
+      </table>
+      <p>The site is hosted on GitHub Pages, which may keep technical logs (IP address) for security, like any host. The game uses <strong>no advertising cookies and no audience measurement tools</strong>.</p>
+      <h2>Your choices</h2>
+      <ul>
+        <li><strong>Leave the leaderboard</strong>: Leaderboard → “Leave the leaderboard” deletes your entry for good.</li>
+        <li><strong>Delete the online save</strong>: Settings → Online save → “Delete my online save”. The online copy is erased and automatic backups stop.</li>
+        <li><strong>Erase everything on the device</strong>: Settings → “Reset all progress”, or clear the site's data in your browser.</li>
+      </ul>
+      <h2>Contact</h2>
+      <p>For any question or request about your data, write to us from the game: Settings → “Give your opinion”. Include your save code if it is about your online save.</p>
+    </section>
+  </main>
+</body>
+</html>

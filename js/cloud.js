@@ -30,6 +30,8 @@ function persist() {
 }
 
 export const cloudEnabled = () => onlineEnabled();
+/** The player switched the online save off (and deleted it). */
+export const cloudOff = () => !!st.off;
 /** Something worth keeping: the tutorial is done and at least one level was won. */
 const worthSaving = () => store.data.tutorialDone && store.data.levels.unlocked > 1;
 
@@ -56,7 +58,7 @@ const docName = (code) => `projects/${FIREBASE.projectId}/databases/(default)/do
 let busy = null;
 /** Upload now if the progress changed since the last upload (unless too soon). */
 export function upload({ force = false } = {}) {
-  if (!cloudEnabled() || !worthSaving() || busy) return busy;
+  if (!cloudEnabled() || st.off || !worthSaving() || busy) return busy;
   const data = exportProgress();
   const h = hashString(data);
   if (!force && (h === st.hash || Date.now() - (st.at || 0) < MIN_GAP)) return null;
@@ -100,6 +102,20 @@ export async function fetchSave(code) {
     if (/not found|404|NOT_FOUND/i.test(String(e?.message))) return null;
     throw e;
   }
+}
+
+/** Delete the online copy and stop backing up (the progress stays on this device). */
+export async function deleteSave() {
+  if (st.code) await http(`${DOCS()}/saves/${st.code}?key=${FIREBASE.apiKey}`, null, { method: 'DELETE', auth: true });
+  st = { off: true };
+  persist();
+}
+
+/** Back up again, under a brand new code. */
+export function enableCloud() {
+  st = {};
+  persist();
+  return upload({ force: true });
 }
 
 /** Replace this device's progress with a cloud save, and keep syncing to that code. */

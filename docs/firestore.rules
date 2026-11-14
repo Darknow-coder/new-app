@@ -23,6 +23,7 @@ service cloud.firestore {
     match /saves/{code} {
       allow get: if request.auth != null && code.matches('^[2-9A-HJKMNP-Z]{12}$');
       allow list: if false;
+      allow delete: if request.auth != null && code.matches('^[2-9A-HJKMNP-Z]{12}$');
       allow create, update: if request.auth != null
         && code.matches('^[2-9A-HJKMNP-Z]{12}$')
         && request.resource.data.keys().hasOnly(['v', 'data', 'levels', 'updated'])

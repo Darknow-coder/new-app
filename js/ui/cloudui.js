@@ -1,6 +1,6 @@
 // Settings panel for the online save, and the "recover a game" window.
 import { LANG, t } from '../i18n.js';
-import { CODE_RE, cloudCode, cloudEnabled, fetchSave, formatCode, lastUpload, parseCode, restoreSave, upload } from '../cloud.js';
+import { CODE_RE, cloudCode, cloudEnabled, cloudOff, deleteSave, enableCloud, fetchSave, formatCode, lastUpload, parseCode, restoreSave, upload } from '../cloud.js';
 import { store } from '../storage.js';
 import { $, notify, openModal, toast } from './core.js';
 import { sfx } from '../audio.js';
@@ -18,6 +18,13 @@ export function renderCloud() {
   const box = $('#cloud-box');
   box.hidden = !cloudEnabled();
   if (box.hidden) return;
+  const off = cloudOff();
+  box.classList.toggle('is-off', off);
+  $('#cloud-delete').textContent = off ? t('cloudEnable') : t('cloudDelete');
+  if (off) {
+    $('#cloud-status').textContent = t('cloudDisabled');
+    return;
+  }
   $('#cloud-code').textContent = formatCode(cloudCode());
   const at = lastUpload();
   $('#cloud-status').textContent = !navigator.onLine ? t('cloudOff') : at ? t('cloudOn', { t: ago(at) }) : store.data.levels.unlocked > 1 ? t('cloudPending') : t('cloudWait');
@@ -35,6 +42,22 @@ $('#cloud-copy').addEventListener('click', async () => {
   } catch {
     prompt(t('cloudTitle'), code);
   }
+});
+
+$('#cloud-delete').addEventListener('click', async () => {
+  if (cloudOff()) {
+    await enableCloud();
+    renderCloud();
+    return;
+  }
+  if (!confirm(t('cloudDeleteConfirm'))) return;
+  try {
+    await deleteSave();
+    toast(t('cloudDeleted'));
+  } catch {
+    toast(t('restoreErr'));
+  }
+  renderCloud();
 });
 
 /* ---------- recover a game ---------- */

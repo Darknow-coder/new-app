@@ -286,6 +286,14 @@ const assert = (c, m) => {
       await pb.waitForTimeout(2600);
       const got = await pb.evaluate(() => ({ u: window.__marbl.store.data.levels.unlocked, c: window.__marbl.store.data.coins }));
       assert(got.u === 12 && got.c === 777, `restore failed ${JSON.stringify(got)}`);
+      // Deleting the online copy stops the backups.
+      await pb.click('#btn-settings');
+      await pb.waitForTimeout(600);
+      pb.once('dialog', (d) => d.accept());
+      await pb.click('#cloud-delete');
+      await pb.waitForTimeout(800);
+      assert(!docs.saves[code.replace(/-/g, '')], 'online save not deleted');
+      assert(await pb.evaluate(() => document.querySelector('#cloud-box').classList.contains('is-off')), 'cloud panel not off');
       await ctxB.close();
     });
     await step('save export / import', async () => {

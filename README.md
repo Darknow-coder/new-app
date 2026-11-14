@@ -29,7 +29,7 @@ Marbl #7 🔥4
   never the gameplay colour.
 - **Content** — 2,000 pre-computed levels (16 illustrated worlds, then harder laps; `js/levels-more.js` holds 321+ and loads after start-up), each verified solvable with an optimal par by the
   test suite; the generator keeps going beyond that.
-- **Mechanics** — sand traps (World 2), crystal gates (World 3), portals (World 4), arrows (World 9), pits from level 11 onwards (263 of 320 levels), shaped boards from World 6, then remixes. Each is
+- **Mechanics** — sand traps (World 2), crystal gates (World 3), portals (World 4), arrows (World 9), pits from level 11 onwards, shaped boards from World 6; mirrors (321), springs (401) and one-way doors (481) in the second lap; then endless remixes. Each is
   introduced by a hand-made level and a discovery card; generated levels must genuinely need their tiles.
 - **Progression** — player level & XP (level-up chests), 3 daily quests with a bonus chest, 20 achievements,
   a 7-day escalating login gift, combos (DOUBLE!/TRIPLE!) flagged on levels where one is reachable.
@@ -40,7 +40,15 @@ Marbl #7 🔥4
   iris transitions between screens, level intro/outro, and a marble that rolls to the next level on the map.
 - **Interactive tutorial** — four 1–2 move lessons, one idea each; playing within 10 seconds.
 - **Juice** — tilting 3D board, squash on impact, sparks, procedural WebAudio sound, haptics, confetti.
-- **PWA** — installable, works fully offline, light & dark themes, English & French.
+- **Painted adventure map** — every world is an illustrated scene baked once into a cached SVG picture
+  (coasts, cliffs, forests, cities, floating isles…), with a road made of the world's material, level
+  medallions on platforms, boss arenas, and the player's own marble on the current level.
+- **Weekly event** — every Monday, 7 stages on a theme (portals, pits, mirrors…) picked from the
+  ready-made levels and disguised (turned, mirrored, recoloured); a gold chest at the end.
+- **Lucky wheel** — one free spin a day (coins, boosters, chests); optional rewarded bonus spin.
+- **Online save** — progress backed up automatically to Firestore under a 12-character recovery code;
+  "Recover a game" on another device. Can be deleted from the settings. See `docs/firestore.rules`.
+- **PWA** — installable, works fully offline, light & dark themes, English, French & Spanish.
 - **Accessible** — keyboard play (arrows/WASD, Z undo, R restart), screen-reader announcements, reduced-motion support.
 - **Zero dependencies, zero build, zero cost** — plain HTML/CSS/ES modules, ~60 KB total.
 
