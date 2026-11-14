@@ -371,7 +371,7 @@
     }));
 
     /* ---------- screenshots ---------- */
-    const SHOTS = ['02-gameplay', '04-map', '05-boss', '06-chest', '07-collection', '03-victory', '08-leaderboard', '09-editor'];
+    const SHOTS = ['02-gameplay', '04-map', '03-victory', '10-event', '06-chest', '07-collection', '11-wheel', '09-editor'];
     function renderShots() {
       const set = lang === 'fr' ? 'fr' : 'en';
       document.getElementById('shots').innerHTML = SHOTS.map((s) => `<img src="img/${set}-${s}.webp" alt="" loading="lazy" width="540" height="960" />`).join('');

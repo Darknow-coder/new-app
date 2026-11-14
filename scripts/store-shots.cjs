@@ -1,9 +1,12 @@
-// Store / portal screenshots: `npm run shots` → store/{fr,en}/*.png (1080×1920 phone),
+// Store / portal screenshots: `npm run shots` → store/{fr,en}/*.png (1080×1920 phone, 9:16 as Google Play
+// recommends), site/img/*.webp (the website's gallery),
 // store/desktop-*.png (1280×720) and store/cover-630x500.png (itch.io cover).
-// The online leaderboard is served by an in-memory fake, never the real project.
+// The online leaderboard is served by an in-memory fake, never the real project
+// (and any other Firebase request is cut off).
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
 const fakeFirebase = require('../tests/e2e/fake-firebase.cjs');
 
@@ -25,6 +28,9 @@ const serve = () =>
 const pad = (n) => String(n).padStart(2, '0');
 const d = new Date();
 const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const week = Math.floor((Date.parse(today) - Date.parse('2026-11-02')) / 86400000 / 7); // weekly event in progress
+// a collection well under way (the first four worlds almost complete)
+const OWNED = ['classic', 'stripes', 'dots', 'glass', 'swirl', 'w0-sand', 'w0-wave', 'w0-shell', 'w0-ball', 'w1-strata', 'w1-cactus', 'w1-sun', 'w1-scarab', 'w2-ash', 'w2-strata', 'w2-obsidian', 'w2-lava', 'w3-scales', 'w3-bubbles', 'w3-coral', 'cute-smile'];
 const best = Object.fromEntries(Array.from({ length: 57 }, (_, i) => [i + 1, i % 5 === 3 ? 2 : 3]));
 const SAVE = {
   tutorialDone: true,
@@ -33,11 +39,12 @@ const SAVE = {
   levels: { unlocked: 58, best },
   boosters: { hint: 4, rewind: 6 },
   seenMech: { sand: true, gates: true, portals: true, pits: true, arrows: true },
-  skins: { owned: ['classic', 'w0-ball', 'w1-sun', 'w2-ember', 'w3-coral', 'w0-shell'], equipped: 'w1-sun', seen: ['classic', 'w0-ball', 'w1-sun', 'w2-ember', 'w3-coral', 'w0-shell'] },
+  skins: { owned: OWNED, equipped: 'w1-sun', seen: OWNED },
   daily: { [today]: { easy: { done: true, moves: 5, stars: 3, par: 5 } } },
   player: { level: 9, xp: 120 },
   settings2: { music: true, fbAsked: true },
   edDraft: ['A..#.b', '..~...', '.#..O.', '...B..', '.>..#.', 'a.....'],
+  event: { week, stars: [3, 3, 2], chest: false },
 };
 const seed = Array.from({ length: 40 }, (_, i) => ({ a: (i * 5) % 24, b: (i * 7) % 24, n: (i * 37) % 100, levels: Math.max(3, 140 - i * 4 - (i % 3)), stars: Math.max(6, 400 - i * 11) }));
 
@@ -50,12 +57,15 @@ const seed = Array.from({ length: 40 }, (_, i) => ({ a: (i * 5) % 24, b: (i * 7)
   for (const lang of ['fr', 'en']) {
     const dir = path.join(OUT, lang);
     fs.mkdirSync(dir, { recursive: true });
-    const ctx = await browser.newContext({ viewport: { width: 360, height: 640 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: lang === 'fr' ? 'fr-FR' : 'en-US', colorScheme: 'dark' });
+    const ctx = await browser.newContext({ viewport: { width: 405, height: 720 }, deviceScaleFactor: 8 / 3, isMobile: true, hasTouch: true, locale: lang === 'fr' ? 'fr-FR' : 'en-US', colorScheme: 'dark' });
+    await ctx.route(/googleapis\.com|firebaseapp\.com/, (r) => r.abort());
     await fakeFirebase(ctx, seed);
     const p = await ctx.newPage();
     await p.addInitScript((s) => {
       localStorage.setItem('marbl:v1', JSON.stringify(s));
       localStorage.setItem('marbl:online', JSON.stringify({ joined: true, optedOut: false, a: 9, b: 0, n: 7, uid: 'me', idToken: 'tok', refreshToken: 'ref', exp: Date.now() + 3.6e6 }));
+      // already backed up once: no 'your game is saved online' banner over the shots
+      localStorage.setItem('marbl:cloud', JSON.stringify({ code: '7KQ2X9TFM4PA', at: Date.now() }));
     }, SAVE);
     const M = (fn, a) => p.evaluate(fn, a);
     const shot = async (name, wait = 1300) => {
@@ -79,7 +89,7 @@ const seed = Array.from({ length: 40 }, (_, i) => ({ a: (i * 5) % 24, b: (i * 7)
       await M((x) => window.__marbl.move(x), dir2);
       await p.waitForTimeout(700);
     }
-    await shot('03-victory', 2600);
+    await shot('03-victory', 4200); // coins and bars done
 
     await closeAll();
     await M(() => {
@@ -115,14 +125,27 @@ const seed = Array.from({ length: 40 }, (_, i) => ({ a: (i * 5) % 24, b: (i * 7)
     await M(() => window.__marbl.openEditor());
     await shot('09-editor', 2200);
 
+    await p.goto(base);
+    await p.waitForTimeout(1500);
+    await M(() => document.querySelector('#btn-event').click());
+    await shot('10-event', 1600);
+    await closeAll();
+
+    await M(() => document.querySelector('#btn-wheel').click());
+    await shot('11-wheel', 1600);
+
     await ctx.close();
   }
 
   // Desktop / landscape (CrazyGames, itch.io page)
   const dctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, locale: 'en-US', colorScheme: 'dark' });
+  await dctx.route(/googleapis\.com|firebaseapp\.com/, (r) => r.abort());
   await fakeFirebase(dctx, seed);
   const dp = await dctx.newPage();
-  await dp.addInitScript((s) => localStorage.setItem('marbl:v1', JSON.stringify(s)), SAVE);
+  await dp.addInitScript((s) => {
+    localStorage.setItem('marbl:v1', JSON.stringify(s));
+    localStorage.setItem('marbl:cloud', JSON.stringify({ code: '7KQ2X9TFM4PA', at: Date.now() }));
+  }, SAVE);
   await dp.goto(base);
   await dp.waitForTimeout(3800);
   await dp.screenshot({ path: path.join(OUT, 'desktop-home.png') });
@@ -151,12 +174,21 @@ const seed = Array.from({ length: 40 }, (_, i) => ({ a: (i * 5) % 24, b: (i * 7)
   <i style="left:300px;top:40px;width:46px;height:46px;background:radial-gradient(circle at 35% 30%,#fff 0 8%,#ff5d73 30%,#a3203a)"></i>
   <i style="left:60px;top:400px;width:34px;height:34px;background:radial-gradient(circle at 35% 30%,#fff 0 8%,#1fd1b9 30%,#0d7566)"></i>
   <i style="left:320px;top:420px;width:26px;height:26px;background:radial-gradient(circle at 35% 30%,#fff 0 8%,#ffc23d 30%,#a36a00)"></i>
-  <div class="t"><h1>marbl</h1><p>Tilt the board.<br>Drop every marble.</p><span class="b">320 levels · daily puzzles</span></div>
+  <div class="t"><h1>marbl</h1><p>Tilt the board.<br>Drop every marble.</p><span class="b">2,000 levels · daily puzzles</span></div>
   <div class="ph"><img src="data:image/png;base64,${img}"></div>`);
   await cp.waitForTimeout(400);
   await cp.screenshot({ path: path.join(OUT, 'cover-630x500.png') });
 
   await browser.close();
   srv.close();
-  console.log('screenshots written to store/');
+
+  // The website's gallery: small WebP copies (needs ImageMagick).
+  try {
+    for (const lang of ['fr', 'en'])
+      for (const f of fs.readdirSync(path.join(OUT, lang)).filter((x) => x.endsWith('.png')))
+        execFileSync('convert', [path.join(OUT, lang, f), '-resize', '540x960', '-quality', '82', path.join(ROOT, 'site', 'img', `${lang}-${f.replace('.png', '.webp')}`)]);
+  } catch {
+    console.log('(ImageMagick missing: site/img not updated)');
+  }
+  console.log('screenshots written to store/ and site/img/');
 })();
