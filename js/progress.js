@@ -120,6 +120,10 @@ export const ACHIEVEMENTS = [
   { id: 'daily10', coins: 80, target: 10, value: () => st().dailySolved },
   { id: 'pure20', coins: 100, target: 20, value: () => st().boosterFree },
   { id: 'player10', coins: 150, target: 10, value: () => p().level },
+  { id: 'event1', coins: 100, target: 1, value: () => store.data.eventsDone || 0 },
+  { id: 'event5', coins: 300, target: 5, value: () => store.data.eventsDone || 0 },
+  { id: 'lap2', coins: 300, target: 321, value: () => store.data.levels.unlocked },
+  { id: 'win500', coins: 500, target: 500, value: () => st().levelsWon },
 ];
 
 /** Mark newly reached achievements as ready to claim; returns notifications. */
