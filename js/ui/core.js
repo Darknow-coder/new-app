@@ -152,10 +152,12 @@ export function updateCoins(bump = false) {
 
 export const worldHue = (n) => WORLD_HUES[worldOf(n) % WORLD_HUES.length];
 
+const roman = (n) => [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']].reduce((s, [v, r]) => { while (n >= v) { s += r; n -= v; } return s; }, '');
+
 export const worldName = (w) => {
   const base = t(`world${w % 16}`);
   const lap = Math.floor(w / 16);
-  return lap ? `${base} ${['II', 'III', 'IV', 'V'][Math.min(lap - 1, 3)]}` : base;
+  return lap ? `${base} ${roman(lap + 1)}` : base;
 };
 
 export const notifQueue = [];

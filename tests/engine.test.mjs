@@ -373,3 +373,18 @@ test('perfect run bonuses at 3, 5, 10, 15...', () => {
   assert.deepEqual([1, 2, 3, 4, 5, 9, 10, 12, 15].map(perfectRunBonus), [0, 0, 15, 0, 30, 0, 60, 0, 60]);
 });
 
+import { loadMoreLevels, readyLevels } from '../js/levels.js';
+
+test('the extra level pack (321+) replays to a win and matches the generator', async () => {
+  await loadMoreLevels();
+  const last = readyLevels();
+  assert.ok(last >= 2000, 'levels up to 2000 are ready-made');
+  for (let n = PRECOMPUTED_LEVELS + 1; n <= last; n++) {
+    const l = adventureLevel(n);
+    let s = l.start;
+    for (const d of l.solution) s = tilt(l, s, d).state;
+    assert.ok(isSolved(l, s), `level ${n} solution replays`);
+    assert.equal(l.solution.length, l.par, `level ${n} par matches its solution`);
+  }
+  for (const n of [321, 345]) assert.equal(adventureLevel(n).par, generateAdventureLevel(n).par, `level ${n} drift`);
+});

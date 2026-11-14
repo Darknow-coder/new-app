@@ -1,5 +1,5 @@
 // Offline-first service worker. Bump VERSION on every release so clients pick up new files.
-const VERSION = 'marbl-v3.17.0';
+const VERSION = 'marbl-v3.17.1';
 const ASSETS = [
   './',
   'index.html',
@@ -17,6 +17,7 @@ const ASSETS = [
   'js/chests.js',
   'js/skins.js',
   'js/levels-data.js',
+  'js/levels-more.js',
   'fonts/fredoka-latin.woff2',
   'fonts/fredoka-latin-ext.woff2',
   'js/progress.js',
