@@ -84,50 +84,62 @@
         </header>
 
         <main class="home-main">
-          <div class="hero">
-            <p class="eyebrow" id="home-date"></p>
-            <h2 class="hero-title"><span data-i18n="todayTitle"></span> <span class="hero-num" id="home-num"></span></h2>
-            <div class="chip-row">
-              <button class="streak-chip" id="streak-chip" type="button"><svg><use href="#i-flame"/></svg><span id="streak-text"></span><b class="streak-freeze" id="streak-freeze" hidden></b></button>
-              <button class="gift-chip" id="gift-chip" type="button" hidden><svg><use href="#i-gift"/></svg><span id="gift-text"></span></button>
-              <button class="gift-chip chest-chip" id="daily-chest-chip" type="button" hidden><span class="mini-chest" id="daily-chest-mini"></span><span data-i18n="dailyChest"></span></button>
-            </div>
-          </div>
-
-          <button class="endless-card adventure-hero" id="btn-adventure">
-            <span class="endless-icon"><svg><use href="#i-flag"/></svg></span>
-            <span class="endless-text">
-              <strong data-i18n="adventure"></strong>
-              <small id="adventure-desc"></small>
-              <span class="adv-progress"><i id="adventure-bar"></i></span>
+          <!-- The world you are in: a window on the map, one tap to play the next level -->
+          <div class="home-stage" id="btn-adventure" role="button" tabindex="0" data-i18n-label="adventure">
+            <span class="stage-map" id="stage-map" aria-hidden="true"></span>
+            <span class="stage-top">
+              <span class="stage-emblem" id="stage-emblem"></span>
+              <span class="stage-title"><small id="stage-world-n"></small><strong id="stage-world-name"></strong></span>
+              <span class="stage-stars"><svg><use href="#i-star"/></svg><b id="stage-stars"></b></span>
+            </span>
+            <span class="stage-bottom">
+              <span class="stage-goal" id="adventure-desc"></span>
               <span class="adv-chests" id="adv-chests" hidden></span>
+              <button class="stage-play" id="stage-play" type="button"><svg><use href="#i-play"/></svg><span id="stage-play-text"></span></button>
             </span>
-            <span class="endless-go"><svg><use href="#i-play"/></svg></span>
-          </button>
-
-          <button class="season-card" id="btn-season" type="button">
-            <span class="season-badge"><svg><use href="#i-star"/></svg><b id="season-tier">0</b></span>
-            <span class="season-text">
-              <strong id="season-title"></strong>
-              <small id="season-sub"></small>
-              <span class="xp-bar"><i id="season-bar"></i></span>
-            </span>
-            <span class="season-ready" id="season-ready" hidden></span>
-          </button>
-
-          <button class="rank-card" id="btn-rank" type="button" hidden>
-            <span class="rank-ico"><svg><use href="#i-trophy"/></svg></span>
-            <span class="rank-text"><strong data-i18n="rankTitle"></strong><small id="rank-sub"></small></span>
-            <span class="rank-go"><svg><use href="#i-back"/></svg></span>
-          </button>
-
-          <ol class="daily-list" id="daily-list"></ol>
-
-          <div class="share-row" id="share-row" hidden>
-            <button class="btn btn-primary btn-wide" id="btn-share-day"><svg><use href="#i-share"/></svg><span data-i18n="shareDay"></span></button>
           </div>
-          <p class="countdown" id="countdown"></p>
-          <button type="button" class="archive-link" id="btn-archive"><svg><use href="#i-calendar"/></svg><span data-i18n="archives"></span><b class="archive-count" id="archive-count" hidden></b></button>
+
+          <div class="home-tiles">
+            <button class="home-tile tile-wheel" id="btn-wheel" type="button">
+              <span class="tile-ico"><span class="mini-wheel"></span></span>
+              <span class="tile-label" data-i18n="wheel"></span>
+              <b class="badge tile-badge" id="wheel-badge" hidden>1</b>
+            </button>
+            <button class="home-tile tile-season" id="btn-season" type="button">
+              <span class="tile-ico season-badge"><svg><use href="#i-star"/></svg><b id="season-tier">0</b></span>
+              <span class="tile-label" id="season-title"></span>
+              <span class="xp-bar tile-bar"><i id="season-bar"></i></span>
+              <small class="tile-sub" id="season-sub" hidden></small>
+              <b class="badge tile-badge season-ready" id="season-ready" hidden></b>
+            </button>
+            <button class="home-tile tile-rank" id="btn-rank" type="button" hidden>
+              <span class="tile-ico"><svg><use href="#i-trophy"/></svg></span>
+              <span class="tile-label" data-i18n="rankTitle"></span>
+              <small class="tile-sub" id="rank-sub"></small>
+            </button>
+            <button class="home-tile tile-archive" id="btn-archive" type="button">
+              <span class="tile-ico"><svg><use href="#i-calendar"/></svg></span>
+              <span class="tile-label" data-i18n="archives"></span>
+              <b class="badge tile-badge archive-count" id="archive-count" hidden></b>
+            </button>
+          </div>
+
+          <section class="daily-block" aria-labelledby="daily-title">
+            <header class="daily-head hero">
+              <p class="eyebrow" id="home-date"></p>
+              <h2 class="hero-title" id="daily-title"><span data-i18n="todayTitle"></span> <span class="hero-num" id="home-num"></span></h2>
+              <div class="chip-row">
+                <button class="streak-chip" id="streak-chip" type="button"><svg><use href="#i-flame"/></svg><span id="streak-text"></span><b class="streak-freeze" id="streak-freeze" hidden></b></button>
+                <button class="gift-chip" id="gift-chip" type="button" hidden><svg><use href="#i-gift"/></svg><span id="gift-text"></span></button>
+                <button class="gift-chip chest-chip" id="daily-chest-chip" type="button" hidden><span class="mini-chest" id="daily-chest-mini"></span><span data-i18n="dailyChest"></span></button>
+              </div>
+            </header>
+            <ol class="daily-list" id="daily-list"></ol>
+            <div class="share-row" id="share-row" hidden>
+              <button class="btn btn-primary btn-wide" id="btn-share-day"><svg><use href="#i-share"/></svg><span data-i18n="shareDay"></span></button>
+            </div>
+            <p class="countdown" id="countdown"></p>
+          </section>
 
           <section class="quests-card" aria-labelledby="quests-title">
             <header class="quests-head">
@@ -413,6 +425,24 @@
         <div class="modal-actions lost-actions">
           <button class="btn btn-primary btn-full" id="lost-retry" data-i18n="lostRetry"></button>
           <button class="btn btn-ghost btn-full" id="lost-undo" data-i18n="lostUndo"></button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="modal-wheel">
+      <div class="modal-card wheel-card">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <h2 data-i18n="wheelTitle"></h2>
+        <p class="wheel-sub" data-i18n="wheelSub"></p>
+        <div class="wheel">
+          <div class="wheel-rim"><div class="wheel-disc" id="wheel-disc"></div></div>
+          <i class="wheel-pin"></i>
+          <i class="wheel-hub"></i>
+          <div class="wheel-prize" id="wheel-prize"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary btn-full" id="wheel-spin" type="button"></button>
+          <button class="btn btn-ghost btn-full" id="wheel-ad" type="button" hidden data-i18n="wheelAd"></button>
         </div>
       </div>
     </dialog>

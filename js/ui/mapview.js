@@ -411,3 +411,71 @@ $('#map-scroll').addEventListener(
 recenter.addEventListener('click', () => {
   scrollMapTo(els.mapEl.querySelector('.node.is-current'), true);
 });
+
+/**
+ * A window on the current world for the home screen: the baked scenery, the golden road,
+ * the level medallions around the level to play and the player's marble above it.
+ * W = window width in px, VH = window height in px.
+ */
+export function stageHTML(W, VH) {
+  const u = store.data.levels.unlocked;
+  const w = worldOf(u);
+  const first = w * LEVELS_PER_WORLD + 1;
+  const ws = worldStars(w);
+  const TOP = 60;
+  const H = LEVELS_PER_WORLD * ROW + 90;
+  const px = [];
+  const nodes = [];
+  for (let i = 0; i < LEVELS_PER_WORLD; i++) {
+    const n = first + i;
+    px.push([(nodeX(n) / 100) * W, i * ROW + 50]);
+    nodes.push(n);
+  }
+  const avoid = [];
+  const chests = [];
+  let endChest = null;
+  for (const c of WORLD_CHESTS) {
+    let x;
+    let y;
+    if (c.after >= LEVELS_PER_WORLD) {
+      x = 50;
+      y = LEVELS_PER_WORLD * ROW + 30;
+      endChest = [(x / 100) * W, y];
+    } else {
+      const mid = (nodeX(first + c.after - 1) + nodeX(first + c.after)) / 2;
+      x = mid > 50 ? 20 : 80;
+      y = (c.after - 1) * ROW + 50 + ROW / 2;
+    }
+    avoid.push([(x / 100) * W, y, 44]);
+    chests.push({ c, x, y });
+  }
+  const road = [[W / 2, -TOP], ...px, ...(endChest ? [endChest] : []), [W / 2, H]];
+  const lit = Math.min(u - first + 1, LEVELS_PER_WORLD);
+  const stations = px.map(([x, y], i) => [x, y, isBoss(nodes[i])]);
+  const art = bakeWorld({ w, W, H, top: TOP, road, avoid, stations, last: false, locked: false });
+  const idx = u - first;
+  const cy = idx * ROW + 50;
+  const y0 = Math.max(-TOP, Math.min(H - VH, cy - VH * 0.55));
+  const inView = (y) => y > y0 - 60 && y < y0 + VH + 60;
+  let marks = '';
+  nodes.forEach((n, i) => {
+    const y = px[i][1];
+    if (!inView(y)) return;
+    const stars = store.levelStars(n);
+    const state = n < u || stars ? 'done' : n === u ? 'current' : 'locked';
+    const inner = state === 'locked' ? '<svg><use href="#i-lock"/></svg>' : `<span>${n}</span>`;
+    const starRow = state === 'done' ? `<span class="node-stars">${starsHTML(stars)}</span>` : '';
+    const tag = isBoss(n) ? '<em>BOSS</em>' : '';
+    marks += `<span class="node is-${state} ${isBoss(n) ? 'is-boss' : ''}" style="left:${nodeX(n)}%;top:${y - y0}px">${inner}${starRow}${tag}</span>`;
+    if (state === 'current') marks += `<i class="you-are-here" style="left:${nodeX(n)}%;top:${y - y0}px">${marbleHTML(equipped(), 0)}</i>`;
+  });
+  for (const { c, x, y } of chests) {
+    if (!inView(y)) continue;
+    const id = chestId(w, c.k);
+    const state = isOpened(id) ? 'opened' : ws >= c.stars ? 'ready' : 'locked';
+    marks += `<span class="chest-node is-${state}" style="left:${x}%;top:${y - y0}px">${chestSVG(c.tier, state === 'opened' ? 'is-open' : '')}</span>`;
+  }
+  return `<img class="stage-art" src="${art.url}" alt="" style="top:${-TOP - y0}px;height:${H + TOP}px">
+    <svg class="stage-road" viewBox="0 ${y0} ${W} ${VH}" aria-hidden="true">${litRoad(road, lit + 1)}</svg>
+    <span class="stage-marks">${marks}</span>`;
+}

@@ -24,6 +24,7 @@ export const PLACEMENTS = {
   double: { cap: 5 }, // ×2 coins on a level result
   hint: { cap: 3 }, // a free hint
   coins: { cap: 5, coins: 25 }, // free coins in the shop
+  wheel: { cap: 1 }, // one bonus spin of the lucky wheel
 };
 
 /** Future in-app products (prices are display strings; the store sets the real ones). */

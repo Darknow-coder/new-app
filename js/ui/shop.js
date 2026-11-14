@@ -13,6 +13,7 @@ import { renderHome } from './home.js';
 import { handleProgress, openChestFlow, openDailyChest } from './common.js';
 import { updateHud } from './game.js';
 import { PLACEMENTS, iapEnabled, productsForSale, purchase, rewardedLeft, showRewarded } from '../monetization.js';
+import { freeSpinReady, openWheel } from './wheel.js';
 
 /** Opt-in rewarded offers at the top of the boosters tab (only when ads are enabled). */
 function rewardedRows() {
@@ -63,7 +64,7 @@ export function renderDeal() {
   const d = todaysDeal();
   const art = d.chest
     ? `<span class="deal-art">${chestSVG(d.chest)}</span>`
-    : `<span class="deal-art deal-boost" data-icon="deal"><svg><use href="#i-${Object.keys(d.items)[0]}"/></svg></span>`;
+    : `<span class="deal-art deal-boost shop-icon ${Object.keys(d.items)[0]}" data-icon="deal"><svg><use href="#i-${Object.keys(d.items)[0]}"/></svg></span>`;
   const name = d.chest ? t(`chest_${d.chest}`) : itemsText(d.items);
   $('#shop-deal').className = `shop-deal ${d.bought ? 'is-bought' : ''}`;
   $('#shop-deal').innerHTML = `
@@ -95,7 +96,11 @@ export function renderShop() {
   const panel = $('#shop-list');
   panel.dataset.tab = shopTab;
   if (shopTab === 'boost') {
-    panel.innerHTML = rewardedRows() + SHOP.map((item, i) => {
+    // Today's free spin, right at the top of the shop.
+    const free = freeSpinReady()
+      ? `<div class="shop-cardlet is-featured is-free"><span class="shop-icon spin-ico"><span class="mini-wheel"></span></span><span class="shop-text"><strong>${t('wheelTitle')}</strong><small>${t('wheelSub')}</small></span><button class="free-btn" data-free-wheel type="button">${t('wheelSpin')}</button></div>`
+      : '';
+    panel.innerHTML = free + rewardedRows() + SHOP.map((item, i) => {
       const kinds = Object.keys(item.items);
       const pack = kinds.length > 1;
       const icon = pack ? 'i-gift' : `i-${kinds[0]}`;
@@ -194,6 +199,11 @@ export function celebrateBuy(target, label) {
 }
 
 $('#modal-shop').addEventListener('click', async (e) => {
+  if (e.target.closest('[data-free-wheel]')) {
+    sfx.tap();
+    openWheel();
+    return;
+  }
   const ad = e.target.closest('[data-rewarded]');
   if (ad) {
     ad.disabled = true;

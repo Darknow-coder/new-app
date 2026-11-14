@@ -77,7 +77,7 @@ export function announce(msg) {
 
 // What rises in, and in which order, when each screen appears.
 export const ENTER = {
-  home: '.view-home .topbar > *, .hero > *, .adventure-hero, .season-card, .daily-list > li, .share-row, .countdown, .quests-card, .quest, .footer-note, .bottom-nav > *',
+  home: '.view-home .topbar > *, .home-stage, .home-tiles > *, .daily-head > *, .daily-list > li, .share-row, .countdown, .quests-card, .quest, .footer-note, .bottom-nav > *',
   game: '.game-topbar > *, .tip, .controls > .ctrl',
   map: '.view-map .topbar > *, .world.is-here .world-head',
   editor: '.view-editor .topbar > *, .ed-status, .ed-colors, .ed-tools > *, .ed-actions > *',

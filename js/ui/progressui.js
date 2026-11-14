@@ -12,7 +12,8 @@ import { renderHome } from './home.js';
 export function renderPlayerStrip() {
   const pl = store.data.player;
   $('#player-level').textContent = pl.level;
-  $('#player-title').textContent = t('playerLevel', { n: pl.level });
+  // A title that grows with the player (the number is in the badge).
+  $('#player-title').textContent = t(`ptitle${[5, 10, 20, 35, 50].filter((l) => pl.level >= l).length}`);
   $('#player-xp').textContent = `${pl.xp}/${xpNeeded(pl.level)} XP`;
   const pct = (pl.xp / xpNeeded(pl.level)) * 100;
   $('#xp-fill').style.width = `${pct}%`;

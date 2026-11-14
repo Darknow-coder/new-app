@@ -5,10 +5,14 @@ import { buildScenery, iris } from '../fx.js';
 import { LEVELS_PER_WORLD, WORLD_HUES, worldOf } from '../levels.js';
 import { setMusicTheme } from '../audio.js';
 import { ACHIEVEMENTS, achievementsReady, checkAchievements } from '../progress.js';
-import { chestSVG } from '../chests.js';
+import { WORLD_CHESTS, chestId, chestSVG, isOpened } from '../chests.js';
+import { worldEmblem } from '../map.js';
 import { SKINS, checkCuteUnlocks, equipped, hasSkin, marbleHTML, skinName, unseenCount } from '../skins.js';
-import { $, S, dailyChestReady, dailyChestTier, els, fmtCountdown, notify, readyChests, starsHTML, updateCoins } from './core.js';
-import { startDaily } from './game.js';
+import { $, S, dailyChestReady, dailyChestTier, els, fmtCountdown, notify, readyChests, starsHTML, updateCoins, worldHue, worldName, worldStars } from './core.js';
+import { startDaily, startLevel } from './game.js';
+import { stageHTML } from './mapview.js';
+import { sfx } from '../audio.js';
+import { renderWheelTile } from './wheel.js';
 import { renderPlayerStrip, renderQuests, renderSeasonCard } from './progressui.js';
 import { giftToday } from './shop.js';
 import { archiveTodo } from './archive.js';
@@ -70,9 +74,7 @@ export function renderHome() {
 
   $('#share-row').hidden = !store.dayComplete(S.today);
   const lvl = store.data.levels.unlocked;
-  $('#adventure-desc').textContent = `${t('world', { n: worldOf(lvl) + 1 })} · ${t('adventureDesc', { n: lvl, s: stats.levelStars })}`;
-  $('#adventure-bar').style.width = `${(((lvl - 1) % LEVELS_PER_WORLD) / LEVELS_PER_WORLD) * 100}%`;
-  $('#btn-adventure').style.setProperty('--hue', WORLD_HUES[worldOf(lvl) % WORLD_HUES.length]);
+  renderStage(lvl);
   buildScenery($('#scenery-home'), 'home');
   setMusicTheme('home');
   renderPlayerStrip();
@@ -115,12 +117,51 @@ export function renderHome() {
     g.reward === 'chest' ? t('giftDayChest', { d: g.day }) : t('giftDay', { d: g.day, n: g.reward });
   renderRankCard();
   syncRank();
+  renderWheelTile();
   const todo = archiveTodo(S.today);
   $('#archive-count').hidden = !todo;
   $('#archive-count').textContent = todo;
   updateCoins();
   updateCountdown();
 }
+
+/** The adventure window at the top of the home screen. */
+let stageW = 0;
+function renderStage(lvl = store.data.levels.unlocked) {
+  const w = worldOf(lvl);
+  const stage = $('#btn-adventure');
+  stage.style.setProperty('--hue', WORLD_HUES[w % WORLD_HUES.length]);
+  $('#stage-emblem').innerHTML = worldEmblem(w);
+  $('#stage-world-n').textContent = t('world', { n: w + 1 });
+  $('#stage-world-name').textContent = worldName(w);
+  const ws = worldStars(w);
+  $('#stage-stars').textContent = `${ws}/${LEVELS_PER_WORLD * 3}`;
+  $('#stage-play-text').textContent = t('level', { n: lvl });
+  // Next goal: the next chest of this world still to earn.
+  const next = WORLD_CHESTS.find((c) => !isOpened(chestId(w, c.k)) && ws < c.stars);
+  $('#adventure-desc').innerHTML = next
+    ? `<span class="goal-chest">${chestSVG(next.tier)}</span>${t('stageGoal', { c: t(`chest_${next.tier}`), s: ws, n: next.stars })}`
+    : '';
+  stageW = stage.clientWidth || Math.min(560, innerWidth) - 32;
+  $('#stage-map').innerHTML = stageHTML(stageW, stage.clientHeight || 300);
+}
+
+$('#stage-play').addEventListener('click', (e) => {
+  e.stopPropagation();
+  sfx.tap();
+  const n = store.data.levels.unlocked;
+  iris(() => startLevel(n), worldHue(n));
+});
+$('#btn-adventure').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    e.currentTarget.click();
+  }
+});
+new ResizeObserver(() => {
+  const w = $('#btn-adventure').clientWidth;
+  if (w && Math.abs(w - stageW) > 8 && els.home.classList.contains('is-active')) renderStage();
+}).observe($('#btn-adventure'));
 
 export function updateCountdown() {
   $('#countdown').textContent = t('nextIn', { t: fmtCountdown(msUntilTomorrow()) });
