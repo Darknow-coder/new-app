@@ -358,6 +358,9 @@ export function showLevelPreview(n) {
   if (level.portal) chips.push(`<span class="lp-chip"><i class="lp-ico ico-portal"></i>${t('mech_portals_title')}</span>`);
   if (level.arrows) chips.push(`<span class="lp-chip"><i class="lp-ico ico-arrow"></i>${t('mech_arrows_title')}</span>`);
   if (level.pits) chips.push(`<span class="lp-chip"><i class="lp-ico ico-pit"></i>${t('mech_pits_title')}</span>`);
+  if (level.mirrors) chips.push(`<span class="lp-chip"><i class="lp-ico ico-mirror"></i>${t('mech_mirrors_title')}</span>`);
+  if (level.bumpers) chips.push(`<span class="lp-chip"><i class="lp-ico ico-bumper"></i>${t('mech_bumpers_title')}</span>`);
+  if (level.oneway) chips.push(`<span class="lp-chip"><i class="lp-ico ico-oneway"></i>${t('mech_oneway_title')}</span>`);
   $('#lp-chips').innerHTML = chips.join('');
   $('#lp-best').textContent = best === 3 ? t('perfect') : best ? t('lpImprove', { n: 3 - best }) : t('lpGoal');
   $('#lp-play').onclick = () => {

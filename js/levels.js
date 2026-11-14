@@ -108,13 +108,39 @@ export const MECHANIC_INTROS = {
   41: { mech: 'gates', rows: ['.....', 'A.v.a', '.....', 'B.v..', '....b'] },
   61: { mech: 'portals', rows: ['.....', 'A.@..', '#####', '..@.a', '.....'] },
   161: { mech: 'arrows', rows: ['A...,', '.....', '....a', '.....', '#....'] },
+  // Second lap of the worlds: three new tiles keep the adventure surprising.
+  321: { mech: 'mirrors', rows: ['.....', 'k..a.', '....A', '.....', '.....'] },
+  401: { mech: 'bumpers', rows: ['.....', '*.A.*', '.....', '...a.', '.....'] },
+  481: { mech: 'oneway', rows: ['....A', '..a..', '3....', '.....', '.....'] },
 };
 
-/** Mechanics of a world: the 16 named worlds have their own; later laps remix worlds 5-16. */
+// Worlds 17-32 (levels 321-640): each brings or remixes one of the new tiles.
+const M = [1, 2];
+const LAP_FEATURES = [
+  { mirrors: M, pits: P }, // 17 mirrors arrive
+  { mirrors: M, sand: [1, 2], pits: P },
+  { mirrors: M, gates: [1, 1], pits: PP },
+  { mirrors: [1, 1], portals: 1, arrows: [1, 1], pits: P },
+  { bumpers: M, pits: P }, // 21 spring blocks arrive
+  { bumpers: M, mirrors: [1, 1], pits: PP },
+  { bumpers: M, shape: true, pits: P },
+  { bumpers: [1, 1], sand: [1, 2], portals: 1, pits: P },
+  { oneway: M, pits: P }, // 25 one-way doors arrive
+  { oneway: M, mirrors: [1, 1], pits: PP },
+  { oneway: M, bumpers: [1, 1], shape: true, pits: P },
+  { oneway: [1, 1], arrows: [1, 1], gates: [1, 1], pits: P },
+  { mirrors: [1, 1], bumpers: [1, 1], oneway: [1, 1], pits: P },
+  { mirrors: M, shape: true, sand: [1, 1], pits: PP },
+  { bumpers: M, oneway: [1, 1], portals: 1, pits: P },
+  { mirrors: [1, 1], bumpers: [1, 1], oneway: [1, 1], gates: [1, 1], pits: PP },
+];
+
+/** Mechanics of a world: 16 named worlds, then a lap that brings new tiles, then endless remixes. */
+const REMIX = [...WORLD_FEATURES.slice(4), ...LAP_FEATURES];
 function worldFeatures(world) {
   if (world < WORLD_FEATURES.length) return WORLD_FEATURES[world];
-  const pool = WORLD_FEATURES.length - 4;
-  return WORLD_FEATURES[4 + ((world - WORLD_FEATURES.length) * 5) % pool];
+  if (world < WORLD_FEATURES.length + LAP_FEATURES.length) return LAP_FEATURES[world - WORLD_FEATURES.length];
+  return REMIX[(world * 7) % REMIX.length];
 }
 
 export function featuresFor(n) {

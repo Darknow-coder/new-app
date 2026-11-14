@@ -8659,3 +8659,184 @@ img.map-scene{
     height: 34px;
   }
 }
+
+/* ---------- new tiles (worlds 17+): mirrors, springs, one-way doors ---------- */
+.mirror::before{
+  content: '';
+  position: absolute;
+  inset: 8%;
+  border-radius: 24%;
+  background: radial-gradient(circle at 35% 30%, #4a5a86, #26304f);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.18);
+}
+.mirror::after{
+  content: '';
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 50%;
+  height: 18%;
+  margin-top: -9%;
+  border-radius: 99px;
+  background: linear-gradient(to bottom, #ffffff, #bfeeff 40%, #6fc6f0 60%, #e8fbff);
+  box-shadow: 0 0 10px rgba(160, 230, 255, 0.8), 0 2px 0 rgba(0, 0, 0, 0.35);
+  rotate: -45deg;
+}
+.mirror.m1::after{
+  rotate: 45deg;
+}
+.mirror.pulse::after{
+  animation: mirror-flash 0.35s var(--ease-out);
+}
+@keyframes mirror-flash {
+  40% {
+    filter: brightness(1.6) drop-shadow(0 0 10px #fff);
+  }
+}
+.bumper::before{
+  content: '';
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #ffd0d6 0 12%, #ff5d73 40%, #b81e3e);
+  box-shadow: 0 4px 0 #7a0a24, inset 0 -3px 4px rgba(0, 0, 0, 0.25);
+}
+.bumper::after{
+  content: '';
+  position: absolute;
+  inset: 27%;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 3px #ff8a9c;
+}
+.bumper.boing{
+  animation: boing 0.4s var(--spring);
+}
+@keyframes boing {
+  30% {
+    scale: 1.22;
+  }
+  60% {
+    scale: 0.92;
+  }
+}
+.oneway::before{
+  content: '';
+  position: absolute;
+  inset: 8%;
+  border-radius: 24%;
+  background: linear-gradient(160deg, #b4f5c8, #4fcf86);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2), inset 0 2px 0 rgba(255, 255, 255, 0.45);
+}
+.oneway::after{
+  content: '';
+  position: absolute;
+  inset: 22%;
+  background: #fff;
+  clip-path: polygon(50% 0, 100% 40%, 82% 52%, 50% 28%, 18% 52%, 0 40%, 50% 0, 50% 46%, 100% 86%, 82% 98%, 50% 74%, 18% 98%, 0 86%, 50% 46%);
+  rotate: var(--rot);
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.25));
+  animation: arrow-nudge 1.4s ease-in-out infinite;
+}
+.board.intro .mirror::before,
+.board.intro .bumper::before,
+.board.intro .oneway::before{
+  animation: wall-in 0.45s var(--spring) both;
+  animation-delay: var(--d);
+}
+.ico-mirror{
+  background: linear-gradient(135deg, transparent 38%, #bfeeff 40%, #6fc6f0 50%, #bfeeff 60%, transparent 62%), #2e3a5e;
+}
+.ico-bumper{
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 24%, #ff5d73 30% 60%, #b81e3e 64%);
+}
+.ico-oneway{
+  background: linear-gradient(160deg, #b4f5c8, #4fcf86);
+}
+/* discovery cards */
+.mech-mirrors,
+.mech-bumpers,
+.mech-oneway{
+  overflow: hidden;
+}
+.mech-mirrors .t1,
+.mech-bumpers .t1,
+.mech-oneway .t1{
+  z-index: 1;
+}
+.mech-mirrors .t1{
+  left: calc(var(--s) * 2);
+}
+.mech-mirrors .t1::before{
+  content: '';
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 41%;
+  height: 18%;
+  border-radius: 99px;
+  background: linear-gradient(to bottom, #fff, #6fc6f0);
+  box-shadow: 0 0 10px rgba(160, 230, 255, 0.8);
+  rotate: 45deg;
+}
+.mech-mirrors .ball{
+  animation-name: demo-arrow;
+  z-index: 2;
+}
+.mech-bumpers .t1{
+  left: calc(var(--s) * 4);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 22%, #ff5d73 28% 62%, #b81e3e 66%);
+  transform: scale(0.85);
+}
+.mech-bumpers .ball{
+  animation-name: demo-bounce;
+  z-index: 2;
+}
+@keyframes demo-bounce {
+  0%,
+  12% {
+    left: 0;
+  }
+  42% {
+    left: calc(var(--s) * 3);
+    animation-timing-function: ease-out;
+  }
+  75%,
+  100% {
+    left: 0;
+  }
+}
+.mech-oneway .t1{
+  left: calc(var(--s) * 2);
+  border-radius: 24%;
+  background: linear-gradient(160deg, #b4f5c8, #4fcf86);
+  transform: scale(0.85);
+}
+.mech-oneway .t1::after{
+  content: '';
+  position: absolute;
+  inset: 24%;
+  background: #fff;
+  clip-path: polygon(50% 0, 100% 40%, 82% 52%, 50% 28%, 18% 52%, 0 40%, 50% 0, 50% 46%, 100% 86%, 82% 98%, 50% 74%, 18% 98%, 0 86%, 50% 46%);
+  rotate: 90deg;
+}
+.mech-oneway .ball{
+  animation-name: demo-oneway;
+  z-index: 2;
+}
+@keyframes demo-oneway {
+  0%,
+  12% {
+    left: 0;
+  }
+  45%,
+  60% {
+    left: calc(var(--s) * 4);
+  }
+  90%,
+  100% {
+    left: calc(var(--s) * 3);
+  }
+}

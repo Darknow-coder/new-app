@@ -70,6 +70,11 @@ export function isSolved(level, state) {
  *   pits:   Uint8Array — a marble rolling over a pit is lost (state LOST: the move fails);
  *                        a stone falls in and disappears.
  *   outside: Uint8Array — cells outside a shaped board (behave as walls, drawn as empty).
+ *   mirrors: Int8Array  — a mirror (0 '/', 1 '\\') turns a piece rolling onto it by a quarter turn.
+ *   bumpers: Uint8Array — a spring block: a piece rolling into it bounces straight back (once per
+ *                        tilt; after that it acts as a wall).
+ *   oneway:  Int8Array  — a one-way door (0 up, 1 right, 2 down, 3 left) can only be entered
+ *                        while rolling that way.
  */
 export function tilt(level, state, dirName) {
   const { dx, dy } = DIRS[dirName];
@@ -79,6 +84,9 @@ export function tilt(level, state, dirName) {
   const gates = level.gates || null;
   const arrows = level.arrows || null;
   const pits = level.pits || null;
+  const mirrors = level.mirrors || null;
+  const bumpers = level.bumpers || null;
+  const oneway = level.oneway || null;
   const next = state.slice();
   const moves = new Array(pieces.length).fill(null);
 
@@ -108,6 +116,7 @@ export function tilt(level, state, dirName) {
     let segStart = from;
     let segDist = 0;
     let hops = 0;
+    let bounces = 0;
     const segs = [];
     let mx = dx;
     let my = dy;
@@ -120,6 +129,22 @@ export function tilt(level, state, dirName) {
       const nc = ny * w + nx;
       if (walls[nc] || occupied[nc] !== -1) break;
       if (gates && gates[nc] >= 0 && !(isMarble && gates[nc] === col)) break;
+      if (bumpers && bumpers[nc]) {
+        if (bounces >= 1) break;
+        // Bounce: turn around on the spot and roll back the way we came.
+        const here = y * w + x;
+        segs.push({ from: segStart, to: here, dist: segDist, turn: true, bump: nc });
+        segStart = here;
+        segDist = 0;
+        mx = -mx;
+        my = -my;
+        bounces++;
+        continue;
+      }
+      if (oneway && oneway[nc] >= 0) {
+        const a = ARROW_DIRS[oneway[nc]];
+        if (a.dx !== mx || a.dy !== my) break;
+      }
       x = nx;
       y = ny;
       dist++;
@@ -145,6 +170,16 @@ export function tilt(level, state, dirName) {
         }
       }
       if (sand && sand[nc]) break;
+      if (mirrors && mirrors[nc] >= 0) {
+        const tx = mirrors[nc] === 0 ? -my : my;
+        const ty = mirrors[nc] === 0 ? -mx : mx;
+        segs.push({ from: segStart, to: nc, dist: segDist, turn: true });
+        segStart = nc;
+        segDist = 0;
+        mx = tx;
+        my = ty;
+        continue;
+      }
       if (arrows && arrows[nc] >= 0) {
         const a = ARROW_DIRS[arrows[nc]];
         if (a.dx !== mx || a.dy !== my) {
@@ -291,7 +326,7 @@ function buildCandidate(rng, p) {
     pieces.push({ kind: 'stone', color: -1 });
     start.push(cells[k++]);
   }
-  const level = { w, h, walls, holes, pieces, start, sand: null, portal: null, gates: null, arrows: null, pits: null, outside };
+  const level = { w, h, walls, holes, pieces, start, sand: null, portal: null, gates: null, arrows: null, pits: null, mirrors: null, bumpers: null, oneway: null, outside };
   if (f) {
     if (f.sand) {
       level.sand = new Uint8Array(n);
@@ -320,18 +355,31 @@ function buildCandidate(rng, p) {
       const count = f.gates[0] + randInt(rng, f.gates[1] - f.gates[0] + 1);
       for (let i = 0; i < count; i++) level.gates[cells[k++]] = colors[randInt(rng, colors.length)];
     }
+    const count = (r) => r[0] + randInt(rng, r[1] - r[0] + 1);
+    if (f.mirrors) {
+      level.mirrors = new Int8Array(n).fill(-1);
+      for (let i = count(f.mirrors); i > 0; i--) level.mirrors[cells[k++]] = randInt(rng, 2);
+    }
+    if (f.bumpers) {
+      level.bumpers = new Uint8Array(n);
+      for (let i = count(f.bumpers); i > 0; i--) level.bumpers[cells[k++]] = 1;
+    }
+    if (f.oneway) {
+      level.oneway = new Int8Array(n).fill(-1);
+      for (let i = count(f.oneway); i > 0; i--) level.oneway[cells[k++]] = randInt(rng, 4);
+    }
   }
   return level;
 }
 
 export function hasFeatures(level) {
-  return !!(level.sand || level.portal || level.gates || level.arrows || level.pits);
+  return !!(level.sand || level.portal || level.gates || level.arrows || level.pits || level.mirrors || level.bumpers || level.oneway);
 }
 
 /** True when the special tiles actually change the optimal solution (so they are not decoration). */
 function featuresMatter(level, par, maxDepth) {
   if (!hasFeatures(level)) return true;
-  const plain = { ...level, sand: null, portal: null, gates: null, arrows: null, pits: null };
+  const plain = { ...level, sand: null, portal: null, gates: null, arrows: null, pits: null, mirrors: null, bumpers: null, oneway: null };
   const sol = solve(plain, plain.start, { maxDepth, maxStates: 120000 });
   return !sol || sol.par !== par;
 }
@@ -398,6 +446,9 @@ export function starsFor(moves, par) {
  */
 // Arrow tiles in level strings: ^ up, > right, , down, < left.
 const ARROW_CH = ['^', '>', ',', '<'];
+// Mirrors: k '/', j '\\'. Spring blocks: '*'. One-way doors: digits 0-3 (up, right, down, left).
+const MIRROR_CH = ['k', 'j'];
+const ONEWAY_CH = ['0', '1', '2', '3'];
 
 /** Inverse of parseLevel: ASCII rows for a level (every special cell is distinct, so one char per cell). */
 export function encodeLevel(level) {
@@ -412,6 +463,9 @@ export function encodeLevel(level) {
     else if (level.portal && level.portal[c] >= 0) grid[c] = '@';
     else if (level.gates && level.gates[c] >= 0) grid[c] = String.fromCharCode(118 + level.gates[c]);
     else if (level.arrows && level.arrows[c] >= 0) grid[c] = ARROW_CH[level.arrows[c]];
+    else if (level.mirrors && level.mirrors[c] >= 0) grid[c] = MIRROR_CH[level.mirrors[c]];
+    else if (level.bumpers?.[c]) grid[c] = '*';
+    else if (level.oneway && level.oneway[c] >= 0) grid[c] = ONEWAY_CH[level.oneway[c]];
   }
   level.pieces.forEach((p, i) => {
     grid[level.start[i]] = p.kind === 'stone' ? 'S' : String.fromCharCode(65 + p.color);
@@ -434,6 +488,9 @@ export function parseLevel(rows, known = null) {
   let arrows = null;
   let pits = null;
   let outside = null;
+  let mirrors = null;
+  let bumpers = null;
+  let oneway = null;
   const portals = [];
   rows.forEach((row, y) => {
     if (row.length !== w) throw new Error('Ragged level row ' + y);
@@ -465,6 +522,15 @@ export function parseLevel(rows, known = null) {
       } else if (ARROW_CH.includes(ch)) {
         arrows = arrows || new Int8Array(w * h).fill(-1);
         arrows[c] = ARROW_CH.indexOf(ch);
+      } else if (MIRROR_CH.includes(ch)) {
+        mirrors = mirrors || new Int8Array(w * h).fill(-1);
+        mirrors[c] = MIRROR_CH.indexOf(ch);
+      } else if (ch === '*') {
+        bumpers = bumpers || new Uint8Array(w * h);
+        bumpers[c] = 1;
+      } else if (ONEWAY_CH.includes(ch)) {
+        oneway = oneway || new Int8Array(w * h).fill(-1);
+        oneway[c] = ONEWAY_CH.indexOf(ch);
       } else if (ch !== '.') throw new Error('Unknown tile ' + ch);
     });
   });
@@ -475,7 +541,7 @@ export function parseLevel(rows, known = null) {
     portal[portals[0]] = portals[1];
     portal[portals[1]] = portals[0];
   }
-  const level = { w, h, walls, holes, pieces, start, sand, portal, gates, arrows, pits, outside };
+  const level = { w, h, walls, holes, pieces, start, sand, portal, gates, arrows, pits, mirrors, bumpers, oneway, outside };
   if (known) {
     level.par = known.par;
     level.solution = known.solution;

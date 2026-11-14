@@ -306,6 +306,24 @@ export function buildBoard() {
       w.className = 'cell wall';
       setPos(w, c);
       frag.appendChild(w);
+    } else if (level.bumpers?.[c]) {
+      const b = document.createElement('div');
+      b.className = 'cell bumper';
+      b.dataset.c = c;
+      setPos(b, c);
+      frag.appendChild(b);
+    } else if (level.mirrors && level.mirrors[c] >= 0) {
+      const m = document.createElement('div');
+      m.className = `cell mirror m${level.mirrors[c]}`;
+      m.dataset.c = c;
+      setPos(m, c);
+      frag.appendChild(m);
+    } else if (level.oneway && level.oneway[c] >= 0) {
+      const o = document.createElement('div');
+      o.className = 'cell oneway';
+      o.style.setProperty('--rot', `${level.oneway[c] * 90}deg`);
+      setPos(o, c);
+      frag.appendChild(o);
     } else if (level.arrows && level.arrows[c] >= 0) {
       const a = document.createElement('div');
       a.className = 'cell arrow';
@@ -491,8 +509,9 @@ export function move(dir, fromQueue = false) {
       const warp = k > 0 && !segs[k - 1].turn;
       const run = () => {
         if (k > 0 && segs[k - 1].turn) {
-          const ar = els.layer.querySelector(`.arrow[data-c="${sg.from}"]`);
-          if (ar) replay(ar, 'pulse');
+          const prev = segs[k - 1];
+          const ar = els.layer.querySelector(`[data-c="${prev.bump ?? sg.from}"]`);
+          if (ar) replay(ar, prev.bump !== undefined ? 'boing' : 'pulse');
           sfx.tick();
         }
         if (warp) {
