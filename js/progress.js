@@ -196,7 +196,7 @@ export function track(event, d = {}) {
   if (gained > 0) notes.push({ kind: 'season', tier: season().tier, gained });
   notes.push(...checkAchievements());
   save();
-  return { xp, ups, notes };
+  return { xp, ups, notes, sp };
 }
 
 /* ---------- free season pass ---------- */

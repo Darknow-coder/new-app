@@ -8385,35 +8385,7 @@ button.arch-day:active{ transform: scale(0.92); }
     translate: 16px 0;
   }
 }
-.m-spin,
-.m-spinr{
-  animation: spin 7s linear infinite;
-}
-.m-spinr{
-  animation-direction: reverse;
-  animation-duration: 5s;
-}
-.m-flicker{
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: m-flicker 0.9s ease-in-out infinite alternate;
-}
-@keyframes m-flicker {
-  to {
-    scale: 0.9 1.08;
-  }
-}
-.m-glow,
-.m-blink,
-.m-beam{
-  animation: m-pulse 2.2s ease-in-out infinite;
-}
-@keyframes m-pulse {
-  50% {
-    opacity: 0.55;
-  }
-}
-
+/* (props inside the baked map pictures do not animate; only the live sprites do) */
 /* ambient particles (composited: only transform / opacity move) */
 .map-fx{
   position: absolute;
@@ -9452,4 +9424,838 @@ img.map-scene{
   width: 52px;
   height: 52px;
   font-size: 28px;
+}
+
+/* ==========================================================================
+   VICTORY v3 — kicker + wallet, big 3D stars, ribbon by grade, move pills,
+   reward tiles that count up, progress to the next chest, round actions
+   ========================================================================== */
+#modal-result .result-card{
+  --hue: var(--c1);
+  padding: 14px 16px 18px;
+  background:
+    radial-gradient(120% 55% at 50% 0%, color-mix(in srgb, var(--hue) 42%, transparent), transparent 72%),
+    linear-gradient(to bottom, color-mix(in srgb, var(--hue) 16%, var(--surface)), var(--surface) 60%);
+  border: 3px solid color-mix(in srgb, var(--hue) 50%, #ffffff);
+  box-shadow: 0 8px 0 color-mix(in srgb, var(--hue) 30%, #0b0720), 0 26px 60px rgba(4, 2, 18, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.25);
+}
+.result-top{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
+}
+.result-kicker{
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--hue) 55%, var(--text));
+  animation: fade-in-down 0.4s 0.1s both;
+}
+.result-wallet{
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding: 4px 11px 4px 5px;
+  border-radius: 99px;
+  background: rgba(6, 4, 22, 0.32);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.result-wallet svg{
+  font-size: 22px;
+}
+.result-wallet.bump{
+  animation: bump 0.3s var(--spring);
+}
+@keyframes fade-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+/* stars: the middle one is the biggest, unearned ones are empty slots */
+.result-stars{
+  align-items: flex-end;
+  gap: 0;
+  height: 86px;
+  margin: 4px 0 0;
+  font-size: 62px;
+}
+.result-stars span{
+  position: relative;
+  color: rgba(4, 2, 18, 0.3);
+  translate: none !important;
+}
+.result-stars span svg{
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 1.4px;
+  paint-order: stroke;
+}
+.result-stars span:nth-child(1){
+  rotate: -14deg;
+  margin-right: -4px;
+}
+.result-stars span:nth-child(3){
+  rotate: 14deg;
+  margin-left: -4px;
+}
+.result-stars span:nth-child(2){
+  font-size: 1.32em;
+  translate: 0 -10px !important;
+  z-index: 1;
+}
+.result-stars span.on{
+  color: #ffd84a;
+  filter: drop-shadow(0 4px 0 #a85e00) drop-shadow(0 0 18px rgba(255, 200, 60, 0.55));
+}
+.result-stars span.on svg{
+  stroke: #b36b00;
+  stroke-width: 1.8px;
+}
+.star-shine{
+  position: absolute;
+  top: 8%;
+  right: 6%;
+  width: 0.32em;
+  height: 0.32em;
+  background: #fff;
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  opacity: 0;
+  pointer-events: none;
+}
+.result-stars span.on .star-shine{
+  animation: twinkle 2.4s ease-in-out infinite;
+  animation-delay: inherit;
+}
+.result-stars span.on:nth-child(2) .star-shine{
+  animation-duration: 2s;
+}
+@keyframes twinkle {
+  0%,
+  55%,
+  100% {
+    opacity: 0;
+    transform: scale(0.3) rotate(0deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1) rotate(45deg);
+  }
+}
+/* the ribbon takes the colour of the grade */
+.result-card h2#result-title{
+  --rb1: #ff8aa0;
+  --rb2: #e2405b;
+  --rbe: #8c1d33;
+  background: linear-gradient(to bottom, var(--rb1), var(--rb2));
+  border-color: var(--rbe);
+  text-shadow: 0 2px 0 var(--rbe), 1px 0 0 var(--rbe), -1px 0 0 var(--rbe);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.4), 0 5px 0 var(--rbe);
+  animation: ribbon-in 0.55s 0.95s var(--spring) both;
+}
+.result-card h2#result-title::before,
+.result-card h2#result-title::after{
+  background: var(--rb2);
+  border-color: var(--rbe);
+  filter: brightness(0.82);
+}
+.result-card h2#result-title.rt-3{
+  --rb1: #ffe98a;
+  --rb2: #ffb21f;
+  --rbe: #9a5200;
+}
+.result-card h2#result-title.rt-2{
+  --rb1: #7fe6ff;
+  --rb2: #2b9bd9;
+  --rbe: #175a8a;
+}
+.result-card h2#result-title.rt-1{
+  --rb1: #d2b4ff;
+  --rb2: #8a5cff;
+  --rbe: #46249a;
+}
+@keyframes ribbon-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3, 0.6);
+  }
+}
+/* moves vs par */
+.result-moves{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0 2px;
+  animation: fade-up-in 0.4s 1.15s both;
+}
+.rm-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px 5px 9px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.rm-pill svg{
+  color: var(--muted);
+}
+.rm-pill.is-ok{
+  background: color-mix(in srgb, #2fd27e 20%, var(--surface-2));
+  border-color: color-mix(in srgb, #2fd27e 45%, transparent);
+}
+.rm-pill.is-ok svg{
+  color: #ffd84a;
+}
+@keyframes fade-up-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+/* reward tiles */
+.result-gains{
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 14px 0 4px;
+}
+.result-gains[hidden]{
+  display: none;
+}
+.gain{
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 6px 8px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--edge);
+  opacity: 0;
+  transform: translateY(14px) scale(0.85);
+}
+.gain.in{
+  animation: gain-in 0.5s var(--spring) forwards;
+}
+@keyframes gain-in {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.gain-ico{
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  font-size: 24px;
+  color: #fff;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.22), inset 0 2px 0 rgba(255, 255, 255, 0.45);
+}
+.gain-ico i{
+  font-style: normal;
+  font-weight: 700;
+  font-size: 15px;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+.gain-coins .gain-ico{
+  background: linear-gradient(160deg, #ffe98a, #ffaa1f);
+}
+.gain-coins .gain-ico svg{
+  color: #fff7c8;
+  animation: coin-turn 2.6s ease-in-out infinite;
+}
+@keyframes coin-turn {
+  0%,
+  60%,
+  100% {
+    transform: rotateY(0deg);
+  }
+  80% {
+    transform: rotateY(180deg);
+  }
+}
+.gain-xp .gain-ico{
+  background: linear-gradient(160deg, #7af0c8, #13a982);
+}
+.gain-sp .gain-ico{
+  background: linear-gradient(160deg, #ffbd6a, #ff5d8f);
+}
+.gain-sp .gain-ico svg{
+  color: #fff3a0;
+}
+.gain-n{
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.gain small{
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.gain-bar{
+  width: 78%;
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 99px;
+  overflow: hidden;
+  background: rgba(4, 2, 18, 0.3);
+}
+.gain-bar i{
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7af0c8, #13a982);
+}
+.gain-lvl{
+  position: absolute;
+  top: -9px;
+  right: -6px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(to bottom, #fff1a0, #ffb020);
+  color: #6a3a00;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 12px;
+  box-shadow: 0 2px 0 #a85e00;
+}
+.gain-lvl::before{
+  content: '▲ ';
+}
+/* next chest */
+.result-goal{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 2px;
+  padding: 8px 12px 8px 8px;
+  border-radius: 16px;
+  background: rgba(4, 2, 18, 0.2);
+  text-align: left;
+  animation: fade-up-in 0.45s 2.05s both;
+}
+.result-goal[hidden]{
+  display: none;
+}
+.result-goal .goal-chest{
+  width: 46px;
+  height: 42px;
+}
+.result-goal.fill .goal-chest.is-ready{
+  animation: chest-hop 1.4s 0.8s ease-in-out infinite;
+}
+.goal-body{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.goal-body small{
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.goal-bar{
+  position: relative;
+  height: 18px;
+  border-radius: 99px;
+  overflow: hidden;
+  background: rgba(4, 2, 18, 0.35);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.35);
+}
+.goal-bar i{
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--from) * 100%);
+  border-radius: inherit;
+  background: linear-gradient(to bottom, #ffe98a, #ffc22e 55%, #f08a10);
+  box-shadow: 0 0 10px rgba(255, 190, 40, 0.45);
+  transition: width 0.9s var(--ease-out);
+}
+.result-goal.fill .goal-bar i{
+  width: calc(var(--to) * 100%);
+}
+.goal-bar b{
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+}
+/* actions: round buttons, then the big "next" */
+#result-actions{
+  animation: fade-up-in 0.4s 0.55s both;
+}
+.ra-round{
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  margin-bottom: 4px;
+}
+.ra-btn{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 56px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.ra-ico{
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 22px;
+  color: #fff;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--hue) 55%, #ffffff), color-mix(in srgb, var(--hue) 80%, #000000));
+  border: 2px solid color-mix(in srgb, var(--hue) 45%, #000000);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--hue) 40%, #000000), inset 0 2px 0 rgba(255, 255, 255, 0.45);
+  transition: transform 0.08s;
+}
+.ra-ico svg{
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.3));
+}
+.ra-btn:active .ra-ico{
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--hue) 40%, #000000);
+}
+#result-actions .btn-primary.btn-full{
+  padding: 15px 14px;
+  font-size: 20px;
+}
+#result-actions .btn-primary.is-boss-next{
+  background: linear-gradient(to bottom, #ff8aa0, #e8264a 55%, #a8102e) !important;
+  border-color: #6a0820;
+  text-shadow: 0 2px 0 #6a0820, 1px 0 0 #6a0820, -1px 0 0 #6a0820, 0 -1px 0 #6a0820;
+  box-shadow: 0 5px 0 #6a0820, inset 0 2px 0 rgba(255, 255, 255, 0.45), 0 8px 18px rgba(0, 0, 0, 0.25) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gain{
+    opacity: 1;
+    transform: none;
+  }
+  .result-goal .goal-bar i{
+    transition: none;
+  }
+}
+/* short screens: the whole victory card fits without scrolling */
+@media (max-height: 760px) {
+  #modal-result .result-card{
+    padding: 10px 14px 14px;
+  }
+  .result-stars{
+    height: 70px;
+    font-size: 50px;
+  }
+  .result-card h2#result-title{
+    margin: 6px auto 4px;
+    padding: 6px 30px 8px;
+    font-size: 24px;
+  }
+  .result-moves{
+    margin-top: 6px;
+  }
+  .result-gains{
+    margin: 10px 0 2px;
+  }
+  .gain{
+    padding: 7px 4px 6px;
+  }
+  .gain-ico{
+    width: 32px;
+    height: 32px;
+    font-size: 19px;
+    border-radius: 11px;
+  }
+  .gain-n{
+    font-size: 17px;
+  }
+  .result-goal{
+    margin-top: 8px;
+    padding: 6px 10px 6px 6px;
+  }
+  .result-goal .goal-chest{
+    width: 38px;
+    height: 34px;
+  }
+  .result-skin{
+    margin-top: 8px !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+  #result-actions{
+    margin-top: 12px;
+  }
+  .ra-ico{
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+  #result-actions .btn-primary.btn-full{
+    padding: 12px 14px;
+    font-size: 19px;
+  }
+}
+
+/* ==========================================================================
+   Living interface: small idle animations on every item (transform/opacity
+   only, so the compositor does the work). Calm screens get none of it.
+   ========================================================================== */
+.stage-play,
+.free-btn{
+  position: relative;
+  overflow: hidden;
+}
+.stage-play::after,
+.free-btn::after{
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.5) 50%, transparent 65%);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+@keyframes ui-flip {
+  0%,
+  78%,
+  100% {
+    transform: rotateY(0deg);
+  }
+  90% {
+    transform: rotateY(180deg);
+  }
+}
+@keyframes ui-bob {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@keyframes ui-roll {
+  0%,
+  100% {
+    transform: rotate(-10deg);
+  }
+  50% {
+    transform: rotate(10deg) translateY(-2px);
+  }
+}
+@keyframes ui-wiggle {
+  0%,
+  80%,
+  100% {
+    transform: rotate(0deg);
+  }
+  84% {
+    transform: rotate(-12deg);
+  }
+  88% {
+    transform: rotate(10deg);
+  }
+  92% {
+    transform: rotate(-6deg);
+  }
+  96% {
+    transform: rotate(3deg);
+  }
+}
+@keyframes ui-swing {
+  0%,
+  100% {
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(7deg);
+  }
+}
+@keyframes ui-pulse {
+  50% {
+    transform: scale(1.12);
+  }
+}
+@keyframes ui-flicker {
+  0%,
+  100% {
+    transform: scale(1) rotate(-3deg);
+  }
+  33% {
+    transform: scale(1.12, 1.18) rotate(3deg);
+  }
+  66% {
+    transform: scale(0.96, 1.06) rotate(-1deg);
+  }
+}
+@keyframes ui-hop {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  78% {
+    transform: translateY(-6px) scale(1.04, 0.96);
+  }
+  86% {
+    transform: translateY(0) scale(1.06, 0.92);
+  }
+  92% {
+    transform: translateY(-2px);
+  }
+}
+/* icon wrappers: HTML boxes animate on the compositor, bare <svg> icons would repaint */
+.coin-ico,
+.flame-ico{
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+.coin-ico svg,
+.flame-ico svg{
+  display: block;
+}
+/* the old per-<svg> idle loops repainted every frame: the wrappers animate instead */
+.coin-pill > svg,
+.streak-chip.is-hot svg,
+.quests-bonus .mini-chest svg,
+.chest-chip .mini-chest svg,
+.inbox-btn .mini-chest svg,
+.shop-icon svg,
+.deal-art svg,
+.deal-boost svg,
+.shop-chest svg,
+.nav-ach svg,
+.world-stars svg,
+.gain-coins .gain-ico svg{
+  animation: none !important;
+}
+@keyframes ui-bob-t {
+  50% {
+    translate: 0 -3px;
+  }
+}
+@keyframes ui-swing-r {
+  0%,
+  100% {
+    rotate: -7deg;
+  }
+  50% {
+    rotate: 7deg;
+  }
+}
+@keyframes ui-wiggle-r {
+  0%,
+  80%,
+  100% {
+    rotate: 0deg;
+  }
+  84% {
+    rotate: -12deg;
+  }
+  88% {
+    rotate: 10deg;
+  }
+  92% {
+    rotate: -6deg;
+  }
+  96% {
+    rotate: 3deg;
+  }
+}
+@keyframes ui-nudge-r {
+  0%,
+  84%,
+  100% {
+    rotate: 0deg;
+  }
+  88% {
+    rotate: -4deg;
+  }
+  92% {
+    rotate: 3deg;
+  }
+  96% {
+    rotate: -1deg;
+  }
+}
+@keyframes ui-pulse-s {
+  50% {
+    scale: 1.1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.lite) .stage-play::after,
+  html:not(.lite) .free-btn::after{
+    animation: sheen 3.4s 0.6s ease-in-out infinite;
+  }
+  /* HUD and navigation */
+  html:not(.lite) .coin-pill .coin-ico{
+    animation: ui-flip 4.6s ease-in-out infinite;
+  }
+  html:not(.lite) .coin-pill .plus{
+    animation: ui-pulse-s 2.4s ease-in-out infinite;
+  }
+  html:not(.lite) .nav-shop{
+    animation: ui-flip 3.8s 0.6s ease-in-out infinite;
+  }
+  html:not(.lite) .nav-coll .marble-preview{
+    animation: ui-roll 3.2s ease-in-out infinite;
+  }
+  html:not(.lite) .nav-ach{
+    animation: ui-swing-r 2.6s ease-in-out infinite;
+  }
+  html:not(.lite) .nav-stats{
+    animation: ui-wiggle-r 4.2s 1.2s ease-in-out infinite;
+  }
+  html:not(.lite) .streak-chip.is-hot .flame-ico{
+    animation: ui-flicker 0.9s ease-in-out infinite;
+    transform-origin: 50% 90%;
+  }
+  html:not(.lite) .gift-chip:not(.chest-chip){
+    animation: ui-nudge-r 2.8s ease-in-out infinite;
+  }
+  html:not(.lite) .mini-chest{
+    animation: ui-hop 2.6s ease-in-out infinite;
+    transform-origin: 50% 90%;
+  }
+  /* home */
+  html:not(.lite) .stage-emblem{
+    animation: ui-bob-t 3s ease-in-out infinite;
+  }
+  html:not(.lite) .home-tile .tile-ico{
+    animation: ui-bob-t 3.4s ease-in-out infinite;
+  }
+  html:not(.lite) .tile-season .tile-ico{
+    animation: ui-bob-t 3.4s -0.8s ease-in-out infinite, ui-swing-r 2.8s ease-in-out infinite;
+  }
+  html:not(.lite) .tile-rank .tile-ico{
+    animation: ui-bob-t 3.4s -1.6s ease-in-out infinite, ui-wiggle-r 4s 0.4s ease-in-out infinite;
+  }
+  html:not(.lite) .tile-archive .tile-ico{
+    animation: ui-bob-t 3.4s -2.4s ease-in-out infinite, ui-flip 5s 1.6s ease-in-out infinite;
+  }
+  html:not(.lite) .daily-card:not(.is-done) .dc-ball{
+    animation: ui-bob-t 2.6s ease-in-out infinite;
+  }
+  html:not(.lite) .daily-list li:nth-child(2) .dc-ball{
+    animation-delay: -0.9s;
+  }
+  html:not(.lite) .daily-list li:nth-child(3) .dc-ball{
+    animation-delay: -1.8s;
+  }
+  html:not(.lite) .quest:not(.is-claimed) .q-icon{
+    animation: ui-bob-t 3s ease-in-out infinite;
+  }
+  html:not(.lite) .quest:nth-child(2) .q-icon{
+    animation-delay: -1s;
+  }
+  html:not(.lite) .quest:nth-child(3) .q-icon{
+    animation-delay: -2s;
+  }
+  html:not(.lite) .q-claim{
+    animation: ui-pulse-s 1.4s ease-in-out infinite;
+  }
+  /* shop and windows */
+  html:not(.lite) .shop-icon:not(.got){
+    animation: ui-bob-t 3s ease-in-out infinite;
+  }
+  html:not(.lite) .shop-cardlet:nth-child(2n) .shop-icon{
+    animation-delay: -1.5s;
+  }
+  html:not(.lite) .shop-cardlet:nth-child(3n) .shop-icon{
+    animation-delay: -0.7s;
+  }
+  html:not(.lite) .shop-chest,
+  html:not(.lite) .deal-art:not(.deal-boost){
+    animation: ui-hop 3.2s ease-in-out infinite;
+    transform-origin: 50% 100%;
+  }
+  html:not(.lite) .chest-cardlet:nth-child(2) .shop-chest{
+    animation-delay: -1.6s;
+  }
+  html:not(.lite) .shop-deal .deal-art.deal-boost{
+    animation: ui-swing-r 2.4s ease-in-out infinite;
+  }
+  html:not(.lite) .gain-coins .gain-ico{
+    animation: ui-flip 2.6s 2s ease-in-out infinite;
+  }
+  html:not(.lite) .sp-ico,
+  html:not(.lite) .sp-chest,
+  html:not(.lite) .sp-skin{
+    animation: ui-bob-t 3.2s ease-in-out infinite;
+  }
+}
+
+/* The shine on progress bars slides with a transform (it used to animate the background
+   position, which restyled and repainted the page on every frame). */
+.xp-bar i,
+.adv-progress i,
+.q-bar i,
+.preview-progress i,
+.skin-tile.r-epic{
+  overflow: hidden;
+}
+.xp-bar i::after,
+.adv-progress i::after,
+.q-bar i::after,
+.preview-progress i::after,
+.world-head::after,
+.skin-tile.r-epic::after,
+.wh-bar i::after{
+  background-size: 100% 100%;
+}
+@keyframes bar-shine {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(110%);
+  }
+}
+/* Chest sparkles live inside the chest drawing: animating them repaints, so they only
+   twinkle where a chest is the star of the screen (ceremony, preview); elsewhere they
+   simply shine. */
+.chest-svg .chest-sparkle{
+  animation: none;
+  opacity: 0.85;
+}
+.chest-stage .chest-svg .chest-sparkle,
+.preview-chest .chest-svg .chest-sparkle{
+  animation: sparkle 1.6s ease-in-out infinite;
 }

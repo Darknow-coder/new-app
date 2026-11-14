@@ -100,7 +100,7 @@ export function showView(name) {
 
 // Inside every window, these rise in one after another.
 export const MODAL_ENTER =
-  '.modal-card > :not(.modal-close):not(.result-rays):not(.result-stars):not(.new-best):not(.confetti):not(#result-title):not(.result-reward):not(.mech-art):not(.mech-badge), .help-list > li, .stats-grid > .stat, .week > .day, .toggle, .ach-list > li, .preview-list > li';
+  '.modal-card > :not(.modal-close):not(.result-rays):not(.result-stars):not(.new-best):not(.confetti):not(#result-title):not(.result-reward):not(.result-top):not(.result-gains):not(.result-goal):not(.result-moves):not(#result-actions):not(.mech-art):not(.mech-badge), .help-list > li, .stats-grid > .stat, .week > .day, .toggle, .ach-list > li, .preview-list > li';
 
 export function openModal(id) {
   const m = document.getElementById(id);

@@ -1,5 +1,5 @@
 import { starsFor } from '../engine.js';
-import { burst, iris, replay } from '../fx.js';
+import { burst, countTo, flyIcons, iris, reducedMotion, replay } from '../fx.js';
 import { save, store } from '../storage.js';
 import { ARCHIVE_DAY_BONUS, adventureLevel, archiveReward, dailyReward, isBoss, levelReward, perfectRunBonus, worldOf } from '../levels.js';
 import { track, xpNeeded } from '../progress.js';
@@ -9,7 +9,8 @@ import { TUTORIAL } from '../tutorial.js';
 import { t } from '../i18n.js';
 import { DAILY_ORDER } from '../daily.js';
 import { burstConfetti } from '../confetti.js';
-import { $, S, buzz, closeModal, dailyChestReady, els, openModal, showView, toast, updateCoins, worldHue } from './core.js';
+import { $, S, buzz, closeModal, dailyChestReady, els, openModal, showView, toast, updateCoins, worldHue, worldName, worldStars } from './core.js';
+import { WORLD_CHESTS, chestId, chestSVG, isOpened } from '../chests.js';
 import { shareChallenge, startChallenge, startDaily, startLevel, startTutorial, updateHud } from './game.js';
 import { shareDay } from './settings.js';
 import { handleProgress, openDailyChest } from './common.js';
@@ -66,6 +67,7 @@ export function onSolved() {
     if (prev === 0 && S.game.n <= 2) import('./install.js').then((m) => m.persistStorage());
     syncRank();
     S.game.newBest = prev > 0 && stars > prev;
+    S.game.prevStars = prev;
     if (prev === 0 && store.data.levels.unlocked === S.game.n + 1) S.pendingUnlock = S.game.n + 1;
     S.game.reward = levelReward(prev, stars);
     if (S.game.reward) store.addCoins(S.game.reward);
@@ -148,13 +150,13 @@ export function showResult() {
   } else if (S.game.mode === 'daily') {
     const nextDiff = DAILY_ORDER.find((d) => !store.dailyEntry(S.game.day, d)?.done);
     if (nextDiff && S.game.day === S.today) {
-      actions.push({ label: t('home'), onClick: goHome });
+      actions.push({ label: t('home'), icon: 'i-back', onClick: goHome });
       actions.push({ label: t('nextPuzzle'), primary: true, onClick: () => iris(() => startDaily(nextDiff)) });
     } else {
       if (store.dayComplete(S.game.day)) {
         sub = `${t('allDone')} ${t('allDoneSub')}`;
       }
-      actions.push({ label: t('home'), onClick: goHome });
+      actions.push({ label: t('home'), icon: 'i-back', onClick: goHome });
       actions.push({ label: t('share'), primary: true, icon: 'i-share', onClick: shareDay, keepOpen: true });
     }
     if (S.game.dayDone) {
@@ -173,11 +175,11 @@ export function showResult() {
       sub: '',
       actions: g.fromEditor
         ? [
-            { label: t('edEdit'), onClick: () => ed().then((m) => m.openEditor()) },
+            { label: t('edEdit'), icon: 'i-pencil', onClick: () => ed().then((m) => m.openEditor()) },
             { label: t('edShare'), primary: true, icon: 'i-share', keepOpen: true, onClick: () => ed().then((m) => m.shareLevel(g.rows, g.level.par)) },
           ]
         : [
-            { label: t('customCreate'), onClick: () => ed().then((m) => iris(() => m.openEditor())) },
+            { label: t('customCreate'), icon: 'i-pencil', onClick: () => ed().then((m) => iris(() => m.openEditor())) },
             { label: t('customNext'), primary: true, icon: 'i-share', keepOpen: true, wide: true, onClick: () => ed().then((m) => m.shareLevel(g.rows, g.level.par)) },
           ],
     });
@@ -192,8 +194,8 @@ export function showResult() {
       sub: won ? t('chWonSub') : t('chLostSub'),
       reward: S.game.reward || 0,
       actions: [
-        { label: t('home'), onClick: goHome },
-        ...(won ? [] : [{ label: t('retry'), onClick: () => iris(() => startChallenge(n, S.game.target)) }]),
+        { label: t('home'), icon: 'i-back', onClick: goHome },
+        ...(won ? [] : [{ label: t('retry'), icon: 'i-restart', onClick: () => iris(() => startChallenge(n, S.game.target)) }]),
         { label: t('chBack'), primary: true, icon: 'i-share', wide: true, keepOpen: true, onClick: () => shareChallenge(n, moves, stars) },
       ],
     });
@@ -215,119 +217,208 @@ export function showResult() {
           } else b.disabled = false;
         },
       });
-    } else actions.push({ label: t('challengeFriend'), icon: 'i-share', keepOpen: true, wide: true, onClick: () => shareChallenge(n, S.game.moves, stars) });
-    actions.push({ label: t('map'), onClick: () => iris(openMap, worldHue(n)) });
-    if (stars < 3) actions.push({ label: t('retry'), onClick: () => iris(() => startLevel(n), worldHue(n)) });
-    actions.push({ label: t('nextLevel'), primary: true, icon: 'i-play', iconAfter: true, onClick: () => iris(() => startLevel(n + 1), worldHue(n + 1)), wide: true });
+    }
+    actions.push({ label: t('map'), icon: 'i-flag', onClick: () => iris(openMap, worldHue(n)) });
+    if (stars < 3) actions.push({ label: t('retry'), icon: 'i-restart', onClick: () => iris(() => startLevel(n), worldHue(n)) });
+    actions.push({ label: t('challengeFriend'), icon: 'i-share', keepOpen: true, onClick: () => shareChallenge(n, S.game.moves, stars) });
+    const next = n + 1;
+    actions.push({ label: isBoss(next) ? `BOSS · ${t('level', { n: next })}` : t('level', { n: next }), primary: true, icon: 'i-play', iconAfter: true, cls: isBoss(next) ? 'is-boss-next' : '', onClick: () => iris(() => startLevel(next), worldHue(next)), wide: true });
   }
   showResultCard({ stars, title, line, sub, actions, reward: (S.game.reward || 0) + (S.game.bonus || 0) });
 }
 
-export function showResultXP() {
-  const box = $('#result-xp');
-  const prog = S.game?.prog;
-  box.hidden = !prog || !prog.xp;
-  if (box.hidden) return;
-  const before = S.game.xpBefore;
-  const after = store.data.player;
-  $('#result-xp-text').textContent = t('xpLine', { n: prog.xp });
+/* ---------- the victory card ---------- */
+const later = (ms, fn) => setTimeout(fn, reducedMotion() ? Math.min(ms, 120) : ms);
+
+/** "6 moves · par 6 ✓" as two pills (adventure and daily puzzles). */
+function movesHTML(moves, par) {
+  const ok = moves <= par;
+  return `<span class="rm-pill"><svg><use href="#i-hint"/></svg>${t('rMoves', { n: moves })}</span><span class="rm-pill ${ok ? 'is-ok' : ''}"><svg><use href="#i-star"/></svg>${t('par', { n: par })}${ok ? ' ✓' : ''}</span>`;
+}
+
+/** Reward tiles: coins, XP (with the player level bar) and season points. */
+function gainsHTML(coins, prog) {
+  const tiles = [];
+  if (coins) tiles.push(`<div class="gain gain-coins" style="--i:0"><span class="gain-ico"><svg><use href="#i-coin"/></svg></span><b class="gain-n" data-to="${coins}">+0</b><small>${t('rCoins')}</small></div>`);
+  if (prog?.xp) {
+    const pl = store.data.player;
+    tiles.push(`<div class="gain gain-xp" style="--i:${tiles.length}"><span class="gain-ico"><i>XP</i></span><b class="gain-n" data-to="${prog.xp}">+0</b><span class="gain-bar"><i id="result-xp-fill"></i></span><em class="gain-lvl" id="result-levelup" hidden>${pl.level}</em></div>`);
+  }
+  const sp = prog?.sp || 0;
+  if (sp) tiles.push(`<div class="gain gain-sp" style="--i:${tiles.length}"><span class="gain-ico"><svg><use href="#i-star"/></svg></span><b class="gain-n" data-to="${sp}">+0</b><small>${t('rSeason')}</small></div>`);
+  return tiles.join('');
+}
+
+/** Progress toward the next chest of the world (adventure). */
+function goalHTML() {
+  const g = S.game;
+  if (g?.mode !== 'level') return '';
+  const w = worldOf(g.n);
+  const ws = worldStars(w);
+  const gained = Math.max(0, g.stars - (g.prevStars || 0));
+  const before = ws - gained;
+  const c = WORLD_CHESTS.find((x) => !isOpened(chestId(w, x.k)) && before < x.stars);
+  if (!c) return '';
+  const ready = ws >= c.stars;
+  const from = Math.min(1, before / c.stars);
+  const to = Math.min(1, ws / c.stars);
+  return `<span class="goal-chest ${ready ? 'is-ready' : ''}">${chestSVG(c.tier)}</span>
+    <span class="goal-body"><small>${ready ? t('goalReady') : t('goalNext')} · ${t(`chest_${c.tier}`)}</small>
+    <span class="goal-bar"><i style="--from:${from};--to:${to}"></i><b>${Math.min(ws, c.stars)}/${c.stars} ★</b></span></span>`;
+}
+
+function animateGains(box, wallet, coinsBefore) {
+  box.querySelectorAll('.gain').forEach((tile, i) => {
+    const n = tile.querySelector('.gain-n');
+    const to = Number(n.dataset.to);
+    later(1250 + i * 220, () => {
+      tile.classList.add('in');
+      countTo(n, 0, to, 650, (v) => `+${v}`);
+      sfx.tick();
+    });
+  });
+  const coinsTile = box.querySelector('.gain-coins');
+  if (coinsTile) {
+    later(2050, () => {
+      flyIcons(coinsTile.querySelector('.gain-ico'), wallet, {
+        count: 7,
+        layer: $('#modal-result'),
+        onArrive: (i) => {
+          sfx.tick();
+          if (i === 0) {
+            countTo(wallet.querySelector('b'), coinsBefore, store.data.coins, 600);
+            replay(wallet, 'bump');
+            sfx.coin();
+            updateCoins();
+          }
+        },
+      });
+    });
+  }
+  // XP bar of the player level (with a level-up flourish).
   const fill = $('#result-xp-fill');
-  fill.style.transition = 'none';
-  fill.style.width = `${(before.xp / xpNeeded(before.level)) * 100}%`;
-  const lvlUp = $('#result-levelup');
-  lvlUp.hidden = true;
-  setTimeout(() => {
-    fill.style.transition = 'width 0.9s var(--ease-out)';
-    if (after.level > before.level) {
-      fill.style.width = '100%';
-      setTimeout(() => {
-        fill.style.transition = 'none';
-        fill.style.width = '0%';
-        void fill.offsetWidth;
-        fill.style.transition = 'width 0.6s var(--ease-out)';
-        fill.style.width = `${(after.xp / xpNeeded(after.level)) * 100}%`;
-        lvlUp.textContent = t('playerLevel', { n: after.level });
-        lvlUp.hidden = false;
-        replay(lvlUp, 'pop-in');
-      }, 950);
-    } else {
-      fill.style.width = `${(after.xp / xpNeeded(after.level)) * 100}%`;
-    }
-  }, 600);
-  // Quest / achievement / level-up banners right after the stars land.
-  setTimeout(() => handleProgress(prog), 1300);
+  if (fill && S.game?.xpBefore) {
+    const before = S.game.xpBefore;
+    const after = store.data.player;
+    fill.style.width = `${(before.xp / xpNeeded(before.level)) * 100}%`;
+    later(1700, () => {
+      fill.style.transition = 'width 0.9s var(--ease-out)';
+      if (after.level > before.level) {
+        fill.style.width = '100%';
+        later(950, () => {
+          fill.style.transition = 'none';
+          fill.style.width = '0%';
+          void fill.offsetWidth;
+          fill.style.transition = 'width 0.6s var(--ease-out)';
+          fill.style.width = `${(after.xp / xpNeeded(after.level)) * 100}%`;
+          const up = $('#result-levelup');
+          up.hidden = false;
+          replay(up, 'pop-in');
+          sfx.star(2);
+        });
+      } else fill.style.width = `${(after.xp / xpNeeded(after.level)) * 100}%`;
+    });
+  }
 }
 
 export function showResultCard({ stars, title, line, sub, actions, reward = 0 }) {
-  showResultXP();
+  const g = S.game;
+  const card = $('#modal-result .modal-card');
+  card.dataset.stars = stars;
+  card.style.setProperty('--hue', g?.mode === 'level' ? worldHue(g.n) : 'var(--c1)');
+  // header: what was won, and a wallet that fills up
+  $('#result-kicker').textContent =
+    g?.mode === 'level' ? `${t('level', { n: g.n })} · ${worldName(worldOf(g.n))}` : g?.mode === 'daily' ? `${t('todayTitle')} · ${t(g.diff)}` : '';
+  const wallet = $('#result-wallet');
+  const coinsBefore = store.data.coins - reward;
+  wallet.querySelector('b').textContent = coinsBefore;
+  // boss marble
   const rs = $('#result-skin');
-  rs.hidden = !S.game?.bossSkin;
-  if (S.game?.bossSkin) {
-    rs.innerHTML = `${marbleHTML(S.game.bossSkin, 2)}<span><small>${t('newMarble')}</small><strong>${skinName(S.game.bossSkin)}</strong></span>`;
-    setTimeout(() => sfx.epic(), 900);
+  rs.hidden = !g?.bossSkin;
+  if (g?.bossSkin) {
+    rs.innerHTML = `${marbleHTML(g.bossSkin, 2)}<span><small>${t('newMarble')}</small><strong>${skinName(g.bossSkin)}</strong></span>`;
+    later(900, () => sfx.epic());
   }
-  $('#result-rays').classList.toggle('on', stars === 3);
+  $('#result-rays').classList.toggle('on', stars >= 2);
+  $('#result-rays').classList.toggle('gold', stars === 3);
   const pr = $('#result-streak');
-  const run = S.game?.mode === 'level' ? S.game.perfectRun : 0;
-  const hold = S.game?.mode === 'level' ? S.game.perfectHold : 0;
+  const run = g?.mode === 'level' ? g.perfectRun : 0;
+  const hold = g?.mode === 'level' ? g.perfectHold : 0;
   pr.hidden = !(run >= 2 || hold);
   pr.classList.toggle('is-hold', !!hold);
-  pr.classList.toggle('is-milestone', !!S.game?.bonus);
-  if (run >= 2) pr.textContent = S.game.bonus ? `${t('perfectRun', { n: run })} · ${t('perfectBonus', { b: S.game.bonus })}` : t('perfectRun', { n: run });
+  pr.classList.toggle('is-milestone', !!g?.bonus);
+  if (run >= 2) pr.textContent = g.bonus ? `${t('perfectRun', { n: run })} · ${t('perfectBonus', { b: g.bonus })}` : t('perfectRun', { n: run });
   else if (hold) pr.textContent = t('perfectKeep', { n: hold });
-  $('#new-best').hidden = !S.game?.newBest;
-  const rewardEl = $('#result-reward');
-  rewardEl.hidden = !reward;
-  if (reward) {
-    const span = rewardEl.querySelector('span');
-    const start = performance.now();
-    const tick = (now) => {
-      const p = Math.max(0, Math.min(1, (now - start - 250) / 700));
-      span.textContent = t('reward', { n: Math.max(0, Math.round(reward * p)) });
-      if (p < 1) requestAnimationFrame(tick);
-      else updateCoins(true);
-    };
-    span.textContent = t('reward', { n: 0 });
-    requestAnimationFrame(tick);
-    setTimeout(() => sfx.coin(), 950);
-  }
+  $('#new-best').hidden = !g?.newBest;
+  // stars slam in one after another
   const starsEl = $('#result-stars');
   starsEl.innerHTML = '';
   for (let i = 0; i < 3; i++) {
     const s = document.createElement('span');
-    s.innerHTML = '<svg><use href="#i-star"/></svg>';
+    s.innerHTML = '<svg><use href="#i-star"/></svg><i class="star-shine"></i>';
     if (i < stars) {
       s.className = 'on';
       s.style.animationDelay = `${0.25 + i * 0.28}s`;
-      setTimeout(() => {
+      later(520 + i * 280, () => {
         sfx.star(i);
         buzz(18);
-        burst(s, 50, 50, { count: 12, colors: ['var(--accent)', '#fff'], dist: 60 });
-        replay($('#modal-result .modal-card'), 'slam');
-      }, 520 + i * 280);
+        burst(s, 50, 50, { count: 14, colors: ['#ffd84a', '#fff', 'var(--hue)'], dist: 70 });
+        replay(card, 'slam');
+      });
     }
     starsEl.appendChild(s);
   }
-  $('#result-title').textContent = title;
-  $('#result-line').textContent = line;
+  const titleEl = $('#result-title');
+  titleEl.textContent = title;
+  titleEl.className = `rt-${stars}`;
+  const lineEl = $('#result-line');
+  if (g?.level && (g.mode === 'level' || g.mode === 'daily')) lineEl.innerHTML = movesHTML(g.moves, g.level.par);
+  else lineEl.textContent = line;
   $('#result-sub').textContent = sub;
+  // gains and next goal
+  const gains = $('#result-gains');
+  gains.innerHTML = gainsHTML(reward, g?.prog);
+  gains.hidden = !gains.children.length;
+  const goal = $('#result-goal');
+  goal.innerHTML = goalHTML();
+  goal.hidden = !goal.innerHTML;
+  if (!goal.hidden) {
+    later(2300, () => {
+      goal.classList.add('fill');
+      if (goal.querySelector('.goal-chest.is-ready')) later(700, () => sfx.chestShake?.(1));
+    });
+  }
+  // actions: big primary button(s), the rest as round buttons
   const box = $('#result-actions');
   box.innerHTML = '';
+  const round = document.createElement('div');
+  round.className = 'ra-round';
   for (const a of actions) {
     const b = document.createElement('button');
-    b.className = `btn ${a.primary ? 'btn-primary' : 'btn-ghost'} ${a.wide ? 'btn-full' : ''} ${a.cls || ''}`;
-    b.innerHTML = a.iconAfter
-      ? `<span>${a.label}</span><svg class="next-arrow"><use href="#${a.icon}"/></svg>`
-      : (a.icon ? `<svg><use href="#${a.icon}"/></svg>` : '') + `<span>${a.label}</span>`;
+    const isRound = !a.primary && a.icon && !a.cls?.includes('btn-ad');
+    if (isRound) {
+      b.className = 'ra-btn';
+      b.innerHTML = `<span class="ra-ico"><svg><use href="#${a.icon}"/></svg></span><span>${a.label}</span>`;
+    } else {
+      b.className = `btn ${a.primary ? 'btn-primary' : 'btn-ghost'} ${a.wide ? 'btn-full' : ''} ${a.cls || ''}`;
+      b.innerHTML = a.iconAfter
+        ? `<span>${a.label}</span><svg class="next-arrow"><use href="#${a.icon}"/></svg>`
+        : (a.icon ? `<svg><use href="#${a.icon}"/></svg>` : '') + `<span>${a.label}</span>`;
+    }
     b.addEventListener('click', () => {
       if (!a.keepOpen) closeModal('modal-result');
       a.onClick(b);
     });
-    box.appendChild(b);
+    (isRound ? round : box).appendChild(b);
   }
+  if (round.children.length) box.prepend(round);
   openModal('modal-result');
+  animateGains(gains, wallet, coinsBefore);
+  // Quest / achievement / level-up banners once the rewards have landed.
+  if (g?.prog) later(2600, () => handleProgress(g.prog));
   if (stars === 3) burstConfetti($('#confetti'));
-  box.querySelector('.btn-primary')?.focus();
+  box.querySelector('.btn-primary')?.focus({ preventScroll: true });
+  card.scrollTop = 0;
 }
 
 function backToArchive(day) {
