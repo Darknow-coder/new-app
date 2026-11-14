@@ -8698,16 +8698,17 @@ img.map-scene{
   position: absolute;
   inset: 6%;
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, #ffd0d6 0 12%, #ff5d73 40%, #b81e3e);
-  box-shadow: 0 4px 0 #7a0a24, inset 0 -3px 4px rgba(0, 0, 0, 0.25);
+  border-radius: 28%;
+  background: radial-gradient(circle at 38% 30%, #8a9ac0 0 10%, #4a5878 45%, #262f48);
+  box-shadow: 0 4px 0 #161c2e, inset 0 -3px 4px rgba(0, 0, 0, 0.3);
 }
 .bumper::after{
   content: '';
   position: absolute;
   inset: 27%;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 0 3px #ff8a9c;
+  border: 3px solid #ffe066;
+  box-shadow: 0 0 0 3px #262f48, 0 0 0 5px rgba(255, 224, 102, 0.55), 0 0 10px rgba(255, 224, 102, 0.6);
 }
 .bumper.boing{
   animation: boing 0.4s var(--spring);
@@ -8749,7 +8750,8 @@ img.map-scene{
 }
 .ico-bumper{
   border-radius: 50%;
-  background: radial-gradient(circle, #fff 0 24%, #ff5d73 30% 60%, #b81e3e 64%);
+  border-radius: 28%;
+  background: radial-gradient(circle, #4a5878 0 24%, #ffe066 30% 46%, #4a5878 52%);
 }
 .ico-oneway{
   background: linear-gradient(160deg, #b4f5c8, #4fcf86);
@@ -8787,7 +8789,8 @@ img.map-scene{
 .mech-bumpers .t1{
   left: calc(var(--s) * 4);
   border-radius: 50%;
-  background: radial-gradient(circle, #fff 0 22%, #ff5d73 28% 62%, #b81e3e 66%);
+  border-radius: 28%;
+  background: radial-gradient(circle, #4a5878 0 24%, #ffe066 30% 46%, #3a4766 52%);
   transform: scale(0.85);
 }
 .mech-bumpers .ball{

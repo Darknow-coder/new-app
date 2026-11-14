@@ -388,3 +388,29 @@ test('the extra level pack (321+) replays to a win and matches the generator', a
   }
   for (const n of [321, 345]) assert.equal(adventureLevel(n).par, generateAdventureLevel(n).par, `level ${n} drift`);
 });
+
+test('mirrors turn a rolling piece by a quarter turn', () => {
+  const l = parseLevel(['.....', 'k..a.', '....A', '.....', '.....']);
+  let s = tilt(l, l.start, 'left').state;
+  assert.equal(s[0], 10);
+  const r = tilt(l, s, 'up');
+  assert.equal(r.state[0], -1, 'up then deflected right into the hole');
+  assert.ok(r.moves[0].segs.length === 2 && r.moves[0].segs[0].turn);
+  assert.equal(l.par, 2);
+});
+
+test('springs bounce once, then act as walls', () => {
+  const l = parseLevel(['.....', '*.A.*', '.....', '...a.', '.....']);
+  const r = tilt(l, l.start, 'left');
+  assert.equal(r.state[0], 8, 'bounced off the left spring, stopped by the right one');
+  assert.equal(r.moves[0].segs[0].bump, 5);
+  assert.equal(l.par, 2);
+});
+
+test('one-way doors only open in their direction', () => {
+  const l = parseLevel(['.1..A', '.....', '.....', '.....', 'a....']);
+  assert.equal(tilt(l, l.start, 'left').state[0], 2, 'blocked when rolling left into a right-only door');
+  const m = parseLevel(['A1...', '.....', '.....', '.....', '....a']);
+  assert.equal(tilt(m, m.start, 'right').state[0], 4, 'passes through when rolling right');
+  assert.deepEqual(encodeLevel(m), ['A1...', '.....', '.....', '.....', '....a']);
+});
