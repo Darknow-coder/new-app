@@ -29,7 +29,7 @@ export function renderCloud() {
   const at = lastUpload();
   $('#cloud-status').textContent = !navigator.onLine ? t('cloudOff') : at ? t('cloudOn', { t: ago(at) }) : store.data.levels.unlocked > 1 ? t('cloudPending') : t('cloudWait');
   // Opening the settings is a good moment to make sure the latest progress is up there.
-  upload()?.then(() => lastUpload() !== at && renderCloud());
+  upload({ gap: 30000 })?.then(() => lastUpload() !== at && renderCloud());
 }
 
 $('#btn-settings').addEventListener('click', renderCloud);

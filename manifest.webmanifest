@@ -1,18 +1,76 @@
 {
+  "id": "./",
   "name": "Marbl — the daily tilt puzzle",
   "short_name": "Marbl",
-  "description": "Tilt the board, roll the marbles, drop them in their holes. Three new puzzles every day.",
+  "description": "Tilt the board, roll the marbles, drop them in their holes. 2,000 levels, three new puzzles every day and a new event every week. Free, works offline.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#11142b",
   "theme_color": "#11142b",
-  "categories": ["games", "puzzle"],
+  "categories": [
+    "games",
+    "puzzle"
+  ],
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "site/img/en-01-home.webp",
+      "sizes": "540x960",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Your adventure across 16 illustrated worlds"
+    },
+    {
+      "src": "site/img/en-02-gameplay.webp",
+      "sizes": "540x960",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Tilt the board: every marble rolls at once"
+    },
+    {
+      "src": "site/img/en-03-victory.webp",
+      "sizes": "540x960",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Match par for three stars"
+    },
+    {
+      "src": "site/img/en-04-map.webp",
+      "sizes": "540x960",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "2,000 levels, a boss at the end of each world"
+    },
+    {
+      "src": "site/img/en-10-event.webp",
+      "sizes": "540x960",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "A new event every week"
+    }
   ]
 }

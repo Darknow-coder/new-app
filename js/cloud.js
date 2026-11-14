@@ -1,8 +1,8 @@
 // Cloud save: the whole progress is kept online under a short recovery code
 // (like 7KQ2-X9TF-M4PA). Typing that code on another phone brings the game back.
 // The code is the only key: documents are never listed, only fetched by their code.
-// Uploads are automatic but rare (when progress changed, at most once a minute,
-// and when the app goes to the background), to stay inside Firebase's free quota.
+// Uploads are automatic but rare (when progress changed: every few minutes at most while
+// playing, and when the app goes to the background), to stay inside Firebase's free quota.
 import { FIREBASE } from './online-config.js';
 import { hashString } from './engine.js';
 import { afterSave, exportProgress, importProgress, store } from './storage.js';
@@ -10,7 +10,8 @@ import { DOCS, http, onlineEnabled, token } from './leaderboard.js';
 
 const KEY = 'marbl:cloud';
 const ALPHA = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'; // no 0/O, 1/I/L: easy to read aloud and type
-const MIN_GAP = 60000;
+const AUTO_GAP = 5 * 60000; // while playing
+const AWAY_GAP = 30000; // app put away or settings opened (the server refuses closer than 20 s)
 export const CODE_RE = /^[2-9A-HJKMNP-Z]{12}$/;
 
 let st = load();
@@ -56,12 +57,12 @@ export const lastUpload = () => st.at || 0;
 const docName = (code) => `projects/${FIREBASE.projectId}/databases/(default)/documents/saves/${code}`;
 
 let busy = null;
-/** Upload now if the progress changed since the last upload (unless too soon). */
-export function upload({ force = false } = {}) {
+/** Upload now if the progress changed since the last upload, and the last one is `gap` ms old. */
+export function upload({ force = false, gap = AUTO_GAP } = {}) {
   if (!cloudEnabled() || st.off || !worthSaving() || busy) return busy;
   const data = exportProgress();
   const h = hashString(data);
-  if (!force && (h === st.hash || Date.now() - (st.at || 0) < MIN_GAP)) return null;
+  if (!force && (h === st.hash || Date.now() - (st.at || 0) < gap)) return null;
   const code = cloudCode();
   busy = (async () => {
     await token();
@@ -137,6 +138,6 @@ afterSave.add(() => {
 });
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') upload();
+    if (document.visibilityState === 'hidden') upload({ gap: AWAY_GAP });
   });
 }

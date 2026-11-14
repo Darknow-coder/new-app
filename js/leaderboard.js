@@ -127,16 +127,21 @@ export async function reroll(levels, stars) {
 }
 
 let pushing = null;
-/** Publish progress if it changed (fire and forget; failures retry next time). */
-export function push(levels, stars) {
-  if (!onlineEnabled() || !session.joined || pushing) return;
+const PUSH_GAP = 300000; // between automatic updates: a few writes per session, not one per level
+/**
+ * Publish progress if it changed (fire and forget; failures retry next time).
+ * `now`: the player is looking at the board, or leaving the app: don't wait for PUSH_GAP.
+ */
+export function push(levels, stars, { now = false } = {}) {
+  if (!onlineEnabled() || !session.joined || pushing) return pushing;
   const s = clean(levels, stars);
-  if (session.last && session.last.levels === s.levels && session.last.stars === s.stars) return;
-  // The server rejects writes closer than a few seconds apart; try again later.
-  if (Date.now() - (session.lastPush || 0) < 6000) return;
+  if (session.last && session.last.levels === s.levels && session.last.stars === s.stars) return null;
+  // The server rejects writes closer than a few seconds apart.
+  if (Date.now() - (session.lastPush || 0) < (now ? 6000 : PUSH_GAP)) return null;
   pushing = write(s.levels, s.stars)
     .catch(() => {})
     .finally(() => (pushing = null));
+  return pushing;
 }
 
 /** Leave the board: delete the document. */

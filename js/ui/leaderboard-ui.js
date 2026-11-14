@@ -36,15 +36,12 @@ export function myProgress() {
   return { levels, stars };
 }
 
-/** Publish progress after a win (no-op unless the player joined). */
+/** Publish progress after a win (no-op unless the player joined). Resolves when sent. */
 let autoJoining = false;
-export function syncRank() {
+export function syncRank({ now = false } = {}) {
   if (!onlineEnabled()) return;
   const p = myProgress();
-  if (joined()) {
-    push(p.levels, p.stars);
-    return;
-  }
+  if (joined()) return push(p.levels, p.stars, { now });
   // Every player is on the board from their first completed level, with a random
   // name; leaving it (one tap in the leaderboard) is remembered for good.
   if (optedOut() || autoJoining || p.levels < 1) return;
@@ -58,6 +55,9 @@ export function syncRank() {
     .catch(() => {})
     .finally(() => (autoJoining = false));
 }
+
+// Leaving the app: publish what was won since the last (rate-limited) update.
+document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && syncRank({ now: true }));
 
 export function renderRankCard() {
   const card = $('#btn-rank');
@@ -135,8 +135,8 @@ async function render() {
     }
   });
   // Make sure the board shows the latest progress, then load it.
-  syncRank();
-  fillList();
+  // own row up to date before reading the board
+  Promise.resolve(syncRank({ now: true })).finally(fillList);
 }
 
 async function fillList() {
