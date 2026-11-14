@@ -10664,3 +10664,7 @@ img.map-scene{
   color: var(--accent);
   font-weight: 700;
 }
+/* a toast never hides behind (or on top of) a notification banner */
+.notif-on .toast{
+  top: calc(96px + env(safe-area-inset-top));
+}

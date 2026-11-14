@@ -180,9 +180,12 @@ export function nextNotif() {
   const el = $('#notif');
   if (!n) {
     notifBusy = false;
+    document.documentElement.classList.remove('notif-on');
     return;
   }
   notifBusy = true;
+  // Toasts step aside (below the banner) while a notification is showing.
+  document.documentElement.classList.add('notif-on');
   $('#notif-icon').innerHTML = `<svg><use href="#${n.icon}"/></svg>`;
   $('#notif-title').textContent = n.title;
   $('#notif-sub').textContent = n.sub;
