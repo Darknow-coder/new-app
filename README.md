@@ -96,4 +96,4 @@ so link previews show the image on every platform, and bump `VERSION` in `sw.js`
 
 All art (icons, marbles, board) is original CSS/SVG; sounds are synthesised at runtime. MIT licensed.
 
-See [RELEASE.md](RELEASE.md) for the release checklist.
+See [RELEASE.md](RELEASE.md) for the release routine and [docs/LANCEMENT.md](docs/LANCEMENT.md) for the launch checklist (French).

@@ -19,8 +19,8 @@ Tant que `js/online-config.js` est vide, le classement est simplement caché dan
 
 ## Limites de l'offre gratuite
 - 50 000 lectures et 20 000 écritures par jour. Le jeu met le classement en cache une minute
-  et n'écrit qu'après une victoire qui change ton score : largement assez pour des milliers
-  de joueurs par jour.
+  et regroupe ses envois (au plus toutes les 5 minutes, plus un quand on quitte l'appli) :
+  assez pour ~2 000 parties par jour. Et au-delà : voir `docs/LANCEMENT.md`.
 - Optionnel : dans Google Cloud Console → Identifiants, restreins la clé API au domaine de
   ton site (référents HTTP).
 

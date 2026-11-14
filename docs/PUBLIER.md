@@ -20,7 +20,8 @@ Le site officiel reste **https://darknow-coder.github.io/new-app/** : les liens 
    - Viewport : **420 × 800** (format téléphone)
    - coche **Mobile friendly** (orientation : portrait)
    - coche **Fullscreen button**
-5. **Cover image** : `store/cover-630x500.png`. **Screenshots** : 3 à 5 images de `store/en/` ou `store/fr/`.
+5. **Cover image** : `store/cover-630x500.png`. **Screenshots** : 3 à 5 images de `store/en/` ou `store/fr/`
+   (les meilleures : `01-home`, `02-gameplay`, `03-victory`, `04-map`, `10-event`).
 6. **Genre** : Puzzle. **Tags** : voir plus bas. **Pricing** : `No payments` (ou « Donations » si tu veux un bouton de don).
 7. **Visibility** : commence en `Restricted` pour tester, puis `Public`.
 
@@ -51,10 +52,12 @@ minimum de coups.
 
 ✦ 2 000 niveaux dans 16 mondes illustrés, avec un boss à chaque fin de monde
 ✦ 3 nouveaux puzzles chaque jour (facile, moyen, difficile) + le calendrier des jours passés
-✦ Des mécaniques qui se renouvellent : gouffres, sable, portes de cristal, portails, flèches
+✦ Des mécaniques qui se renouvellent : gouffres, sable, portes de cristal, portails, flèches, miroirs, ressorts, sens uniques
+✦ Un événement chaque semaine (7 étapes à thème et un coffre d'or) et une roue de la chance chaque jour
 ✦ Coffres, collection de 97 billes, saison gratuite, succès et quêtes du jour
 ✦ Éditeur de niveaux : crée tes propres puzzles et partage-les avec un simple lien
 ✦ Classement mondial et défis entre amis
+✦ Sauvegarde en ligne automatique, sans compte : un code suffit pour retrouver ta partie
 ✦ Jouable hors ligne, mode daltonien, aucune pub, aucun achat
 
 Un coup de poignet, une idée, et *plop* : la bille tombe. Encore un niveau ?
@@ -72,10 +75,12 @@ to drop each marble into the hole of its colour, in as few moves as possible.
 
 ✦ 2,000 levels across 16 illustrated worlds, with a boss at the end of each one
 ✦ 3 fresh puzzles every day (easy, medium, hard) + a calendar of past days
-✦ Mechanics that keep changing: pits, sand, crystal gates, portals, arrows
+✦ Mechanics that keep changing: pits, sand, crystal gates, portals, arrows, mirrors, springs, one-way doors
+✦ A new event every week (7 themed stages and a golden chest) and a lucky wheel every day
 ✦ Chests, a collection of 97 marbles, a free season pass, achievements and daily quests
 ✦ Level editor: build your own puzzles and share them with a simple link
 ✦ Global leaderboard and friend challenges
+✦ Automatic online save, no account: one code brings your game back
 ✦ Plays offline, colour-blind mode, no ads, no purchases
 
 A flick of the wrist, an idea, and *plop*: the marble drops. One more level?

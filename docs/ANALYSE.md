@@ -63,6 +63,7 @@ l'autre, les rappeler chaque jour, et mesurer ce qu'ils font.
 - ✅ **Un rendez-vous chaque semaine** : l'événement du lundi (7 étapes à thème, coffre d'or).
 - ✅ **Un rendez-vous chaque jour** : puzzles du jour, roue de la chance, quêtes, cadeau de connexion.
 - ✅ **Une politique de confidentialité publique** : `site/privacy.html` (exigée par les stores).
+- ✅ **Prêt pour le lancement** : la checklist et le plan TikTok sont dans `docs/LANCEMENT.md`.
 - ⏳ **Google Play** (25 $ une fois) via l'appli « coque » du site : il faudra y ajouter ton nom ou
   pseudo d'éditeur et une adresse e-mail de contact (exigés par Google).
 - ⏳ **Le rappel quotidien** : demande un petit serveur d'envoi (pas gratuit au-delà d'un certain volume).
