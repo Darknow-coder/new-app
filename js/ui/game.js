@@ -231,8 +231,8 @@ export function startGame(opts) {
   } else {
     els.tip.hidden = true;
   }
-  els.hint.hidden = opts.mode !== 'level';
-  els.rewind.hidden = opts.mode !== 'level';
+  els.hint.hidden = opts.mode !== 'level' && opts.mode !== 'event';
+  els.rewind.hidden = opts.mode !== 'level' && opts.mode !== 'event';
   els.restart.hidden = opts.mode === 'tutorial' && opts.tut === 0;
   S.animating = false;
   S.queue = [];
@@ -432,7 +432,7 @@ export function updateHud(bump = true) {
   els.restart.disabled = S.game.done || S.game.history.length === 0;
   els.hint.disabled = S.game.done;
   // Gentle nudge towards the hint when a level clearly resists.
-  els.hint.classList.toggle('nudge', S.game.mode === 'level' && !S.game.done && S.game.moves >= S.game.level.par * 2 + 2);
+  els.hint.classList.toggle('nudge', (S.game.mode === 'level' || S.game.mode === 'event') && !S.game.done && S.game.moves >= S.game.level.par * 2 + 2);
   els.rewind.disabled = S.game.done || S.game.history.length === 0;
   for (const b of ['hint', 'rewind']) {
     const n = store.booster(b);
@@ -813,7 +813,7 @@ export function useBooster(id) {
 }
 
 export function hint() {
-  if (!S.game || S.game.done || S.animating || S.game.mode !== 'level') return;
+  if (!S.game || S.game.done || S.animating || (S.game.mode !== 'level' && S.game.mode !== 'event')) return;
   const key = stateKey(S.game.state);
   if (S.game.hintKey === key && !els.hintArrow.hidden) return; // already showing for this position
   // Still on the optimal path? Then the next move is known: no search needed.
@@ -829,7 +829,7 @@ export function hint() {
   }
   const sol = { path: [next] };
   if (!useBooster('hint')) return;
-  count('h', S.game.n);
+  if (S.game.mode === 'level') count('h', S.game.n);
   S.game.hintKey = key;
   updateHud(false);
   const rot = { up: 0, right: 90, down: 180, left: 270 }[sol.path[0]];
@@ -839,7 +839,7 @@ export function hint() {
 }
 
 export function rewind() {
-  if (!S.game || S.game.done || S.animating || S.game.mode !== 'level' || !S.game.history.length) return;
+  if (!S.game || S.game.done || S.animating || (S.game.mode !== 'level' && S.game.mode !== 'event') || !S.game.history.length) return;
   if (!useBooster('rewind')) return;
   sfx.undo();
   S.game.state = S.game.history.pop();

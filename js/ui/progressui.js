@@ -118,7 +118,7 @@ $('#player-badge').addEventListener('click', openAchievements);
 $('#inbox-btn').addEventListener('click', () => {
   const item = store.data.inbox[0];
   if (!item) return;
-  const title = item.reason === 'levelUp' ? t('lvlChest', { n: item.n }) : item.reason === 'quests' ? t('questChest') : undefined;
+  const title = item.reason === 'levelUp' ? t('lvlChest', { n: item.n }) : item.reason === 'quests' ? t('questChest') : item.reason === 'event' ? t('evFinal') : undefined;
   openChestFlow({ id: item.id, tier: item.tier, title }).then(() => {
     takeFromInbox(item.id);
     S.shownCoins = null;

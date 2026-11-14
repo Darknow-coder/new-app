@@ -100,6 +100,12 @@
             </span>
           </div>
 
+          <button class="event-card" id="btn-event" type="button" hidden>
+            <span class="ev-badge" id="ev-badge"></span>
+            <span class="ev-text"><small id="ev-kicker"></small><strong id="ev-name"></strong><span class="ev-dots" id="ev-dots"></span></span>
+            <span class="ev-chest" id="ev-chest"></span>
+          </button>
+
           <div class="home-tiles">
             <button class="home-tile tile-wheel" id="btn-wheel" type="button">
               <span class="tile-ico"><span class="mini-wheel"></span></span>
@@ -431,6 +437,19 @@
           <button class="btn btn-primary btn-full" id="lost-retry" data-i18n="lostRetry"></button>
           <button class="btn btn-ghost btn-full" id="lost-undo" data-i18n="lostUndo"></button>
         </div>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="modal-event">
+      <div class="modal-card event-modal">
+        <button class="icon-btn modal-close" data-close data-i18n-label="back"><svg><use href="#i-close"/></svg></button>
+        <span class="ev-badge big" id="evm-badge"></span>
+        <small class="evm-kicker" data-i18n="evTitle"></small>
+        <h2 id="evm-name"></h2>
+        <p class="evm-ends" id="evm-ends"></p>
+        <div class="evm-path" id="evm-path"></div>
+        <p class="evm-reward" id="evm-reward"></p>
+        <div class="modal-actions"><button class="btn btn-primary btn-full" id="evm-play" type="button"></button></div>
       </div>
     </dialog>
 

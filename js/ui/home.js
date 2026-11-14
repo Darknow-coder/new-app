@@ -13,6 +13,7 @@ import { startDaily, startLevel } from './game.js';
 import { stageHTML } from './mapview.js';
 import { sfx } from '../audio.js';
 import { renderWheelTile } from './wheel.js';
+import { renderEventCard } from './eventui.js';
 import { renderPlayerStrip, renderQuests, renderSeasonCard } from './progressui.js';
 import { giftToday } from './shop.js';
 import { archiveTodo } from './archive.js';
@@ -118,6 +119,7 @@ export function renderHome() {
   renderRankCard();
   syncRank();
   renderWheelTile();
+  renderEventCard();
   const todo = archiveTodo(S.today);
   $('#archive-count').hidden = !todo;
   $('#archive-count').textContent = todo;

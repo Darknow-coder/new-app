@@ -19,6 +19,8 @@ import { renderHome } from './home.js';
 import { rewardedLeft, showRewarded } from '../monetization.js';
 import { count } from '../metrics.js';
 import { syncRank } from './leaderboard-ui.js';
+import { eventWin, openEvent, openEventChest, startEventStage } from './eventui.js';
+import { themeOf } from '../event.js';
 
 export function onSolved() {
   S.game.done = true;
@@ -54,6 +56,11 @@ export function onSolved() {
     S.game.dayDone = dailyChestReady(S.game.day);
     store.addCoins(S.game.reward);
     S.game.prog = track('dailyWin', { stars });
+  } else if (S.game.mode === 'event') {
+    const r = eventWin(S.game.stage, stars);
+    S.game.reward = r.reward;
+    S.game.eventResult = r;
+    S.game.prog = track('archiveWin', { stars });
   } else if (S.game.mode === 'challenge') {
     if (S.game.moves <= S.game.target && !store.data.chWon?.[`${S.game.n}:${S.game.target}`]) {
       store.data.chWon = { ...(store.data.chWon || {}), [`${S.game.n}:${S.game.target}`]: 1 };
@@ -164,6 +171,22 @@ export function showResult() {
       const day = S.game.day;
       actions.push({ label: t('openChest'), primary: true, wide: true, icon: 'i-gift', onClick: () => openDailyChest(day).then(goHome) });
       actions.find((a) => a.icon === 'i-share').primary = false;
+    }
+  } else if (S.game.mode === 'event') {
+    const { week, stage, eventResult: r } = S.game;
+    const toEvent = () => {
+      goHome();
+      openEvent();
+    };
+    if (r.finished) {
+      sub = t('evComplete');
+      actions.push({ label: t('evShort'), icon: 'i-trophy', onClick: toEvent });
+      actions.push({ label: t('openChest'), primary: true, wide: true, icon: 'i-gift', onClick: () => openEventChest(week).then(toEvent) });
+    } else {
+      actions.push({ label: t('evShort'), icon: 'i-trophy', onClick: toEvent });
+      if (stars < 3) actions.push({ label: t('retry'), icon: 'i-restart', onClick: () => iris(() => startEventStage(stage)) });
+      if (r.next >= 0) actions.push({ label: t('evNext'), primary: true, icon: 'i-play', iconAfter: true, wide: true, onClick: () => iris(() => startEventStage(r.next)) });
+      else actions.push({ label: t('home'), primary: true, wide: true, onClick: goHome });
     }
   } else if (S.game.mode === 'custom') {
     const g = S.game;
@@ -325,10 +348,16 @@ export function showResultCard({ stars, title, line, sub, actions, reward = 0 })
   const g = S.game;
   const card = $('#modal-result .modal-card');
   card.dataset.stars = stars;
-  card.style.setProperty('--hue', g?.mode === 'level' ? worldHue(g.n) : 'var(--c1)');
+  card.style.setProperty('--hue', g?.mode === 'level' ? worldHue(g.n) : g?.mode === 'event' ? themeOf(g.week).hue : 'var(--c1)');
   // header: what was won, and a wallet that fills up
   $('#result-kicker').textContent =
-    g?.mode === 'level' ? `${t('level', { n: g.n })} · ${worldName(worldOf(g.n))}` : g?.mode === 'daily' ? `${t('todayTitle')} · ${t(g.diff)}` : '';
+    g?.mode === 'level'
+      ? `${t('level', { n: g.n })} · ${worldName(worldOf(g.n))}`
+      : g?.mode === 'daily'
+        ? `${t('todayTitle')} · ${t(g.diff)}`
+        : g?.mode === 'event'
+          ? `${t(`ev_${themeOf(g.week).id}`)} · ${g.stage + 1}/7`
+          : '';
   const wallet = $('#result-wallet');
   const coinsBefore = store.data.coins - reward;
   wallet.querySelector('b').textContent = coinsBefore;
@@ -372,7 +401,7 @@ export function showResultCard({ stars, title, line, sub, actions, reward = 0 })
   titleEl.textContent = title;
   titleEl.className = `rt-${stars}`;
   const lineEl = $('#result-line');
-  if (g?.level && (g.mode === 'level' || g.mode === 'daily')) lineEl.innerHTML = movesHTML(g.moves, g.level.par);
+  if (g?.level && (g.mode === 'level' || g.mode === 'daily' || g.mode === 'event')) lineEl.innerHTML = movesHTML(g.moves, g.level.par);
   else lineEl.textContent = line;
   $('#result-sub').textContent = sub;
   // gains and next goal
@@ -439,6 +468,9 @@ export function exitGame() {
     return;
   }
   if (S.game?.mode === 'level') openMap();
-  else if (S.game?.mode === 'daily' && S.game.archive) backToArchive(S.game.day);
+  else if (S.game?.mode === 'event') {
+    goHome();
+    openEvent();
+  } else if (S.game?.mode === 'daily' && S.game.archive) backToArchive(S.game.day);
   else goHome();
 }
