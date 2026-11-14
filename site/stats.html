@@ -45,6 +45,9 @@
     <div class="tiles" id="tiles"></div>
     <h2>Puzzles du jour</h2>
     <div id="daily"></div>
+    <h2>Plantages</h2>
+    <p class="note">Erreurs du jeu chez les joueurs : version, fichier et ligne (aucune info sur le joueur). Vide = tout va bien.</p>
+    <div id="errors"></div>
     <h2>Niveaux de l'aventure</h2>
     <p class="note">⚠️ = point de friction : beaucoup de joueurs le commencent mais peu le réussissent. C'est là qu'ils risquent d'abandonner.</p>
     <div id="levels"></div>
@@ -89,6 +92,10 @@
       ].map(([v, l]) => `<div class="tile"><b>${fmt(v)}</b><small>${l}</small></div>`).join('');
       const daily = ['easy', 'medium', 'hard'].map((d) => ({ d, s: m[`ds_${d}`] || 0, w: m[`dw_${d}`] || 0 }));
       document.getElementById('daily').innerHTML = daily.some((x) => x.s) ? `<div class="scroll"><table><tr><th>Difficulté</th><th>Commencés</th><th>Réussis</th><th>Taux</th></tr>${daily.map((x) => `<tr><td>${{ easy: 'Facile', medium: 'Moyen', hard: 'Difficile' }[x.d]}</td><td>${fmt(x.s)}</td><td>${fmt(x.w)}</td>${rate(x.w, x.s)}</tr>`).join('')}</table></div>` : '<div class="empty">Pas encore de données.</div>';
+      const errs = Object.entries(m).filter(([k]) => k.startsWith('err_')).sort((a, b) => b[1] - a[1]);
+      document.getElementById('errors').innerHTML = errs.length
+        ? `<div class="scroll"><table><tr><th>Où (version · fichier · ligne)</th><th>Joueurs touchés</th></tr>${errs.map(([k, n]) => `<tr><td>${k.slice(4).replace(/_/g, ' · ')}</td><td>${fmt(n)}</td></tr>`).join('')}</table></div>`
+        : '<div class="empty">Aucun plantage signalé. 🎉</div>';
       const rows = [...levels.entries()].sort((a, b) => a[0] - b[0]);
       document.getElementById('levels').innerHTML = rows.length
         ? `<div class="scroll"><table><tr><th>Niveau</th><th>Commencés</th><th>Réussis</th><th>Taux</th><th>3 ★</th><th>Gouffres</th><th>Indices</th></tr>${rows.map(([n, L]) => {

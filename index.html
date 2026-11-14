@@ -4,6 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="google-site-verification" content="uWRuAL7GLSupuN1hwEgVqKNuVhXV5LP2GfmAYcNhFAI" />
+    <!-- Crash watch from the very first line: where the game broke (file and line only), sent later as anonymous counters. -->
+    <script>
+      window.__errs = [];
+      addEventListener('error', function (e) { if (e.filename) __errs.push([e.filename, e.lineno]); });
+      addEventListener('unhandledrejection', function (e) { __errs.push([(e.reason && e.reason.stack) || '', 0]); });
+    </script>
     <title>Marbl — the daily tilt puzzle</title>
     <meta name="description" content="Tilt the board, roll the marbles, drop them in their holes. Three new puzzles every day. Free, no ads, works offline." />
     <meta name="theme-color" content="#11142b" media="(prefers-color-scheme: dark)" />

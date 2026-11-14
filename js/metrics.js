@@ -62,8 +62,35 @@ export async function flush() {
   }
 }
 
+/* ---------- crash counters ----------
+   A tiny script in index.html notes every uncaught error (file and line). Here they become
+   counters like "err_v110_mapview_163" (version, file, line): enough to find the bug, and
+   nothing about the player. Each place is counted once per session. */
+const APP = 'v110';
+const seenErr = new Set();
+function drainErrors() {
+  const list = typeof window !== 'undefined' ? window.__errs : null;
+  if (!list?.length) return;
+  for (const [src, line] of list.splice(0)) {
+    let file = '';
+    let ln = Number(line) || 0;
+    const m = String(src).match(/([\w.-]+)\.js(?:\?[^:]*)?:(\d+)(?::\d+)?/);
+    if (m) {
+      file = m[1];
+      ln = ln || Number(m[2]);
+    } else if (/^https?:/.test(src) && String(src).startsWith(location.origin)) file = String(src).split('/').pop().replace(/\.js.*$/, '');
+    // Ignore errors from other origins (scripts injected by in-app browsers, extensions...).
+    if (/^https?:/.test(src) && !String(src).startsWith(location.origin)) continue;
+    const key = `${APP}_${(file || 'unknown').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20)}_${ln}`;
+    if (seenErr.has(key) || seenErr.size >= 8) continue;
+    seenErr.add(key);
+    count('err_', key);
+  }
+}
+
 if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flush());
+  setInterval(drainErrors, 5000);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && (drainErrors(), flush()));
   // Leftovers from a previous session.
   setTimeout(flush, 15000);
 }
