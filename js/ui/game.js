@@ -347,6 +347,22 @@ function setWorldLook(w) {
   host.hidden = !url;
 }
 
+/** Bake and decode a world's backdrop ahead of time (idle), so its first level opens at once. */
+const warmed = new Set();
+export function prewarmWorld(w) {
+  if (warmed.has(w)) return;
+  warmed.add(w);
+  const run = () => {
+    const url = arenaArt(w).url;
+    if (!url) return;
+    const img = new Image();
+    img.src = url;
+    img.decode?.().catch(() => {});
+  };
+  if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 3000 });
+  else setTimeout(run, 1500);
+}
+
 export function cellXY(c) {
   return { x: c % S.game.level.w, y: Math.floor(c / S.game.level.w) };
 }

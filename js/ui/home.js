@@ -9,7 +9,7 @@ import { WORLD_CHESTS, chestId, chestSVG, isOpened } from '../chests.js';
 import { worldEmblem } from '../map.js';
 import { SKINS, checkCuteUnlocks, equipped, hasSkin, marbleHTML, skinName, unseenCount } from '../skins.js';
 import { $, S, dailyChestReady, dailyChestTier, els, fmtCountdown, notify, readyChests, starsHTML, updateCoins, worldHue, worldName, worldStars } from './core.js';
-import { startDaily, startLevel } from './game.js';
+import { prewarmWorld, startDaily, startLevel } from './game.js';
 import { stageHTML } from './mapview.js';
 import { sfx } from '../audio.js';
 import { renderWheelTile } from './wheel.js';
@@ -23,6 +23,7 @@ import { checkInAppBrowser } from './install.js';
 export function renderHome() {
   S.today = dateKey();
   checkInAppBrowser();
+  prewarmWorld(worldOf(store.data.levels.unlocked) % WORLD_HUES.length);
   const n = puzzleNumber(S.today);
   const dateFmt = new Intl.DateTimeFormat(LANG, { weekday: 'long', month: 'long', day: 'numeric' });
   $('#home-date').textContent = dateFmt.format(new Date());
