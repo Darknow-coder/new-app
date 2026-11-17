@@ -1,7 +1,7 @@
 import { starsFor } from '../engine.js';
 import { burst, countTo, flyIcons, iris, reducedMotion, replay } from '../fx.js';
 import { save, store } from '../storage.js';
-import { ARCHIVE_DAY_BONUS, adventureLevel, archiveReward, dailyReward, isBoss, levelReward, perfectRunBonus, worldOf } from '../levels.js';
+import { ARCHIVE_DAY_BONUS, QUESTS_FROM, WHEEL_FROM, adventureLevel, archiveReward, dailyReward, isBoss, levelReward, perfectRunBonus, worldOf } from '../levels.js';
 import { track, xpNeeded } from '../progress.js';
 import { grantSkin, marbleHTML, pickSkin, skinName } from '../skins.js';
 import { sfx } from '../audio.js';
@@ -9,7 +9,7 @@ import { TUTORIAL } from '../tutorial.js';
 import { t } from '../i18n.js';
 import { DAILY_ORDER } from '../daily.js';
 import { burstConfetti } from '../confetti.js';
-import { $, S, buzz, closeModal, dailyChestReady, els, openModal, showView, toast, updateCoins, worldHue, worldName, worldStars } from './core.js';
+import { $, S, buzz, closeModal, dailyChestReady, els, notify, openModal, showView, toast, updateCoins, worldHue, worldName, worldStars } from './core.js';
 import { WORLD_CHESTS, chestId, chestSVG, isOpened } from '../chests.js';
 import { shareChallenge, shareWorld, startChallenge, startDaily, startLevel, startTutorial, updateHud } from './game.js';
 import { shareDay } from './settings.js';
@@ -75,8 +75,13 @@ export function onSolved() {
     syncRank();
     S.game.newBest = prev > 0 && stars > prev;
     S.game.prevStars = prev;
-    if (prev === 0 && store.data.levels.unlocked === S.game.n + 1) S.pendingUnlock = S.game.n + 1;
-    S.game.reward = levelReward(prev, stars);
+    if (prev === 0 && store.data.levels.unlocked === S.game.n + 1) {
+      S.pendingUnlock = S.game.n + 1;
+      // features that open up along the way
+      if (S.game.n + 1 === WHEEL_FROM) notify('i-gift', t('unlockWheel'), t('unlockWheelSub'));
+      if (S.game.n + 1 === QUESTS_FROM) notify('i-flag', t('unlockQuests'), t('unlockQuestsSub'));
+    }
+    S.game.reward = levelReward(prev, stars, S.game.n);
     if (S.game.reward) store.addCoins(S.game.reward);
     // Perfect run: new levels won with 3★ in a row. Missing the 3★ puts the run on hold:
     // replaying that same level for 3★ saves it, moving on loses it.

@@ -4,6 +4,7 @@
 import { store, save, computeStats } from './storage.js';
 import { hashString } from './engine.js';
 import { dateKey } from './daily.js';
+import { QUESTS_FROM } from './levels.js';
 
 /* ---------- player level ---------- */
 export const xpNeeded = (lvl) => 80 + 30 * (lvl - 1);
@@ -21,8 +22,8 @@ function addXP(n) {
     pl.xp -= xpNeeded(pl.level);
     pl.level++;
     ups.push(pl.level);
-    const tier = pl.level % 10 === 0 ? 'gold' : pl.level % 5 === 0 ? 'silver' : 'wood';
-    addToInbox({ id: `lvl-${pl.level}`, tier, reason: 'levelUp', n: pl.level });
+    // a chest every 5 player levels (silver, gold every 10): rarer, so it means something
+    if (pl.level % 5 === 0) addToInbox({ id: `lvl-${pl.level}`, tier: pl.level % 10 === 0 ? 'gold' : 'silver', reason: 'levelUp', n: pl.level });
   }
   return ups;
 }
@@ -70,6 +71,7 @@ export function quests(day = dateKey()) {
 
 function bumpQuest(id, by = 1) {
   const out = [];
+  if (store.data.levels.unlocked < QUESTS_FROM) return out; // quests come with level 11
   for (const q of quests().list) {
     if (q.id !== id || q.progress >= q.target) continue;
     q.progress = Math.min(q.target, q.progress + by);
@@ -99,23 +101,23 @@ export function claimQuest(i, day = dateKey()) {
 /* ---------- achievements ---------- */
 const st = () => store.data.stats;
 export const ACHIEVEMENTS = [
-  { id: 'firstWin', coins: 20, target: 1, value: () => st().levelsWon },
-  { id: 'win25', coins: 60, target: 25, value: () => st().levelsWon },
+  { id: 'firstWin', coins: 10, target: 1, value: () => st().levelsWon },
+  { id: 'win25', coins: 40, target: 25, value: () => st().levelsWon },
   { id: 'win100', coins: 150, target: 100, value: () => st().levelsWon },
   { id: 'win240', coins: 400, target: 240, value: () => st().levelsWon },
-  { id: 'perfect10', coins: 60, target: 10, value: () => st().perfects },
+  { id: 'perfect10', coins: 40, target: 10, value: () => st().perfects },
   { id: 'perfect50', coins: 150, target: 50, value: () => st().perfects },
-  { id: 'world2', coins: 50, target: 21, value: () => store.data.levels.unlocked },
+  { id: 'world2', coins: 40, target: 21, value: () => store.data.levels.unlocked },
   { id: 'world4', coins: 100, target: 61, value: () => store.data.levels.unlocked },
   { id: 'world8', coins: 250, target: 141, value: () => store.data.levels.unlocked },
-  { id: 'combo', coins: 40, target: 1, value: () => st().combos },
+  { id: 'combo', coins: 25, target: 1, value: () => st().combos },
   { id: 'triple', coins: 120, target: 3, value: () => st().maxCombo },
-  { id: 'chests5', coins: 50, target: 5, value: () => st().chestsOpened },
+  { id: 'chests5', coins: 30, target: 5, value: () => st().chestsOpened },
   { id: 'chests25', coins: 150, target: 25, value: () => st().chestsOpened },
   { id: 'skins5', coins: 100, target: 5, value: () => store.data.skins.owned.length },
   { id: 'skins9', coins: 300, target: 25, value: () => store.data.skins.owned.length },
   { id: 'setDone', coins: 200, target: 1, value: () => store.data.skins.owned.filter((id) => id.endsWith('-legend')).length },
-  { id: 'streak3', coins: 60, target: 3, value: () => computeStats(dateKey()).best },
+  { id: 'streak3', coins: 40, target: 3, value: () => computeStats(dateKey()).best },
   { id: 'streak7', coins: 200, target: 7, value: () => computeStats(dateKey()).best },
   { id: 'daily10', coins: 80, target: 10, value: () => st().dailySolved },
   { id: 'pure20', coins: 100, target: 20, value: () => st().boosterFree },

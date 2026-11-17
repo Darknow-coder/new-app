@@ -25,7 +25,8 @@ export function handleProgress(res) {
       notify('i-star', t('achUnlocked'), t(`ach_${n.id}`));
     }
   }
-  for (const lvl of res.ups || []) notify('i-gift', t('levelUpTitle'), t('levelUpSub', { n: lvl }), 'levelup');
+  // Only the level-ups that bring a chest get a banner (the XP bar shows the others).
+  for (const lvl of res.ups || []) if (lvl % 5 === 0) notify('i-gift', t('levelUpTitle'), t('levelUpSub', { n: lvl }), 'levelup');
   if (els.home.classList.contains('is-active')) renderHome();
 }
 

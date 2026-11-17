@@ -229,19 +229,25 @@ export function adventureLevel(n) {
 }
 
 /** Coins awarded when a level is completed: first-clear bonus + 10 per *new* star. */
-export function levelReward(prevStars, stars) {
+/** Coins for a level: a first win plus each new star, worth more as levels get longer
+ *  (3★ on a new level: 12 coins in worlds 1-4, 16, 20, then 24 from world 13). */
+export function levelReward(prevStars, stars, n = 1) {
   const newStars = Math.max(0, stars - prevStars);
-  return (prevStars === 0 ? 5 : 0) + newStars * 6;
+  const u = n <= 80 ? 3 : n <= 160 ? 4 : n <= 240 ? 5 : 6;
+  return (prevStars === 0 ? u : 0) + newStars * u;
 }
 
 /** Coins for a daily puzzle (first solve only) and for completing the whole day. */
 /** Bonus coins for a run of perfect (3★) new levels in a row. */
 export function perfectRunBonus(run) {
-  if (run === 3) return 15;
-  if (run === 5) return 30;
-  if (run >= 10 && run % 5 === 0) return 60;
+  if (run === 5) return 15;
+  if (run === 10) return 30;
+  if (run > 10 && run % 10 === 0) return 40;
   return 0;
 }
+/** Features that appear as the adventure goes on, instead of all at once on day one. */
+export const WHEEL_FROM = 6; // the lucky wheel: from level 6
+export const QUESTS_FROM = 11; // daily quests: from level 11
 
 export function dailyReward(stars) {
   return 8 + stars * 4;

@@ -6,6 +6,7 @@ import { sfx } from '../audio.js';
 import { burst, reducedMotion } from '../fx.js';
 import { dateKey, msUntilTomorrow } from '../daily.js';
 import { chestSVG } from '../chests.js';
+import { WHEEL_FROM } from '../levels.js';
 import { rewardedLeft, showRewarded } from '../monetization.js';
 import { $, buzz, fmtCountdown, openModal, toast, updateCoins } from './core.js';
 import { openChestFlow } from './common.js';
@@ -23,7 +24,9 @@ export const WHEEL = [
 const SEG = 360 / WHEEL.length;
 
 const today = () => dateKey();
-export const freeSpinReady = () => store.data.wheelDay !== today();
+/** The wheel comes with level 6 (the first minutes are for playing). */
+export const wheelOpen = () => store.data.levels.unlocked >= WHEEL_FROM;
+export const freeSpinReady = () => wheelOpen() && store.data.wheelDay !== today();
 
 /** Weighted pick (rare prizes are rare). */
 export function pickPrize(r = Math.random()) {
@@ -64,6 +67,7 @@ function renderButtons() {
 }
 
 export function openWheel() {
+  if (!wheelOpen()) return;
   buildDisc();
   renderButtons();
   openModal('modal-wheel');
@@ -126,6 +130,7 @@ async function spin(paid = false) {
 
 /** Home tile: glows with a badge while today's free spin waits. */
 export function renderWheelTile() {
+  $('#btn-wheel').hidden = !wheelOpen();
   const ready = freeSpinReady();
   $('#btn-wheel').classList.toggle('is-ready', ready);
   $('#wheel-badge').hidden = !ready;

@@ -1,4 +1,5 @@
 import { store } from '../storage.js';
+import { QUESTS_FROM } from '../levels.js';
 import { t } from '../i18n.js';
 import { ACHIEVEMENTS, QUEST_TYPES, SEASON_TIERS, TIER_SP, checkAchievements, claimAchievement, claimQuest, claimTier, quests, season, seasonReady, takeFromInbox, tierReward, xpNeeded } from '../progress.js';
 import { chestSVG } from '../chests.js';
@@ -21,6 +22,10 @@ export function renderPlayerStrip() {
 }
 
 export function renderQuests() {
+  // daily quests come with level 11
+  const card = $('#quest-list').closest('.quests-card');
+  if (card) card.hidden = store.data.levels.unlocked < QUESTS_FROM;
+  if (card?.hidden) return;
   const q = quests(S.today);
   $('#quest-list').innerHTML = q.list
     .map((it, i) => {

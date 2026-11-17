@@ -163,11 +163,12 @@ test('difficulty follows a sawtooth and bosses are harder', () => {
   assert.ok(isBoss(LEVELS_PER_WORLD) && !isBoss(LEVELS_PER_WORLD + 1));
 });
 
-test('coins are only paid for new stars', () => {
-  assert.equal(levelReward(0, 3), 23);
-  assert.equal(levelReward(1, 3), 12);
+test('coins are only paid for new stars, and grow with the adventure', () => {
+  assert.equal(levelReward(0, 3), 12);
+  assert.equal(levelReward(1, 3), 6);
   assert.equal(levelReward(3, 3), 0);
   assert.equal(levelReward(3, 1), 0);
+  assert.deepEqual([1, 80, 81, 160, 161, 241, 900].map((n) => levelReward(0, 3, n)), [12, 12, 16, 16, 20, 24, 24]);
 });
 
 import { rollChest } from '../js/chests.js';
@@ -175,9 +176,9 @@ import { rollChest } from '../js/chests.js';
 test('chest rewards respect their tier', () => {
   for (let i = 0; i < 200; i++) {
     const w = rollChest('wood');
-    assert.ok(w.coins >= 25 && w.coins <= 40 && w.hint + w.rewind === 1);
+    assert.ok(w.coins >= 15 && w.coins <= 25 && w.hint + w.rewind === 1);
     const g = rollChest('gold');
-    assert.ok(g.coins >= 120 && g.hint === 2 && g.rewind === 2);
+    assert.ok(g.coins >= 80 && g.coins <= 120 && g.hint === 2 && g.rewind === 1);
     assert.ok(g.skin || g.dupe, 'gold always gives a skin (or coins once the collection is complete)');
     if (g.skin) assert.notEqual(g.skin.rarity, 'common');
   }
@@ -186,14 +187,17 @@ test('chest rewards respect their tier', () => {
 import { track, xpNeeded, quests, claimQuest, checkAchievements, claimAchievement } from '../js/progress.js';
 import { store } from '../js/storage.js';
 
-test('XP levels the player up and drops a chest in the inbox', () => {
+test('XP levels the player up; a chest every 5 player levels only', () => {
   store.reset();
   const need = xpNeeded(1);
   let ups = [];
   for (let i = 0; i < 10 && !ups.length; i++) ups = track('levelWin', { stars: 3, first: true, newStars: 3, usedBooster: false }).ups;
   assert.deepEqual(ups, [2]);
   assert.ok(store.data.player.xp < xpNeeded(2));
-  assert.equal(store.data.inbox[0].id, 'lvl-2');
+  assert.equal(store.data.inbox.length, 0, 'no chest for an ordinary level-up');
+  for (let i = 0; i < 60 && store.data.player.level < 5; i++) track('levelWin', { stars: 3, first: true, newStars: 3, usedBooster: false });
+  assert.equal(store.data.player.level, 5);
+  assert.deepEqual(store.data.inbox.map((x) => `${x.id}:${x.tier}`), ['lvl-5:silver']);
   assert.ok(need > 0);
 });
 
@@ -369,8 +373,8 @@ test('streak freezes bridge missed days without adding to the streak', () => {
 });
 
 import { perfectRunBonus } from '../js/levels.js';
-test('perfect run bonuses at 3, 5, 10, 15...', () => {
-  assert.deepEqual([1, 2, 3, 4, 5, 9, 10, 12, 15].map(perfectRunBonus), [0, 0, 15, 0, 30, 0, 60, 0, 60]);
+test('perfect run bonuses at 5, 10, then every 10', () => {
+  assert.deepEqual([1, 2, 3, 4, 5, 9, 10, 12, 15, 20, 30].map(perfectRunBonus), [0, 0, 0, 0, 15, 0, 30, 0, 0, 40, 40]);
 });
 
 import { loadMoreLevels, readyLevels } from '../js/levels.js';

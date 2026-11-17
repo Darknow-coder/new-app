@@ -32,9 +32,9 @@ export const isOpened = (id) => !!store.data.chests.opened[id];
 
 /** What a chest tier can contain (used by the preview sheet and by the roll). */
 export const ODDS = {
-  wood: { coins: [25, 40], boosters: 1, skin: 0.1, rarities: ['common'] },
-  silver: { coins: [60, 90], boosters: 2, skin: 0.35, rarities: ['common', 'rare'] },
-  gold: { coins: [120, 170], boosters: 4, skin: 1, rarities: ['rare', 'epic'] },
+  wood: { coins: [15, 25], boosters: 1, skin: 0.1, rarities: ['common'] },
+  silver: { coins: [40, 60], boosters: 2, skin: 0.35, rarities: ['common', 'rare'] },
+  gold: { coins: [80, 120], boosters: 3, skin: 1, rarities: ['rare', 'epic'] },
 };
 
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
@@ -46,7 +46,7 @@ export function rollChest(tier, world = null) {
   const r = { coins: round5(rnd(o.coins[0], o.coins[1])), hint: 0, rewind: 0, skin: null, dupe: 0 };
   if (tier === 'gold') {
     r.hint = 2;
-    r.rewind = 2;
+    r.rewind = 1;
   } else {
     for (let i = 0; i < o.boosters; i++) r[Math.random() < 0.45 || (tier === 'silver' && i === 0) ? 'hint' : 'rewind']++;
   }
