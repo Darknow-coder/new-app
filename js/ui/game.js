@@ -50,78 +50,142 @@ export function startChallenge(n, target) {
   });
 }
 
+/** The world's board colours, as the stylesheet defines them (dark or light). */
+function worldPalette(w) {
+  const probe = document.createElement('div');
+  probe.className = 'view-game';
+  probe.dataset.world = w;
+  probe.hidden = true;
+  document.body.append(probe);
+  const cs = getComputedStyle(probe);
+  const v = (k, d) => cs.getPropertyValue(k).trim() || d;
+  const pal = { tray: v('--tray', '#262b5c'), edge: v('--tray-edge', '#1a1e45'), floor: v('--floor', '#2d336b'), floor2: v('--floor-2', '#2a3065'), wall: v('--wall-top', '#4a5294'), side: v('--wall-side', '#333a74') };
+  probe.remove();
+  return pal;
+}
+
+/** The picture sent with a challenge: the level in its world, and the score to beat. */
 export async function challengeImage(n, moves, stars) {
-  const lvl = adventureLevel(n);
-  const S = 720;
-  const c = document.createElement('canvas');
-  c.width = S;
-  c.height = 900;
-  const x = c.getContext('2d');
-  const g = x.createLinearGradient(0, 0, 0, 900);
-  g.addColorStop(0, '#2a3070');
-  g.addColorStop(1, '#11142b');
-  x.fillStyle = g;
-  x.fillRect(0, 0, S, 900);
-  const font = (w, px) => `${w} ${px}px Fredoka, system-ui, sans-serif`;
-  x.textAlign = 'center';
-  x.fillStyle = '#fff';
-  x.font = font(700, 64);
-  x.fillText('marbl', S / 2, 90);
-  x.font = font(600, 34);
-  x.fillStyle = '#ffc23d';
-  x.fillText(`${t('level', { n })} · ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`, S / 2, 140);
-  // board
-  const pad = 70;
-  const size = S - pad * 2;
-  const cell = size / lvl.w;
-  const top = 175;
-  x.fillStyle = '#262b5c';
-  x.beginPath();
-  x.roundRect(pad - 16, top - 16, size + 32, cell * lvl.h + 32, 28);
-  x.fill();
-  const cols = ['#ff5d73', '#1fd1b9', '#ffc23d', '#9a7bff'];
-  for (let i = 0; i < lvl.w * lvl.h; i++) {
-    const cx = pad + (i % lvl.w) * cell;
-    const cy = top + Math.floor(i / lvl.w) * cell;
-    x.fillStyle = (i % lvl.w + Math.floor(i / lvl.w)) % 2 ? '#2d336b' : '#2a3065';
-    x.fillRect(cx, cy, cell, cell);
-    if (lvl.walls[i]) {
-      x.fillStyle = '#4a5294';
-      x.beginPath();
-      x.roundRect(cx + 4, cy + 4, cell - 8, cell - 8, 10);
-      x.fill();
-    } else if (lvl.holes[i] >= 0) {
-      x.fillStyle = '#05060f';
-      x.strokeStyle = cols[lvl.holes[i]];
-      x.lineWidth = 6;
-      x.beginPath();
-      x.arc(cx + cell / 2, cy + cell / 2, cell * 0.32, 0, 7);
-      x.fill();
-      x.stroke();
+  const draw = async (withArt) => {
+    const lvl = adventureLevel(n);
+    const w = worldOf(n) % WORLD_HUES.length;
+    const pal = worldPalette(w);
+    const S = 720;
+    const H = 900;
+    const c = document.createElement('canvas');
+    c.width = S;
+    c.height = H;
+    const x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#2a3070');
+    g.addColorStop(1, '#11142b');
+    x.fillStyle = g;
+    x.fillRect(0, 0, S, H);
+    if (withArt) {
+      // the world's land behind, like in the game (cover-fit, slightly dimmed)
+      const art = new Image();
+      art.src = arenaArt(w).url;
+      await art.decode();
+      const k = Math.max(S / art.naturalWidth, H / art.naturalHeight);
+      x.drawImage(art, (S - art.naturalWidth * k) / 2, (H - art.naturalHeight * k) * 0.45, art.naturalWidth * k, art.naturalHeight * k);
+      const shade = x.createLinearGradient(0, 0, 0, H);
+      shade.addColorStop(0, 'rgba(12,14,40,.82)');
+      shade.addColorStop(0.2, 'rgba(12,14,40,.25)');
+      shade.addColorStop(0.72, 'rgba(12,14,40,.25)');
+      shade.addColorStop(1, 'rgba(12,14,40,.88)');
+      x.fillStyle = shade;
+      x.fillRect(0, 0, S, H);
     }
+    const font = (wt, px) => `${wt} ${px}px Fredoka, system-ui, sans-serif`;
+    x.textAlign = 'center';
+    x.shadowColor = 'rgba(0,0,0,.45)';
+    x.shadowBlur = 10;
+    x.fillStyle = '#fff';
+    x.font = font(700, 64);
+    x.fillText('marbl', S / 2, 90);
+    x.font = font(600, 34);
+    x.fillStyle = '#ffc23d';
+    x.fillText(`${t('level', { n })} · ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`, S / 2, 140);
+    // board, in the world's colours
+    const pad = 70;
+    const size = S - pad * 2;
+    const cell = size / lvl.w;
+    const top = 180;
+    x.shadowColor = 'rgba(0,0,0,.5)';
+    x.shadowBlur = 30;
+    x.shadowOffsetY = 12;
+    x.fillStyle = pal.edge;
+    x.beginPath();
+    x.roundRect(pad - 16, top - 16 + 10, size + 32, cell * lvl.h + 32, 28);
+    x.fill();
+    x.shadowColor = 'transparent';
+    x.shadowOffsetY = 0;
+    x.fillStyle = pal.tray;
+    x.beginPath();
+    x.roundRect(pad - 16, top - 16, size + 32, cell * lvl.h + 32, 28);
+    x.fill();
+    const cols = ['#ff5d73', '#1fd1b9', '#ffc23d', '#9a7bff'];
+    for (let i = 0; i < lvl.w * lvl.h; i++) {
+      if (lvl.outside?.[i]) continue;
+      const cx = pad + (i % lvl.w) * cell;
+      const cy = top + Math.floor(i / lvl.w) * cell;
+      x.fillStyle = ((i % lvl.w) + Math.floor(i / lvl.w)) % 2 ? pal.floor : pal.floor2;
+      x.fillRect(cx, cy, cell, cell);
+    }
+    for (let i = 0; i < lvl.w * lvl.h; i++) {
+      if (lvl.outside?.[i]) continue;
+      const cx = pad + (i % lvl.w) * cell;
+      const cy = top + Math.floor(i / lvl.w) * cell;
+      if (lvl.walls[i]) {
+        x.fillStyle = pal.side;
+        x.beginPath();
+        x.roundRect(cx + 4, cy + 7, cell - 8, cell - 8, 10);
+        x.fill();
+        x.fillStyle = pal.wall;
+        x.beginPath();
+        x.roundRect(cx + 4, cy + 3, cell - 8, cell - 9, 10);
+        x.fill();
+      } else if (lvl.holes[i] >= 0) {
+        x.fillStyle = '#05060f';
+        x.strokeStyle = cols[lvl.holes[i]];
+        x.lineWidth = 6;
+        x.beginPath();
+        x.arc(cx + cell / 2, cy + cell / 2, cell * 0.32, 0, 7);
+        x.fill();
+        x.stroke();
+      }
+    }
+    lvl.pieces.forEach((p, i) => {
+      const at = lvl.start[i];
+      const cx = pad + (at % lvl.w) * cell + cell / 2;
+      const cy = top + Math.floor(at / lvl.w) * cell + cell / 2;
+      x.fillStyle = p.kind === 'stone' ? '#9ea3c2' : cols[p.color];
+      x.beginPath();
+      if (p.kind === 'stone') x.roundRect(cx - cell * 0.38, cy - cell * 0.38, cell * 0.76, cell * 0.76, 12);
+      else x.arc(cx, cy, cell * 0.38, 0, 7);
+      x.fill();
+      x.fillStyle = 'rgba(255,255,255,.7)';
+      x.beginPath();
+      x.arc(cx - cell * 0.12, cy - cell * 0.14, cell * 0.08, 0, 7);
+      x.fill();
+    });
+    const by = Math.min(H - 70, top + cell * lvl.h + 86);
+    x.shadowColor = 'rgba(0,0,0,.5)';
+    x.shadowBlur = 10;
+    x.fillStyle = '#fff';
+    x.font = font(700, 46);
+    x.fillText(t('chImgScore', { m: moves }), S / 2, by);
+    x.fillStyle = '#d6d8f5';
+    x.font = font(600, 32);
+    x.fillText(t('chImgCta'), S / 2, by + 50);
+    // toBlob throws on a canvas the browser considers tainted (some engines, SVG pictures)
+    return new Promise((r) => c.toBlob(r, 'image/png'));
+  };
+  try {
+    return await draw(true);
+  } catch {
+    return draw(false);
   }
-  lvl.pieces.forEach((p, i) => {
-    const at = lvl.start[i];
-    const cx = pad + (at % lvl.w) * cell + cell / 2;
-    const cy = top + Math.floor(at / lvl.w) * cell + cell / 2;
-    x.fillStyle = p.kind === 'stone' ? '#9ea3c2' : cols[p.color];
-    x.beginPath();
-    if (p.kind === 'stone') x.roundRect(cx - cell * 0.38, cy - cell * 0.38, cell * 0.76, cell * 0.76, 12);
-    else x.arc(cx, cy, cell * 0.38, 0, 7);
-    x.fill();
-    x.fillStyle = 'rgba(255,255,255,.7)';
-    x.beginPath();
-    x.arc(cx - cell * 0.12, cy - cell * 0.14, cell * 0.08, 0, 7);
-    x.fill();
-  });
-  const by = top + cell * lvl.h + 80;
-  x.fillStyle = '#fff';
-  x.font = font(700, 46);
-  x.fillText(t('chImgScore', { m: moves }), S / 2, by);
-  x.fillStyle = '#a4a7cf';
-  x.font = font(600, 32);
-  x.fillText(t('chImgCta'), S / 2, by + 50);
-  return new Promise((r) => c.toBlob(r, 'image/png'));
 }
 
 export async function shareChallenge(n, moves, stars) {
