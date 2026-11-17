@@ -28,7 +28,9 @@ import { handleProgress } from './ui/common.js';
 import { shareText } from './ui/settings.js';
 import { openMap } from './ui/mapview.js';
 import { openShop } from './ui/shop.js';
-import './ui/cloudui.js';
+import { offerHandoff } from './ui/cloudui.js';
+import { CODE_RE, ownCode, parseCode } from './cloud.js';
+import { inAppBrowser } from './ui/install.js';
 
 initLite();
 // Levels after the first 320: fetched in the background (right away for players close to them).
@@ -62,7 +64,16 @@ const chN = Number(params.get('defi'));
 const chC = Number(params.get('c'));
 
 const sharedLevel = params.get('l');
-if (sharedLevel) {
+// A game handed over from an in-app browser (TikTok, Instagram...): ?r=<save code>.
+const handoff = parseCode(params.get('r'));
+const takeHandoff = CODE_RE.test(handoff) && handoff !== ownCode();
+if (CODE_RE.test(handoff) && !inAppBrowser()) history.replaceState(null, '', location.pathname);
+
+if (takeHandoff && !store.data.tutorialDone) {
+  // A new browser: get the game back before teaching it again.
+  showView('home');
+  offerHandoff(handoff).then((back) => !back && !store.data.tutorialDone && startTutorial(0), () => startTutorial(0));
+} else if (sharedLevel) {
   history.replaceState(null, '', location.pathname);
   showView('home');
   setTimeout(() => openSharedLevel(sharedLevel), 300);
@@ -75,6 +86,7 @@ if (sharedLevel) {
 } else {
   showView('home');
 }
+if (takeHandoff && store.data.tutorialDone) setTimeout(() => offerHandoff(handoff), 1200);
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:' && !/localhost|127\.0\.0\.1/.test(location.hostname)) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

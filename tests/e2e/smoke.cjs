@@ -296,6 +296,49 @@ const assert = (c, m) => {
       assert(await pb.evaluate(() => document.querySelector('#cloud-box').classList.contains('is-off')), 'cloud panel not off');
       await ctxB.close();
     });
+    await step('handoff: from the TikTok browser to Chrome, the game follows', async () => {
+      const UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/116.0.0.0 Mobile Safari/537.36 trill_310303 BytedanceWebview/d8a21c6';
+      const ctxA = await browser.newContext({ ...devices['Pixel 7'], userAgent: UA, locale: 'fr-FR' });
+      const docs = await fakeFirebase(ctxA);
+      const pa = await ctxA.newPage();
+      pa.on('pageerror', (e) => errors.push(`handoffA: ${e}`));
+      await pa.addInitScript(() => {
+        if (!localStorage.getItem('marbl:v1')) localStorage.setItem('marbl:v1', JSON.stringify({ tutorialDone: true, coins: 555, levels: { unlocked: 7, best: Object.fromEntries(Array.from({ length: 6 }, (_, i) => [i + 1, 3])) } }));
+      });
+      await pa.goto(base);
+      await pa.waitForTimeout(2500);
+      const search = await pa.evaluate(() => location.search);
+      const code = (search.match(/^\?r=([2-9A-HJKMNP-Z]{12})$/) || [])[1];
+      assert(code, `no save code in the address (${search})`);
+      assert(docs.saves?.[code]?.levels === 6, 'save not uploaded from the in-app browser');
+      await ctxA.close();
+      // "Open in browser": a brand-new Chrome lands on the same address.
+      const ctxB = await browser.newContext({ ...devices['Pixel 7'], locale: 'fr-FR' });
+      await fakeFirebase(ctxB, [], docs);
+      const pb = await ctxB.newPage();
+      pb.on('pageerror', (e) => errors.push(`handoffB: ${e}`));
+      await pb.goto(`${base}?r=${code}`);
+      await pb.waitForTimeout(4000);
+      const got = await pb.evaluate(() => ({ u: window.__marbl.store.data.levels.unlocked, c: window.__marbl.store.data.coins, t: window.__marbl.store.data.tutorialDone, q: location.search, view: document.querySelector('.view.is-active')?.id }));
+      assert(got.u === 7 && got.c === 555 && got.t, `game not handed over ${JSON.stringify(got)}`);
+      assert(got.q === '', `code left in the address ${got.q}`);
+      assert(got.view !== 'view-game', 'tutorial started over the recovered game');
+      await ctxB.close();
+      // A browser that already has a (smaller) game asks before replacing it.
+      const ctxC = await browser.newContext({ ...devices['Pixel 7'], locale: 'fr-FR' });
+      await fakeFirebase(ctxC, [], docs);
+      const pc = await ctxC.newPage();
+      pc.on('pageerror', (e) => errors.push(`handoffC: ${e}`));
+      await pc.addInitScript(() => {
+        if (!localStorage.getItem('marbl:v1')) localStorage.setItem('marbl:v1', JSON.stringify({ tutorialDone: true, levels: { unlocked: 3, best: { 1: 3, 2: 3 } } }));
+      });
+      await pc.goto(`${base}?r=${code}`);
+      await pc.waitForTimeout(3500);
+      assert(await pc.evaluate(() => document.querySelector('#modal-restore').open), 'no offer to take the newer game');
+      assert(/6/.test(await pc.textContent('#restore-msg')), 'offer does not show the game found');
+      assert((await pc.evaluate(() => window.__marbl.store.data.levels.unlocked)) === 3, 'replaced without asking');
+      await ctxC.close();
+    });
     await step('save export / import', async () => {
       const ok2 = await M(async () => {
         const s = await import('./js/storage.js');

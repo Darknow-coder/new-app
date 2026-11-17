@@ -60,6 +60,45 @@ $('#cloud-delete').addEventListener('click', async () => {
   renderCloud();
 });
 
+/* ---------- a game arriving from another browser (?r=CODE) ---------- */
+/**
+ * Pick up the save behind a handoff link. A device with nothing to lose takes it at once;
+ * one that has played asks first, and only if the save is further along.
+ * Resolves true when the page is about to reload with the recovered game.
+ */
+export async function offerHandoff(code) {
+  if (!cloudEnabled() || !CODE_RE.test(code)) return false;
+  let save = null;
+  for (let i = 0; i < 2 && !save; i++) {
+    try {
+      save = await fetchSave(code);
+    } catch {
+      save = null;
+    }
+    if (!save) await new Promise((r) => setTimeout(r, 2500)); // the other browser may still be uploading
+  }
+  if (!save?.data) return false;
+  const mine = store.data.levels.unlocked - 1;
+  const fresh = !store.data.tutorialDone && mine <= 0;
+  if (fresh) {
+    if (!restoreSave(code, save)) return false;
+    toast(t('restoreOk'));
+    setTimeout(() => location.reload(), 700);
+    return true;
+  }
+  if (save.levels <= mine) return false;
+  // Same window as "Recover a game", already filled in and found.
+  input.value = formatCode(code);
+  resetRestore();
+  found = { code, save };
+  const d = save.updated ? new Intl.DateTimeFormat(LANG, { day: 'numeric', month: 'long' }).format(new Date(save.updated)) : '—';
+  msg.textContent = t('restoreFound', { n: save.levels, d });
+  msg.className = 'restore-msg is-ok';
+  go.textContent = t('restoreLoad');
+  openModal('modal-restore');
+  return false;
+}
+
 /* ---------- recover a game ---------- */
 let found = null;
 const input = $('#restore-code');

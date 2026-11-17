@@ -8,6 +8,7 @@ import { t } from '../i18n.js';
 import { save, store } from '../storage.js';
 import { sfx } from '../audio.js';
 import { shareBase } from '../site.js';
+import { cloudCode, cloudEnabled, cloudOff, lastUpload, upload } from '../cloud.js';
 import { $, anyModalOpen, closeModal, openModal, toast } from './core.js';
 
 let installEvt = null;
@@ -39,7 +40,31 @@ export function persistStorage() {
 }
 
 /* ---------- in-app browser banner ---------- */
+/* ---------- the game follows the player out of the in-app browser ----------
+   Inside TikTok & co, the address carries this device's save code (?r=…). "Open in browser"
+   or the copied link then lands in Chrome / Safari with it, and the game picks the save up. */
+const worthIt = () => store.data.tutorialDone && store.data.levels.unlocked > 1;
+/** The link to the game that brings this device's progress along (when there is some). */
+export function handoffLink() {
+  if (!cloudEnabled() || cloudOff() || !worthIt()) return shareBase();
+  return `${shareBase()}?r=${cloudCode()}`;
+}
+export function syncHandoff() {
+  if (!inAppBrowser() || !cloudEnabled() || cloudOff() || !worthIt()) return;
+  if (!lastUpload()) upload({ force: true }); // nothing online yet: back up now
+  const want = `?r=${cloudCode()}`;
+  if (location.search !== want) {
+    try {
+      history.replaceState(history.state, '', `${location.pathname}${want}`);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+window.addEventListener('marbl:cloud-saved', syncHandoff);
+
 export function checkInAppBrowser() {
+  syncHandoff();
   const app = inAppBrowser();
   // Not during the tutorial: a newcomer from a TikTok link plays first, and hears about
   // keeping their progress once there is some (shown from the home screen).
@@ -49,7 +74,8 @@ export function checkInAppBrowser() {
   bar.hidden = false;
 }
 $('#iab-copy')?.addEventListener('click', async () => {
-  const url = shareBase();
+  const url = handoffLink();
+  if (url !== shareBase()) upload({ force: true }); // the freshest progress, before they switch
   try {
     await navigator.clipboard.writeText(url);
     toast(t('iabCopied'));

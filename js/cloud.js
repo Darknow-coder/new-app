@@ -86,11 +86,15 @@ export function upload({ force = false, gap = AUTO_GAP } = {}) {
     st.hash = h;
     persist();
     if (first) window.dispatchEvent(new CustomEvent('marbl:cloud-first'));
+    window.dispatchEvent(new CustomEvent('marbl:cloud-saved'));
   })()
     .catch(() => {})
     .finally(() => (busy = null));
   return busy;
 }
+
+/** This device's code, if it has one (never makes a new one). */
+export const ownCode = () => st.code || '';
 
 /** Look up a save by code. Resolves { levels, updated, data } or null when there is none. */
 export async function fetchSave(code) {
