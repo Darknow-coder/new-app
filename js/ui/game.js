@@ -2,7 +2,7 @@ import { setMusicTheme, sfx, unlockAudio } from '../audio.js';
 import { dailyLevel, puzzleNumber } from '../daily.js';
 import { save, store } from '../storage.js';
 import { t } from '../i18n.js';
-import { WORLD_HUES, adventureLevel, introAt, isBoss, worldOf, bossShape } from '../levels.js';
+import { LEVELS_PER_WORLD, WORLD_HUES, adventureLevel, introAt, isBoss, worldOf, bossShape } from '../levels.js';
 import { DIRS, comboReachable, isDead, isSolved, solve, stateKey, tilt } from '../engine.js';
 import { TUTORIAL } from '../tutorial.js';
 import { buildScenery, burst, iris, reducedMotion, replay } from '../fx.js';
@@ -31,7 +31,7 @@ export function startDaily(diff, day = S.today) {
     review,
     level,
     title: `${t(diff)} · #${puzzleNumber(day)}`,
-    sub: review ? t('solvedIn', { m: entry.moves }) : '',
+    sub: review ? t('solvedIn', { m: entry.moves }) : worldName(puzzleNumber(day) % WORLD_HUES.length),
     restore: !review && entry ? entry : null,
     world: puzzleNumber(day) % WORLD_HUES.length, // a different land every day
   });
@@ -258,6 +258,11 @@ export function startGame(opts) {
   const banner = $('#level-banner');
   banner.querySelector('strong').textContent = opts.title;
   banner.querySelector('small').textContent = t('par', { n: opts.level.par });
+  // First level of a world: the banner announces the land you just reached.
+  const newWorld = opts.mode === 'level' && (opts.n - 1) % LEVELS_PER_WORLD === 0 && opts.n > 1;
+  banner.classList.toggle('is-world', newWorld);
+  banner.querySelector('em').textContent = newWorld ? `${t('newWorld')} · ${worldName(worldOf(opts.n))}` : '';
+  if (newWorld) banner.style.setProperty('--wh', WORLD_HUES[worldOf(opts.n) % WORLD_HUES.length]);
   if (opts.mode !== 'tutorial') replay(banner, 'show');
 }
 

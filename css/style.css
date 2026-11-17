@@ -1920,6 +1920,25 @@ p{
 .level-banner.show{
   animation: banner 1.25s var(--ease-out) forwards;
 }
+.level-banner em{
+  display: none;
+}
+.level-banner.is-world em{
+  display: block;
+  margin: -2px 0 6px;
+  padding: 3px 12px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--wh, var(--accent)) 82%, #000);
+  color: #fff;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.level-banner.show.is-world{
+  animation-duration: 2.2s;
+}
 @keyframes banner {
   0% {
     opacity: 0;
@@ -10739,8 +10758,8 @@ img.map-scene{
 .view-game[data-world='2']{
   --tray: #4a2a24;
   --tray-edge: #2c1512;
-  --floor: #2f1d1c;
-  --floor-2: #2a1918;
+  --floor: #3a2420;
+  --floor-2: #34201c;
   --wall-top: #b9583a;
   --wall-side: #79321e;
 }
