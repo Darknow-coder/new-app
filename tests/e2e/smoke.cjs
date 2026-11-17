@@ -339,6 +339,24 @@ const assert = (c, m) => {
       assert((await pc.evaluate(() => window.__marbl.store.data.levels.unlocked)) === 3, 'replaced without asking');
       await ctxC.close();
     });
+    await step('restart: a fresh try in Adventure, every tilt still counts in the daily', async () => {
+      const tryRestart = async (start) => {
+        await M(start);
+        await page.waitForTimeout(1400);
+        await M(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+        const first = await M(() => window.__marbl.game.level.solution[0]);
+        await M((d) => window.__marbl.move(d), first);
+        await page.waitForTimeout(1000);
+        await M(() => window.__marbl.restart());
+        await page.waitForTimeout(700);
+        return M(() => ({ moves: window.__marbl.game.moves, atStart: window.__marbl.game.state.join() === window.__marbl.game.level.start.join() }));
+      };
+      const adv = await tryRestart(() => window.__marbl.startLevel(2));
+      assert(adv.atStart && adv.moves === 0, `adventure restart: ${JSON.stringify(adv)}`);
+      const daily = await tryRestart(() => window.__marbl.startDaily('hard'));
+      assert(daily.atStart && daily.moves === 1, `daily restart: ${JSON.stringify(daily)}`);
+      await M(() => window.__marbl.renderHome());
+    });
     await step('save export / import', async () => {
       const ok2 = await M(async () => {
         const s = await import('./js/storage.js');

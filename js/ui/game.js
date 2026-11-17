@@ -677,7 +677,7 @@ export function updateHud(bump = true) {
   els.counter.classList.toggle('is-over', S.game.moves > S.game.level.par);
   if (bump && S.game.moves === S.game.level.par + 1) replay(els.counter, 'over-shake');
   els.undo.disabled = S.game.done || S.game.history.length === 0;
-  els.restart.disabled = S.game.done || S.game.history.length === 0;
+  els.restart.disabled = S.game.done || (S.game.history.length === 0 && !(freshRestart() && S.game.moves));
   els.hint.disabled = S.game.done;
   // Gentle nudge towards the hint when a level clearly resists.
   els.hint.classList.toggle('nudge', (S.game.mode === 'level' || S.game.mode === 'event') && !S.game.done && S.game.moves >= S.game.level.par * 2 + 2);
@@ -1036,13 +1036,22 @@ $('#lost-undo').addEventListener('click', () => {
   takeBackFatalMove();
 });
 
+/** Daily puzzles keep every tilt on the counter (fair for everyone); anywhere else a restart
+ *  is a fresh try, like "Retry" after a fall. */
+const freshRestart = () => S.game.mode !== 'daily';
+
 export function restart() {
-  if (!S.game || S.game.done || whenSettled(restart) || !S.game.history.length) return;
+  if (!S.game || S.game.done || whenSettled(restart)) return;
+  if (!S.game.history.length && !(freshRestart() && S.game.moves)) return;
   S.queue = [];
   sfx.undo();
   S.game.history = [];
   S.game.path = [];
   S.game.state = S.game.level.start.slice();
+  if (freshRestart()) {
+    S.game.moves = 0;
+    S.game.drops = 0;
+  }
   els.hintArrow.hidden = true;
   syncPieces(260);
   updateHud(false);
