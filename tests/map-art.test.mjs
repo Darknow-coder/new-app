@@ -59,6 +59,25 @@ test('every world bakes into well-formed SVG with resolved references', () => {
   }
 });
 
+test('the map scenery has its road (the marker the backdrop test relies on)', () => {
+  assert.ok(sceneFor(3, 390).doc.includes('opacity=".16" transform="translate(4 8)"'));
+});
+
 test('scenery is deterministic (same world, same picture)', () => {
   assert.equal(sceneFor(3, 390).doc, sceneFor(3, 390).doc);
+});
+
+test('game-screen backdrops: every world, well-formed, no road, nothing left to animate live', () => {
+  const W = 400;
+  const H = 860;
+  for (let w = 0; w < 16; w++) {
+    const { svg, sprites } = worldScene({ w, W, H, top: 0, road: [[W / 2, H * 0.24], [W / 2, H * 0.6]], avoid: [], stations: [], last: true, locked: false, arena: true });
+    const doc = `<svg xmlns="http://www.w3.org/2000/svg">${defsFor(svg)}${svg}</svg>`;
+    checkXML(doc);
+    const ids = new Set([...doc.matchAll(/\sid="([\w-]+)"/g)].map((x) => x[1]));
+    for (const [, ref] of doc.matchAll(/(?:url\(#|href="#)([\w-]+)/g)) assert.ok(ids.has(ref), `world ${w}: missing #${ref}`);
+    assert.equal(sprites.length, 0, 'the backdrop is one still picture');
+    assert.ok(!svg.includes('opacity=".16" transform="translate(4 8)"'), 'no road on the game screen');
+    assert.ok(doc.length < 120000, `world ${w} backdrop too heavy (${doc.length} bytes)`);
+  }
 });

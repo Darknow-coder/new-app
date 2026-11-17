@@ -12,6 +12,7 @@ import { $, S, announce, buzz, closeModal, els, openModal, showView, toast, worl
 import { onSolved } from './result.js';
 import { count } from '../metrics.js';
 import { shareBase } from '../site.js';
+import { arenaArt } from '../map.js';
 import { handleProgress } from './common.js';
 import { openShop } from './shop.js';
 
@@ -32,6 +33,7 @@ export function startDaily(diff, day = S.today) {
     title: `${t(diff)} · #${puzzleNumber(day)}`,
     sub: review ? t('solvedIn', { m: entry.moves }) : '',
     restore: !review && entry ? entry : null,
+    world: puzzleNumber(day) % WORLD_HUES.length, // a different land every day
   });
 }
 
@@ -193,6 +195,7 @@ export function startTutorial(i = 0) {
     title: t('tutorial'),
     sub: t('tutStep', { n: i + 1, t: TUTORIAL.length }),
     tip: t(`tut${i + 1}`),
+    world: 0, // the beach, where the adventure starts
   });
 }
 
@@ -239,11 +242,14 @@ export function startGame(opts) {
   S.after = null;
   clearTimeout(S.draining);
   S.draining = 0;
+  const world = opts.world ?? (opts.mode === 'level' || opts.mode === 'challenge' ? worldOf(opts.n) % WORLD_HUES.length : null);
+  setWorldLook(world);
   if (opts.mode === 'level') {
     buildScenery($('#scenery-game'), worldOf(opts.n) % WORLD_HUES.length, worldHue(opts.n));
     setMusicTheme(worldOf(opts.n) % WORLD_HUES.length);
   } else {
-    buildScenery($('#scenery-game'), 'daily');
+    if (world === null) buildScenery($('#scenery-game'), 'daily');
+    else buildScenery($('#scenery-game'), world, WORLD_HUES[world]);
     setMusicTheme('daily');
   }
   buildBoard();
@@ -253,6 +259,23 @@ export function startGame(opts) {
   banner.querySelector('strong').textContent = opts.title;
   banner.querySelector('small').textContent = t('par', { n: opts.level.par });
   if (opts.mode !== 'tutorial') replay(banner, 'show');
+}
+
+/** A level is played in its world: that land behind the board, its materials on the board
+ *  (CSS keyed on data-world). Levels from nowhere in particular (custom ones) keep the plain look. */
+function setWorldLook(w) {
+  const view = $('#view-game');
+  const host = $('#game-art');
+  if (w === null || w === undefined) {
+    delete view.dataset.world;
+    host.hidden = true;
+    return;
+  }
+  view.dataset.world = w;
+  const img = host.querySelector('img');
+  const url = arenaArt(w).url;
+  if (url && img.getAttribute('src') !== url) img.src = url;
+  host.hidden = !url;
 }
 
 export function cellXY(c) {

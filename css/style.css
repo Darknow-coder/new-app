@@ -10668,3 +10668,437 @@ img.map-scene{
 .notif-on .toast{
   top: calc(96px + env(safe-area-inset-top));
 }
+
+/* ==========================================================================
+   WORLD LOOKS · each level is played in its world: the land behind the board
+   (baked like the map, without the road), the world's materials on the board.
+   ========================================================================== */
+.game-art img{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 45%;
+}
+/* scrims: the top bar and the buttons stay readable, the land is calmed a little */
+.game-art::after{
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 62%, transparent) 0, transparent calc(env(safe-area-inset-top) + 110px)),
+    linear-gradient(0deg, color-mix(in srgb, var(--bg) 70%, transparent) 0, transparent calc(env(safe-area-inset-bottom) + 96px)),
+    radial-gradient(ellipse 85% 55% at 50% 46%, transparent 50%, color-mix(in srgb, var(--bg) 22%, transparent));
+}
+.view-game[data-world] .scenery .glow{
+  opacity: 0.45;
+}
+
+/* the top bar sits on plates, so it reads on any land */
+.view-game[data-world] .game-title,
+.view-game[data-world] .counter{
+  padding: 3px 12px 5px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 2px solid var(--rim);
+  box-shadow: 0 4px 0 var(--edge);
+}
+.view-game[data-world] .counter{
+  padding: 4px 10px;
+}
+/* greyed-out buttons keep a solid plate over the land */
+.view-game[data-world] .ctrl:disabled{
+  opacity: 1;
+}
+.view-game[data-world] .ctrl:disabled > *{
+  opacity: 0.4;
+}
+/* sand keeps a rim on pale floors */
+.view-game[data-world] .sand::before{
+  box-shadow: inset 0 -3px 0 rgba(120, 80, 20, 0.25), inset 0 2px 4px rgba(255, 255, 255, 0.35), 0 0 0 calc(var(--size) * 0.005) rgba(110, 70, 20, 0.4);
+}
+
+/* world palettes (generated from a table: tray, tray edge, floor, floor 2, wall top, wall side) */
+.view-game[data-world='0']{
+  --tray: #6a5139;
+  --tray-edge: #46331f;
+  --floor: #1d4a58;
+  --floor-2: #1a4452;
+  --wall-top: #c9c7c0;
+  --wall-side: #8b887f;
+}
+.view-game[data-world='1']{
+  --tray: #7a4a2a;
+  --tray-edge: #522f18;
+  --floor: #4a3322;
+  --floor-2: #442e1e;
+  --wall-top: #c7825a;
+  --wall-side: #8a4f2e;
+}
+.view-game[data-world='2']{
+  --tray: #4a2a24;
+  --tray-edge: #2c1512;
+  --floor: #2f1d1c;
+  --floor-2: #2a1918;
+  --wall-top: #b9583a;
+  --wall-side: #79321e;
+}
+.view-game[data-world='3']{
+  --tray: #134e63;
+  --tray-edge: #0a3040;
+  --floor: #0f3552;
+  --floor-2: #0d304b;
+  --wall-top: #eab0d6;
+  --wall-side: #a86a98;
+}
+.view-game[data-world='4']{
+  --tray: #3d2f78;
+  --tray-edge: #261c52;
+  --floor: #251f4d;
+  --floor-2: #221c47;
+  --wall-top: #c9bfe6;
+  --wall-side: #8e82b8;
+}
+.view-game[data-world='5']{
+  --tray: #2f5d86;
+  --tray-edge: #1c3c5c;
+  --floor: #183756;
+  --floor-2: #163350;
+  --wall-top: #e3f4ff;
+  --wall-side: #8fc0e2;
+}
+.view-game[data-world='6']{
+  --tray: #4d3523;
+  --tray-edge: #2f2014;
+  --floor: #1c3825;
+  --floor-2: #1a3322;
+  --wall-top: #93ba6c;
+  --wall-side: #587c40;
+}
+.view-game[data-world='7']{
+  --tray: #1a1336;
+  --tray-edge: #0b0820;
+  --floor: #17122e;
+  --floor-2: #140f29;
+  --wall-top: #3b3170;
+  --wall-side: #251e4c;
+}
+.view-game[data-world='8']{
+  --tray: #7a5a42;
+  --tray-edge: #54402e;
+  --floor: #21452b;
+  --floor-2: #1e4028;
+  --wall-top: #6fae4a;
+  --wall-side: #447a2c;
+}
+.view-game[data-world='9']{
+  --tray: #5a2c3c;
+  --tray-edge: #3a1826;
+  --floor: #3a2234;
+  --floor-2: #351f30;
+  --wall-top: #dda07c;
+  --wall-side: #a1623f;
+}
+.view-game[data-world='10']{
+  --tray: #2a3a48;
+  --tray-edge: #18232d;
+  --floor: #1f2f3b;
+  --floor-2: #1c2b36;
+  --wall-top: #a0b2c2;
+  --wall-side: #637787;
+}
+.view-game[data-world='11']{
+  --tray: #1b2050;
+  --tray-edge: #0e1130;
+  --floor: #141a3d;
+  --floor-2: #121737;
+  --wall-top: #ccd3f2;
+  --wall-side: #8890bd;
+}
+.view-game[data-world='12']{
+  --tray: #5c5434;
+  --tray-edge: #3b3520;
+  --floor: #30311d;
+  --floor-2: #2c2d1a;
+  --wall-top: #c9c8bb;
+  --wall-side: #8c8a7b;
+}
+.view-game[data-world='13']{
+  --tray: #3a6da3;
+  --tray-edge: #234a72;
+  --floor: #1e4876;
+  --floor-2: #1b426e;
+  --wall-top: #dbe6f7;
+  --wall-side: #a3b6d8;
+}
+.view-game[data-world='14']{
+  --tray: #3d3833;
+  --tray-edge: #201d1a;
+  --floor: #2a2521;
+  --floor-2: #26221e;
+  --wall-top: #b5976a;
+  --wall-side: #72592f;
+}
+.view-game[data-world='15']{
+  --tray: #4e2f75;
+  --tray-edge: #2f1b4a;
+  --floor: #311f4c;
+  --floor-2: #2c1c45;
+  --wall-top: #f7d9f2;
+  --wall-side: #a88bd0;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .view-game[data-world='0']{
+    --tray: #c7a77c;
+    --tray-edge: #a3845b;
+    --floor: #eaf3f0;
+    --floor-2: #dfece8;
+    --wall-top: #a3a29c;
+    --wall-side: #74726b;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='1']{
+    --tray: #d29a5c;
+    --tray-edge: #b07a3c;
+    --floor: #f8ecd6;
+    --floor-2: #f1e0c2;
+    --wall-top: #b8714a;
+    --wall-side: #86492a;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='2']{
+    --tray: #b8644a;
+    --tray-edge: #8e4630;
+    --floor: #f5e3d8;
+    --floor-2: #efd6c8;
+    --wall-top: #b9553a;
+    --wall-side: #85361f;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='3']{
+    --tray: #4fa7bf;
+    --tray-edge: #337f96;
+    --floor: #e2f3f7;
+    --floor-2: #d4ecf2;
+    --wall-top: #d68bbd;
+    --wall-side: #9c5a88;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='4']{
+    --tray: #9f8fd6;
+    --tray-edge: #7a6ab3;
+    --floor: #efebfb;
+    --floor-2: #e5dff7;
+    --wall-top: #8f80bf;
+    --wall-side: #66579a;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='5']{
+    --tray: #8fbde0;
+    --tray-edge: #6a9bc2;
+    --floor: #f3f9ff;
+    --floor-2: #e6f1fb;
+    --wall-top: #a6cfea;
+    --wall-side: #6e9fc4;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='6']{
+    --tray: #9a7350;
+    --tray-edge: #765435;
+    --floor: #e8f1db;
+    --floor-2: #dde9cd;
+    --wall-top: #7aa555;
+    --wall-side: #557c38;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='7']{
+    --tray: #5a4a9a;
+    --tray-edge: #3d2f75;
+    --floor: #edeafa;
+    --floor-2: #e3ddf6;
+    --wall-top: #6f5fc0;
+    --wall-side: #4c3e98;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='8']{
+    --tray: #c08a63;
+    --tray-edge: #9a6a45;
+    --floor: #e7f4db;
+    --floor-2: #dbedcc;
+    --wall-top: #5fa64a;
+    --wall-side: #3c7a30;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='9']{
+    --tray: #c9876a;
+    --tray-edge: #a3654a;
+    --floor: #fbe9dd;
+    --floor-2: #f5dece;
+    --wall-top: #cf8a5e;
+    --wall-side: #9a5c38;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='10']{
+    --tray: #8ea2b4;
+    --tray-edge: #6b7f91;
+    --floor: #eaeff3;
+    --floor-2: #dfe6ed;
+    --wall-top: #7f93a5;
+    --wall-side: #586b7d;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='11']{
+    --tray: #7f88c9;
+    --tray-edge: #5d66a6;
+    --floor: #edeffb;
+    --floor-2: #e2e5f7;
+    --wall-top: #8d95c8;
+    --wall-side: #646ca3;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='12']{
+    --tray: #b5a774;
+    --tray-edge: #928453;
+    --floor: #f4f1df;
+    --floor-2: #ece7ce;
+    --wall-top: #a5a497;
+    --wall-side: #77766a;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='13']{
+    --tray: #8fb8e6;
+    --tray-edge: #6a95c6;
+    --floor: #f2f7ff;
+    --floor-2: #e5effd;
+    --wall-top: #b2c7ea;
+    --wall-side: #8099c6;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='14']{
+    --tray: #9a8a76;
+    --tray-edge: #776855;
+    --floor: #f1ece4;
+    --floor-2: #e7e0d5;
+    --wall-top: #a98a5c;
+    --wall-side: #7a6038;
+  }
+  :root:not([data-theme='dark']) .view-game[data-world='15']{
+    --tray: #c3a2ec;
+    --tray-edge: #9e7cd0;
+    --floor: #fbf1ff;
+    --floor-2: #f4e6fc;
+    --wall-top: #e3b5e6;
+    --wall-side: #ad80c4;
+  }
+}
+
+/* wall materials */
+.view-game[data-world='0'] .wall::before{ /* beach: pebbles */
+  inset: 7%;
+  border-radius: 46% 40% 44% 38% / 42% 46% 38% 44%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.55) 0 7%, transparent 9%),
+    radial-gradient(circle at 66% 64%, rgba(0, 0, 0, 0.1) 0 6%, transparent 8%),
+    radial-gradient(circle at 40% 74%, rgba(0, 0, 0, 0.08) 0 4%, transparent 6%),
+    linear-gradient(170deg, color-mix(in srgb, var(--wall-top) 80%, #fff), var(--wall-top) 60%, color-mix(in srgb, var(--wall-top) 88%, #000));
+}
+.view-game[data-world='1'] .wall::before{ /* dunes: layered sandstone */
+  border-radius: 14%;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 21%, rgba(120, 70, 20, 0.16) 21% 25%),
+    linear-gradient(180deg, color-mix(in srgb, var(--wall-top) 82%, #fff), var(--wall-top));
+}
+.view-game[data-world='2'] .wall::before{ /* canyon: cut red rock, embers below */
+  border-radius: 12%;
+  background:
+    linear-gradient(90deg, transparent 0 58%, rgba(60, 10, 0, 0.28) 58% 62%, transparent 62%) 0 100% / 100% 62% no-repeat,
+    linear-gradient(180deg, rgba(255, 214, 176, 0.38) 0 28%, transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--wall-top) 88%, #fff), var(--wall-top));
+  box-shadow: 0 calc(var(--size) * 0.012) 0 var(--wall-side), 0 4px 12px rgba(255, 110, 40, 0.28);
+}
+.view-game[data-world='3'] .wall::before{ /* reef: porous coral stone */
+  border-radius: 30%;
+  background:
+    radial-gradient(circle, rgba(150, 70, 60, 0.22) 0 22%, transparent 26%) 0 0 / 33% 33%,
+    linear-gradient(170deg, color-mix(in srgb, var(--wall-top) 80%, #fff), var(--wall-top));
+}
+.view-game[data-world='4'] .wall::before{ /* peaks: granite with a crystal glint */
+  border-radius: 10%;
+  background:
+    radial-gradient(circle at 74% 24%, rgba(255, 255, 255, 0.8) 0 5%, rgba(255, 255, 255, 0.25) 7% 13%, transparent 15%),
+    linear-gradient(180deg, color-mix(in srgb, var(--wall-top) 78%, #fff), var(--wall-top) 55%, color-mix(in srgb, var(--wall-top) 85%, #000));
+}
+.view-game[data-world='5'] .wall::before{ /* glacier: glossy ice */
+  border-radius: 16%;
+  background:
+    linear-gradient(90deg, transparent 0 16%, rgba(255, 255, 255, 0.7) 16% 24%, transparent 24% 30%, rgba(255, 255, 255, 0.35) 30% 33%, transparent 33%) 0 0 / 100% 70% no-repeat,
+    linear-gradient(180deg, #fff, var(--wall-top) 55%, color-mix(in srgb, var(--wall-top) 80%, #5aa0d0));
+  box-shadow: 0 calc(var(--size) * 0.012) 0 var(--wall-side), inset 0 0 0 1px rgba(255, 255, 255, 0.7), 0 6px 12px rgba(30, 80, 140, 0.3);
+}
+.view-game[data-world='6'] .wall::before{ /* woods: stones under a moss cap */
+  border-radius: 22%;
+  background:
+    radial-gradient(ellipse 30% 22% at 22% 34%, var(--wall-top) 0 96%, transparent),
+    radial-gradient(ellipse 30% 20% at 56% 36%, var(--wall-top) 0 96%, transparent),
+    radial-gradient(ellipse 26% 22% at 84% 32%, var(--wall-top) 0 96%, transparent),
+    linear-gradient(180deg, color-mix(in srgb, var(--wall-top) 80%, #fff) 0, var(--wall-top) 32%, #8d8a7c 32%, #6d6a5e);
+}
+.view-game[data-world='7'] .wall::before{ /* neon city: dark blocks, neon rims */
+  border-radius: 14%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--wall-top) 88%, #fff), var(--wall-top));
+  box-shadow: 0 calc(var(--size) * 0.012) 0 var(--wall-side), inset 0 0 0 calc(var(--size) * 0.005) #ff5ad6, 0 0 calc(var(--size) * 0.03) rgba(255, 90, 214, 0.5);
+}
+.view-game[data-world='8'] .wall::before{ /* gardens: clipped hedges */
+  border-radius: 26%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.22) 0 8%, transparent 10%) 0 0 / 34% 34%,
+    radial-gradient(circle at 70% 70%, rgba(0, 40, 0, 0.18) 0 9%, transparent 11%) 0 0 / 30% 30%,
+    linear-gradient(180deg, color-mix(in srgb, var(--wall-top) 82%, #fff), var(--wall-top));
+}
+.view-game[data-world='9'] .wall::before{ /* mesa: adobe, sunlit top */
+  border-radius: 10%;
+  background:
+    linear-gradient(180deg, rgba(255, 235, 200, 0.45) 0 16%, transparent 16%),
+    linear-gradient(180deg, color-mix(in srgb, var(--wall-top) 90%, #fff), var(--wall-top));
+}
+.view-game[data-world='10'] .wall::before{ /* storm: wet slate */
+  border-radius: 12%;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 18%, rgba(0, 0, 0, 0.1) 18% 21%),
+    radial-gradient(ellipse 60% 40% at 30% 20%, rgba(255, 255, 255, 0.35), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--wall-top) 85%, #fff), var(--wall-top));
+}
+.view-game[data-world='11'] .wall::before{ /* starry summit: moonstone, sparkles */
+  border-radius: 24%;
+  background:
+    radial-gradient(circle at 26% 30%, #fff 0 3%, transparent 5%),
+    radial-gradient(circle at 70% 58%, rgba(255, 255, 255, 0.8) 0 2.5%, transparent 4.5%),
+    radial-gradient(circle at 44% 76%, rgba(255, 255, 255, 0.7) 0 2%, transparent 4%),
+    linear-gradient(160deg, color-mix(in srgb, var(--wall-top) 80%, #fff), var(--wall-top) 60%, color-mix(in srgb, var(--wall-top) 85%, #5060a0));
+}
+.view-game[data-world='12'] .wall::before{ /* echo valley: carved blocks */
+  border-radius: 8%;
+  background:
+    linear-gradient(var(--wall-top), var(--wall-top)) 50% 50% / 56% 56% no-repeat,
+    linear-gradient(135deg, rgba(0, 0, 0, 0.16), rgba(255, 255, 255, 0.3)) 50% 50% / 68% 68% no-repeat,
+    linear-gradient(180deg, color-mix(in srgb, var(--wall-top) 85%, #fff), var(--wall-top));
+}
+.view-game[data-world='13'] .wall::before{ /* floating isles: clouds */
+  inset: 4%;
+  border-radius: 44% 44% 18% 18% / 56% 56% 20% 20%;
+  background:
+    radial-gradient(circle at 30% 36%, #fff 0 20%, transparent 22%),
+    radial-gradient(circle at 62% 30%, #fff 0 23%, transparent 25%),
+    radial-gradient(circle at 82% 50%, #fff 0 13%, transparent 15%),
+    linear-gradient(180deg, color-mix(in srgb, var(--wall-top) 70%, #fff) 30%, var(--wall-top) 70%, color-mix(in srgb, var(--wall-top) 80%, #6f8fc0));
+  box-shadow: 0 calc(var(--size) * 0.01) 0 var(--wall-side), 0 6px 14px rgba(40, 80, 150, 0.25);
+}
+.view-game[data-world='14'] .wall::before{ /* mechanical caves: riveted brass */
+  border-radius: 10%;
+  background:
+    radial-gradient(circle at 16% 16%, #f3dfb0 0 5%, #6b5230 6% 8%, transparent 9%),
+    radial-gradient(circle at 84% 16%, #f3dfb0 0 5%, #6b5230 6% 8%, transparent 9%),
+    radial-gradient(circle at 16% 84%, #f3dfb0 0 5%, #6b5230 6% 8%, transparent 9%),
+    radial-gradient(circle at 84% 84%, #f3dfb0 0 5%, #6b5230 6% 8%, transparent 9%),
+    linear-gradient(160deg, color-mix(in srgb, var(--wall-top) 70%, #fff), var(--wall-top) 45%, color-mix(in srgb, var(--wall-top) 80%, #000));
+}
+.view-game[data-world='15'] .wall::before{ /* rainbow rift: iridescent candy */
+  border-radius: 28%;
+  background:
+    radial-gradient(ellipse 34% 24% at 30% 24%, rgba(255, 255, 255, 0.75), transparent 70%),
+    linear-gradient(135deg, #ffbfe9, #c4c9ff 45%, #b0f3df 90%);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .view-game[data-world='15'] .wall::before{
+    background:
+      radial-gradient(ellipse 34% 24% at 30% 24%, rgba(255, 255, 255, 0.6), transparent 70%),
+      linear-gradient(135deg, #f49bd6, #aab2ff 45%, #78dcc4 90%);
+  }
+}

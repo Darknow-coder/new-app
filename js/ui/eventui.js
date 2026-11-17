@@ -73,6 +73,9 @@ export function openEvent() {
   openModal('modal-event');
 }
 
+// Each theme is played in the land it suits best (sand in the dunes, arrows in the arrow gardens...).
+const EVENT_WORLD = { portals: 13, pits: 2, mirrors: 5, sand: 1, arrows: 8, bumpers: 14, gates: 7, oneway: 12, mix: 15 };
+
 /** Play stage i of this week's event. */
 export async function startEventStage(i) {
   const ev = eventState();
@@ -86,6 +89,7 @@ export async function startEventStage(i) {
     level,
     title: t('evStage', { n: i + 1, t: EVENT_STAGES }),
     sub: t(`ev_${th.id}`),
+    world: EVENT_WORLD[th.id] ?? 15,
   });
   // A tile the player has never met (events can show them early): explain it first.
   const unseen = mechanicsIn(level).find((m) => !store.data.seenMech?.[m]);

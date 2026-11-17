@@ -67,6 +67,7 @@ function context(o) {
     hw: A.path.w / 2,
     avoid,
     stations,
+    arena: !!o.arena,
     R: rng(`map:v4:${w}`),
     water: [], // predicates (x, y) → true when (x, y) is water
     solid: [], // predicates (x, y) → true when land props must not go there
@@ -122,7 +123,7 @@ function put(c, kind, x, y, s = 1, opt = {}) {
   const sx = f(s * flip * 100) / 100;
   const sy = f(s * 100) / 100;
   // A few animated props per world live outside the baked picture (moved by the compositor).
-  if (!opt.still && d.anim && c.sprites.length < 6) {
+  if (!opt.still && d.anim && c.sprites.length < 6 && !c.arena) {
     c.sprites.push({ key, x: f(x), y: f(y), sx, sy, anim: d.anim, delay: f(-c.R() * 4) });
     c.items.push({ y: y + (opt.z || 0), svg: sh });
   } else {
@@ -666,9 +667,11 @@ export function worldScene(o) {
   // 1. ground
   c.layers.under.push(`<rect x="-20" y="${y0}" width="${W + 40}" height="${H - y0}" fill="${lin([A.g0, A.g1])}"/>`);
   A.terrain(c, { patches, marks, sea, pond, roomiest, edgeMass, edgeForest, edgePeaks, put, tryPut, mix, light, dark, lin, rad, glow, ao, blob, closedD, polyD, ellD, f, between, pick, C, E, L, P, RECT, ST, bloom, crown, crystal, hshade, op, rock, tuft, shade });
-  // 2. road
-  c.layers.road.push(buildRoad(c, roadD(o.road)));
-  roadsideDeco(c);
+  // 2. road (not on the game screen: there the land just frames the board)
+  if (!o.arena) {
+    c.layers.road.push(buildRoad(c, roadD(o.road)));
+    roadsideDeco(c);
+  }
   // 3. platforms
   for (const [x, y, boss] of o.stations) c.layers.pads.push((boss ? bossArena(c, x, y) : '') + pad(c, x, y, boss ? 46 : 40));
   for (const [x, y] of o.avoid) c.layers.pads.push(pad(c, x, y, 44, true));
@@ -678,8 +681,8 @@ export function worldScene(o) {
   // 5. atmosphere, mist bands shared with the neighbours
   atmosphere(c);
   if (o.locked) c.layers.air.push(cloudCover(c));
-  const mistTop = o.w ? mistBand(`${o.w - 1}|${o.w}`, W, y0, mix(art(o.w - 1).mist, A.mist, 0.5)) : '';
-  const mistBottom = o.last ? '' : mistBand(`${o.w}|${o.w + 1}`, W, H, mix(A.mist, art(o.w + 1).mist, 0.5));
+  const mistTop = o.w && !o.arena ? mistBand(`${o.w - 1}|${o.w}`, W, y0, mix(art(o.w - 1).mist, A.mist, 0.5)) : '';
+  const mistBottom = o.last || o.arena ? '' : mistBand(`${o.w}|${o.w + 1}`, W, H, mix(A.mist, art(o.w + 1).mist, 0.5));
   const L_ = c.layers;
   const svg =
     L_.under.join('') +
@@ -711,7 +714,7 @@ export function litRoad(road, litN) {
    paints it like any image (no thousands of live elements to style, paint and layerize). */
 const baked = new Map();
 export function bakeWorld(o) {
-  const key = `${o.w}|${o.W}|${o.H}|${o.top}|${o.last ? 1 : 0}|${o.locked ? 1 : 0}|${o.avoid.map((a) => a.map(Math.round).join(',')).join(';')}`;
+  const key = `${o.w}|${o.W}|${o.H}|${o.top}|${o.last ? 1 : 0}|${o.locked ? 1 : 0}|${o.arena ? 'a' : ''}|${o.avoid.map((a) => a.map(Math.round).join(',')).join(';')}`;
   let b = baked.get(key);
   if (!b) {
     const { svg, sprites } = worldScene(o);
@@ -722,6 +725,15 @@ export function bakeWorld(o) {
     flushDefs(); // the live sprites use the shared defs
   }
   return b;
+}
+
+/** A world's land for the game screen: the map's scenery without the road, around the board
+ *  (the hidden "road" only keeps the centre clear, where the board sits). Cached per world. */
+export const ARENA = { W: 400, H: 860 };
+export function arenaArt(w) {
+  const { W, H } = ARENA;
+  const wi = ((w % WORLD_ART.length) + WORLD_ART.length) % WORLD_ART.length;
+  return bakeWorld({ w: wi, W, H, top: 0, road: [[W / 2, H * 0.24], [W / 2, H * 0.6]], avoid: [], stations: [], last: true, locked: false, arena: true });
 }
 
 /** Markup of the live animated sprites (inline SVG, positioned in path coordinates). */
