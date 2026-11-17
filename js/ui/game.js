@@ -8,7 +8,7 @@ import { TUTORIAL } from '../tutorial.js';
 import { buildScenery, burst, iris, reducedMotion, replay } from '../fx.js';
 import { equipped } from '../skins.js';
 import { track } from '../progress.js';
-import { $, S, announce, buzz, closeModal, els, openModal, showView, toast, worldHue, worldName } from './core.js';
+import { $, S, announce, buzz, closeModal, els, openModal, showView, toast, worldHue, worldName, worldStars } from './core.js';
 import { onSolved } from './result.js';
 import { count } from '../metrics.js';
 import { shareBase } from '../site.js';
@@ -185,6 +185,146 @@ export async function challengeImage(n, moves, stars) {
     return await draw(true);
   } catch {
     return draw(false);
+  }
+}
+
+/** The postcard of a finished world: its land, its name, the stars won there. */
+export async function worldPostcard(w) {
+  const draw = async (withArt) => {
+    const S = 720;
+    const H = 900;
+    const c = document.createElement('canvas');
+    c.width = S;
+    c.height = H;
+    const x = c.getContext('2d');
+    const hue = WORLD_HUES[w % WORLD_HUES.length];
+    const g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#2a3070');
+    g.addColorStop(1, '#11142b');
+    x.fillStyle = g;
+    x.fillRect(0, 0, S, H);
+    if (withArt) {
+      const art = new Image();
+      art.src = arenaArt(w % WORLD_HUES.length).url;
+      await art.decode();
+      const k = Math.max(S / art.naturalWidth, H / art.naturalHeight);
+      x.drawImage(art, (S - art.naturalWidth * k) / 2, (H - art.naturalHeight * k) * 0.5, art.naturalWidth * k, art.naturalHeight * k);
+      const shade = x.createLinearGradient(0, 0, 0, H);
+      shade.addColorStop(0, 'rgba(12,14,40,.78)');
+      shade.addColorStop(0.3, 'rgba(12,14,40,.12)');
+      shade.addColorStop(0.62, 'rgba(12,14,40,.12)');
+      shade.addColorStop(1, 'rgba(12,14,40,.9)');
+      x.fillStyle = shade;
+      x.fillRect(0, 0, S, H);
+    }
+    const font = (wt, px) => `${wt} ${px}px Fredoka, system-ui, sans-serif`;
+    x.textAlign = 'center';
+    x.shadowColor = 'rgba(0,0,0,.5)';
+    x.shadowBlur = 12;
+    x.fillStyle = '#fff';
+    x.font = font(700, 64);
+    x.fillText('marbl', S / 2, 92);
+    // ribbon: "World 3 complete!"
+    const label = t('worldDone', { n: w + 1 });
+    x.font = font(700, 34);
+    const rw = Math.min(S - 80, x.measureText(label).width + 70);
+    x.shadowBlur = 18;
+    x.fillStyle = hue;
+    x.beginPath();
+    x.roundRect((S - rw) / 2, 128, rw, 62, 31);
+    x.fill();
+    x.shadowBlur = 0;
+    x.fillStyle = 'rgba(0,0,0,.18)';
+    x.beginPath();
+    x.roundRect((S - rw) / 2, 160, rw, 30, [0, 0, 31, 31]);
+    x.fill();
+    x.fillStyle = '#fff';
+    x.shadowColor = 'rgba(0,0,0,.35)';
+    x.shadowBlur = 6;
+    x.fillText(label, S / 2, 171);
+    // a gold medal in the middle, on ribbons of the world's colour
+    const mx = S / 2;
+    const my = 420;
+    x.shadowColor = 'rgba(0,0,0,.4)';
+    x.shadowBlur = 24;
+    x.fillStyle = hue;
+    for (const side of [-1, 1]) {
+      x.beginPath();
+      x.moveTo(mx + side * 30, my + 40);
+      x.lineTo(mx + side * 92, my + 205);
+      x.lineTo(mx + side * 58, my + 178);
+      x.lineTo(mx + side * 40, my + 222);
+      x.lineTo(mx + side * 0, my + 70);
+      x.closePath();
+      x.fill();
+    }
+    const gold = x.createRadialGradient(mx - 36, my - 40, 10, mx, my, 120);
+    gold.addColorStop(0, '#fff3b0');
+    gold.addColorStop(0.45, '#ffc93a');
+    gold.addColorStop(1, '#c97a00');
+    x.fillStyle = gold;
+    x.beginPath();
+    x.arc(mx, my, 112, 0, 7);
+    x.fill();
+    x.shadowBlur = 0;
+    x.strokeStyle = '#fff3c4';
+    x.lineWidth = 6;
+    x.beginPath();
+    x.arc(mx, my, 88, 0, 7);
+    x.stroke();
+    x.fillStyle = '#fff';
+    x.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 ? 26 : 62;
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      x.lineTo(mx + Math.cos(a) * r, my + Math.sin(a) * r);
+    }
+    x.closePath();
+    x.fill();
+    // the world's name, big, and its stars
+    x.shadowColor = 'rgba(0,0,0,.5)';
+    x.shadowBlur = 16;
+    x.font = font(700, 70);
+    x.fillText(worldName(w), S / 2, H - 230, S - 60);
+    const have = worldStars(w);
+    x.font = font(700, 46);
+    x.fillStyle = '#ffc23d';
+    x.fillText(`★ ${have} / ${LEVELS_PER_WORLD * 3}`, S / 2, H - 160);
+    x.fillStyle = '#d6d8f5';
+    x.font = font(600, 30);
+    x.fillText(t('worldCta'), S / 2, H - 70);
+    return new Promise((r) => c.toBlob(r, 'image/png'));
+  };
+  try {
+    return await draw(true);
+  } catch {
+    return draw(false);
+  }
+}
+
+/** Share a finished world (postcard + link to the game). */
+export async function shareWorld(w) {
+  const url = shareBase();
+  const text = t('worldShareText', { w: worldName(w) });
+  try {
+    const blob = await worldPostcard(w);
+    const file = new File([blob], `marbl-world-${w + 1}.png`, { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) {
+      await navigator.share({ files: [file], text: `${text}\n${url}` });
+      return;
+    }
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+      await navigator.share({ text, url });
+      return;
+    }
+  } catch (e) {
+    if (e?.name === 'AbortError') return;
+  }
+  try {
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    toast(t('copied'));
+  } catch {
+    toast(url);
   }
 }
 

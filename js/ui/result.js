@@ -11,7 +11,7 @@ import { DAILY_ORDER } from '../daily.js';
 import { burstConfetti } from '../confetti.js';
 import { $, S, buzz, closeModal, dailyChestReady, els, openModal, showView, toast, updateCoins, worldHue, worldName, worldStars } from './core.js';
 import { WORLD_CHESTS, chestId, chestSVG, isOpened } from '../chests.js';
-import { shareChallenge, startChallenge, startDaily, startLevel, startTutorial, updateHud } from './game.js';
+import { shareChallenge, shareWorld, startChallenge, startDaily, startLevel, startTutorial, updateHud } from './game.js';
 import { shareDay } from './settings.js';
 import { handleProgress, openDailyChest } from './common.js';
 import { openMap } from './mapview.js';
@@ -101,6 +101,7 @@ export function onSolved() {
     }
     S.game.prog = track('levelWin', { stars, first: prev === 0, newStars: Math.max(0, stars - prev), usedBooster: !!S.game.usedBooster });
     S.game.bossSkin = null;
+    S.game.worldDone = prev === 0 && isBoss(S.game.n); // first win over the boss: the world is done
     if (prev === 0 && isBoss(S.game.n)) {
       const sk = pickSkin(['rare', 'epic'], worldOf(S.game.n));
       if (sk && grantSkin(sk.id)) S.game.bossSkin = sk.id;
@@ -243,7 +244,8 @@ export function showResult() {
     }
     actions.push({ label: t('map'), icon: 'i-flag', onClick: () => iris(openMap, worldHue(n)) });
     if (stars < 3) actions.push({ label: t('retry'), icon: 'i-restart', onClick: () => iris(() => startLevel(n), worldHue(n)) });
-    actions.push({ label: t('challengeFriend'), icon: 'i-share', keepOpen: true, onClick: () => shareChallenge(n, S.game.moves, stars) });
+    if (S.game.worldDone) actions.push({ label: t('shareWorld'), icon: 'i-share', keepOpen: true, onClick: () => shareWorld(worldOf(n)) });
+    else actions.push({ label: t('challengeFriend'), icon: 'i-share', keepOpen: true, onClick: () => shareChallenge(n, S.game.moves, stars) });
     const next = n + 1;
     actions.push({ label: isBoss(next) ? `BOSS · ${t('level', { n: next })}` : t('level', { n: next }), primary: true, icon: 'i-play', iconAfter: true, cls: isBoss(next) ? 'is-boss-next' : '', onClick: () => iris(() => startLevel(next), worldHue(next)), wide: true });
   }
