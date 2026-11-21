@@ -9,6 +9,7 @@ Toutes les vidéos sortent en vertical 1080×1920, 30 i/s, dans `clips/` (non ve
 | `npm run clip -- challenge --daily hard` | le puzzle du jour, sans la solution : « Tu le fais en combien ? » |
 | `npm run clip -- edit --edit mon-edit.mp4` | jeu avec la musique de l'edit étouffée → **BAM** sur « Parfait ! » → l'edit, calé sur son son |
 | `npm run clip -- batch --edits dossier/ --count 3` | chaque edit du dossier × 3 niveaux spectaculaires différents |
+| `npm run clip -- trailer --variant a --lang en` | bande-annonce ~30 s : 4 mondes enchaînés, un boss et sa victoire, un coffre, carton final « Link in bio » (variantes `a` et `b`) |
 
 Options : `--level N`, `--daily easy|medium|hard`, `--text "accroche"`, `--caption "texte sur l'edit"` (ou `none`), `--lang fr|en|es`.
 

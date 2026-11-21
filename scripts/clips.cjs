@@ -6,6 +6,7 @@
 //   node scripts/clips.cjs challenge [--daily hard | --level 216] [--text "…"]       board only: "how many moves?"
 //   node scripts/clips.cjs edit      --edit some-edit.mp4 [--level 216] [--text "…"] [--caption "…"]
 //   node scripts/clips.cjs batch     --edits folder/ [--count 3] [--lang fr]         every edit × spectacular levels
+//   node scripts/clips.cjs trailer   [--variant a|b] [--lang en]                     ~25 s ad: several worlds, a boss, a chest, end card
 //
 // "edit" = gameplay with the edit's music muffled underneath, then BAM: the edit plays
 // in full on the victory, in sync with its own sound. Green-screen templates ("FOLLOW FOR
@@ -198,16 +199,17 @@ const SKINS = ['w15-legend', 'w8-legend', 'w11-legend', 'w7-legend', 'w10-legend
  * Record gameplay. plan = { level } | { daily: 'hard' }, moves = list or 'solution' or [].
  * Returns { mp4, webm, offset, duration, cut, par }.
  */
-async function record(browser, base, { level, daily, moves = 'solution', hook = '', skin, step = 780, look = 1300, tail = 2600, name, hideHookAt = 0 }) {
+async function record(browser, base, { level, daily, moves = 'solution', hook = '', skin, step = 780, look = 1300, tail = 2600, name, hideHookAt = 0, unlocked = 0, script = null }) {
   const ctx = await browser.newContext({ viewport: { width: 432, height: 768 }, deviceScaleFactor: 2.5, isMobile: true, hasTouch: true, locale: { fr: 'fr-FR', en: 'en-US', es: 'es-ES' }[LANG], colorScheme: 'dark' });
   await ctx.route('**/js/online-config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: "export const FIREBASE = { apiKey: '', projectId: '' };" }));
   const p = await ctx.newPage();
   const n = level || 1;
   skin = skin || SKINS[Math.floor(Math.random() * SKINS.length)];
-  const best = Object.fromEntries(Array.from({ length: Math.max(0, n - 1) }, (_, i) => [i + 1, 3]));
+  const top = Math.max(n, unlocked);
+  const best = Object.fromEntries(Array.from({ length: Math.max(0, top - 1) }, (_, i) => [i + 1, 3]));
   await p.addInitScript(([best, n, skin, lang]) => {
     localStorage.setItem('marbl:v1', JSON.stringify({ tutorialDone: true, giftDay: '2099-01-01', levels: { unlocked: n, best }, settings2: { fbAsked: true, music: false },
-      seenMech: { sand: true, gates: true, portals: true, pits: true, arrows: true }, skins: { owned: ['classic', skin], equipped: skin, seen: ['classic', skin] } }));
+      seenMech: { sand: true, gates: true, portals: true, pits: true, arrows: true, mirrors: true, bumpers: true, oneway: true }, skins: { owned: ['classic', skin], equipped: skin, seen: ['classic', skin] } }));
     localStorage.setItem('marbl:lite', JSON.stringify({ lite: false, at: Date.now() }));
     localStorage.setItem('marbl:lang', lang);
     // Tee the game's sound into a recorder.
@@ -223,7 +225,7 @@ async function record(browser, base, { level, daily, moves = 'solution', hook = 
       }
       return orig.call(this, t, ...rest);
     };
-  }, [best, n, skin, LANG]);
+  }, [best, top, skin, LANG]);
   await p.goto(base);
   await p.waitForTimeout(3500);
   await p.evaluate(async () => (await import('./js/audio.js')).unlockAudio());
@@ -240,7 +242,7 @@ async function record(browser, base, { level, daily, moves = 'solution', hook = 
       const d = document.createElement('div');
       d.id = 'tt-hook';
       d.textContent = h;
-      d.style.cssText = 'position:fixed;left:50%;top:15%;transform:translateX(-50%) rotate(-2deg);z-index:99999;background:#fff;color:#11142b;font:700 25px Fredoka,sans-serif;padding:10px 18px;border-radius:14px;box-shadow:0 6px 0 rgba(0,0,0,.25);white-space:nowrap;max-width:92vw;transition:opacity .3s';
+      d.style.cssText = 'position:fixed;left:50%;top:15%;transform:translateX(-50%) rotate(-2deg);z-index:99999;background:#fff;color:#11142b;font:700 25px Fredoka,sans-serif;padding:10px 18px;border-radius:14px;box-shadow:0 6px 0 rgba(0,0,0,.25);width:max-content;max-width:84vw;text-align:center;line-height:1.15;transition:opacity .3s';
       document.body.appendChild(d);
     }, hook);
   }
@@ -260,6 +262,10 @@ async function record(browser, base, { level, daily, moves = 'solution', hook = 
   if (hideHookAt) await p.evaluate((ms) => setTimeout(() => document.getElementById('tt-hook') && (document.getElementById('tt-hook').style.opacity = 0), ms), hideHookAt);
   await p.waitForTimeout(look);
   let lastMove = Date.now();
+  if (script) {
+    await script(p);
+    lastMove = Date.now();
+  }
   for (let i = 0; i < moves.length; i++) {
     if (i === 2 && hook && moves.length > 4) await p.evaluate(() => document.getElementById('tt-hook') && (document.getElementById('tt-hook').style.opacity = 0));
     lastMove = Date.now();
@@ -360,6 +366,41 @@ function composePlain(g, out, cta, until = g.duration) {
   );
 }
 
+/** Full-screen closing card: logo, promise, "link in bio". */
+async function endCardPNG(browser, file, lines) {
+  const font = fs.readFileSync(path.join(ROOT, 'fonts', 'fredoka-latin.woff2')).toString('base64');
+  const p = await browser.newPage({ viewport: { width: W, height: H } });
+  const ball = (x, y, r, c) => `<i style="left:${x}px;top:${y}px;width:${r}px;height:${r}px;background:radial-gradient(circle at 34% 30%,#fff 0 9%,${c[0]} 32%,${c[1]})"></i>`;
+  await p.setContent(`<style>@font-face{font-family:F;src:url(data:font/woff2;base64,${font}) format('woff2');font-weight:300 700}
+    body{margin:0;width:${W}px;height:${H}px;overflow:hidden;font-family:F,sans-serif;color:#fff;text-align:center;
+      background:radial-gradient(circle at 50% 30%,#3a3f9a,#11142b 72%)}
+    i{position:absolute;border-radius:50%;box-shadow:0 18px 30px rgba(0,0,0,.35)}
+    .t{position:absolute;left:0;right:0;top:640px}
+    h1{font-size:230px;margin:0;letter-spacing:-6px;text-shadow:0 14px 0 rgba(0,0,0,.28)}
+    .tag{font-size:66px;font-weight:700;color:#ffc23d;margin:4px 0 40px}
+    .l{font-size:54px;font-weight:600;color:#d6d8f5;margin:8px 0}
+    .cta{display:inline-block;margin-top:70px;background:#ffc23d;color:#2a1d00;font-size:78px;font-weight:700;padding:26px 64px;border-radius:999px;box-shadow:0 14px 0 #b97a00}</style>
+    ${ball(130, 300, 150, ['#ff5d73', '#a3203a'])}${ball(800, 380, 120, ['#1fd1b9', '#0b7566'])}${ball(470, 220, 90, ['#ffc23d', '#a36a00'])}${ball(150, 1560, 110, ['#9a7bff', '#4b2fb0'])}${ball(820, 1620, 140, ['#ffc23d', '#a36a00'])}
+    <div class="t"><h1>marbl</h1><div class="tag">${lines.tag}</div>${lines.more.map((x) => `<div class="l">${x}</div>`).join('')}<div class="cta">${lines.cta}</div></div>`);
+  await p.waitForTimeout(400);
+  await p.screenshot({ path: file });
+  await p.close();
+  return file;
+}
+
+/** Trailer: the whole take, then the end card (cross-fade), game sounds fading out. */
+function composeTrailer(g, out, endPng, hold = 2.6) {
+  const D = g.duration;
+  ff(
+    '-i', g.mp4, '-i', g.webm, '-loop', '1', '-t', String(hold + 0.5), '-i', endPng,
+    '-filter_complex',
+    `[0:v]trim=0:${D},setpts=PTS-STARTPTS,fps=30,setsar=1,format=yuv420p[a];[2:v]scale=${W}:${H},fps=30,setsar=1,format=yuv420p[e];` +
+      `[a][e]xfade=transition=fade:duration=0.45:offset=${(D - 0.45).toFixed(2)},format=yuv420p[v];` +
+      `[1:a]atrim=start=${g.skip},asetpts=PTS-STARTPTS,atrim=0:${D},volume=1.6,afade=t=out:st=${(D - 0.3).toFixed(2)}:d=0.9,aresample=44100,aformat=channel_layouts=stereo,apad=whole_dur=${(D + hold).toFixed(2)}[aud]`,
+    '-map', '[v]', '-map', '[aud]', '-t', (D + hold - 0.45).toFixed(2), ...VID, ...AUD, out,
+  );
+}
+
 /** Gameplay (muffled edit music + game sounds + riser) → BAM → the edit, in sync with its sound. */
 function composeEdit(g, editFile, ed, out, captionPng) {
   const cut = g.cut;
@@ -454,8 +495,81 @@ async function main() {
           console.log('  made', path.relative(ROOT, out));
         }
       }
+    } else if (cmd === 'trailer') {
+      // One continuous take: several worlds with their real transitions, a boss and its
+      // victory card, a chest; captions change with each world.
+      const V = {
+        a: { levels: [13, 63, 302, 40], skin: 'w15-legend', caps: ['This puzzle game is way too satisfying 😮‍💨', '16 worlds to explore 🌍', '2,000 levels 🤯', 'Beat the bosses 👑'] },
+        b: { levels: [162, 142, 261, 60], skin: 'w8-legend', caps: ['Tilt the board. Every marble rolls. 🎯', 'Every world looks different 🌍', 'New twists every few levels ✨', 'Can you beat the boss? 👑'] },
+      }[args.variant || 'a'];
+      const chestCap = 'Open chests, collect 97 marbles 🎁';
+      const name = `trailer-${args.variant || 'a'}`;
+      const g = await record(browser, base, {
+        level: V.levels[0], unlocked: 400, skin: V.skin, moves: [], hook: V.caps[0], look: 500, tail: 0, name,
+        script: async (p) => {
+          const trace = (m) => process.env.TRACE && console.log(`  [${((Date.now() - T0) / 1000).toFixed(1)}s] ${m}`);
+          const T0 = Date.now();
+          const say = (text) =>
+            p.evaluate((h) => {
+              const d = document.getElementById('tt-hook');
+              if (!d) return;
+              d.textContent = h;
+              d.style.opacity = 1;
+              const top = [...document.querySelectorAll('dialog[open]')].pop();
+              (top || document.body).appendChild(d);
+            }, text);
+          const closeAll = () => p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+          const play = async (hold) => {
+            const sol = await p.evaluate(() => window.__marbl.game.level.solution);
+            for (const d of sol) {
+              await p.evaluate((d) => window.__marbl.move(d), d);
+              await p.waitForTimeout(470);
+            }
+            await p.waitForTimeout(hold);
+          };
+          // between worlds: no victory card, just the last drop, then the game's iris transition
+          await p.addStyleTag({ content: '#modal-result{visibility:hidden!important}' }).then((h) => h.evaluate((el) => (el.id = 'tt-noresult')));
+          trace('first world');
+          await play(750);
+          for (let i = 1; i < V.levels.length; i++) {
+            trace(`world ${i}: level ${V.levels[i]}`);
+            const last = i === V.levels.length - 1;
+            await closeAll();
+            await p.evaluate(async (n) => {
+              const { iris } = await import('./js/fx.js');
+              iris(() => window.__marbl.startLevel(n));
+            }, V.levels[i]);
+            await p.waitForTimeout(330); // the iris is closed: swap the caption behind it
+            await say(V.caps[i]);
+            if (last) await p.evaluate(() => document.getElementById('tt-noresult')?.remove()); // the boss gets its victory card
+            await p.waitForTimeout(900);
+            await closeAll();
+            await play(last ? 2700 : 750);
+          }
+          // a gold chest
+          trace('chest');
+          await closeAll();
+          await p.evaluate(() => {
+            window.__marbl.openChest({ tier: 'gold' }); // resolves only once collected: don't wait
+          });
+          await p.waitForTimeout(250);
+          await say(chestCap);
+          await p.waitForTimeout(950);
+          await p.mouse.click(216, 400);
+          await p.waitForTimeout(3600);
+          trace('done');
+        },
+      });
+      const end = await endCardPNG(browser, path.join(TMP, 'end.png'), {
+        tag: { fr: 'Incline. Roule. Plop.', en: 'Tilt. Roll. Drop.', es: 'Inclina. Rueda. Plop.' }[LANG],
+        more: { fr: ['2 000 niveaux · 16 mondes', 'Gratuit · sans téléchargement'], en: ['2,000 levels · 16 worlds', 'Free · no download'], es: ['2.000 niveles · 16 mundos', 'Gratis · sin descargas'] }[LANG],
+        cta: { fr: 'Lien en bio 👆', en: 'Link in bio 👆', es: 'Enlace en la bio 👆' }[LANG],
+      });
+      const out = path.join(OUT, `${stamp}-${name}-${LANG}.mp4`);
+      composeTrailer(g, out, end);
+      made.push(out);
     } else {
-      throw new Error(`unknown command "${cmd}" (solve, fail, challenge, edit, batch)`);
+      throw new Error(`unknown command "${cmd}" (solve, fail, challenge, edit, batch, trailer)`);
     }
   } finally {
     await browser.close();
